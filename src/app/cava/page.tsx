@@ -8,6 +8,7 @@ import { DepartTasteModal } from "@/components/DepartTasteModal";
 import { DisplayNameEditor } from "@/components/DisplayNameEditor";
 import { FiltersBar } from "@/components/FiltersBar";
 import { ForToday } from "@/components/ForToday";
+import { InstallAppHint } from "@/components/InstallAppHint";
 import { RecentHistory } from "@/components/RecentHistory";
 import { StatsDashboard } from "@/components/StatsDashboard";
 import { WineDetail } from "@/components/WineDetail";
@@ -234,6 +235,8 @@ export default function CavaPage() {
             </button>
           </div>
         </header>
+
+        <InstallAppHint />
 
         {!configured ? (
           <div className="mt-4 rounded-[12px] border border-[var(--line)] bg-[rgba(255,252,247,0.7)] p-4 text-sm text-ink">

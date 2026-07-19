@@ -10,6 +10,7 @@ import { FiltersBar } from "@/components/FiltersBar";
 import { ForToday } from "@/components/ForToday";
 import { InstallAppHint } from "@/components/InstallAppHint";
 import { RecentHistory } from "@/components/RecentHistory";
+import { ResizableDesktopPanels } from "@/components/ResizableDesktopPanels";
 import { StatsDashboard } from "@/components/StatsDashboard";
 import { WineDetail } from "@/components/WineDetail";
 import { WineFormModal } from "@/components/WineFormModal";
@@ -318,51 +319,55 @@ export default function CavaPage() {
           />
         </div>
 
-        <div className="desktop-only mt-6">
-          <section className="panel p-5">
-            <div className="mb-4 flex items-baseline justify-between gap-3">
-              <h2 className="display text-2xl text-ink">
-                {activeCellar ? activeCellar.name : "Mapa de la cava"}
-              </h2>
-              <p className="text-xs uppercase tracking-[0.16em] text-ink-soft">
-                {stats.emptySlots} libres
-              </p>
-            </div>
-            {activeCellar ? (
-              <CellarMap
-                wines={wines}
-                cols={activeCellar.cols}
-                rows={activeCellar.rows}
-                cellarId={activeCellar.id}
-                highlightedIds={new Set(visible.map((w) => w.id))}
+        <ResizableDesktopPanels
+          map={
+            <section className="panel p-5">
+              <div className="mb-4 flex items-baseline justify-between gap-3">
+                <h2 className="display text-2xl text-ink">
+                  {activeCellar ? activeCellar.name : "Mapa de la cava"}
+                </h2>
+                <p className="text-xs uppercase tracking-[0.16em] text-ink-soft">
+                  {stats.emptySlots} libres
+                </p>
+              </div>
+              {activeCellar ? (
+                <CellarMap
+                  wines={wines}
+                  cols={activeCellar.cols}
+                  rows={activeCellar.rows}
+                  cellarId={activeCellar.id}
+                  highlightedIds={new Set(visible.map((w) => w.id))}
+                  selectedId={selected?.id ?? null}
+                  onSelect={(w) => selectWine(w)}
+                  onEmptySlot={(slot) => openAdd(slot)}
+                  onMoveWine={handleMoveWine}
+                />
+              ) : (
+                <p className="text-sm text-ink-soft">
+                  Crea un mueble para empezar a acomodar botellas.
+                </p>
+              )}
+            </section>
+          }
+          inventory={
+            <section className="panel flex min-h-[420px] flex-col p-5">
+              <div className="mb-4 flex items-baseline justify-between gap-3">
+                <h2 className="display text-2xl text-ink">Inventario</h2>
+                <p className="text-sm text-ink-soft">{visible.length}</p>
+              </div>
+              <WineList
+                wines={visible}
                 selectedId={selected?.id ?? null}
                 onSelect={(w) => selectWine(w)}
-                onEmptySlot={(slot) => openAdd(slot)}
-                onMoveWine={handleMoveWine}
               />
-            ) : (
-              <p className="text-sm text-ink-soft">
-                Crea un mueble para empezar a acomodar botellas.
-              </p>
-            )}
-          </section>
-
-          <section className="panel flex min-h-[420px] flex-col p-5">
-            <div className="mb-4 flex items-baseline justify-between gap-3">
-              <h2 className="display text-2xl text-ink">Inventario</h2>
-              <p className="text-sm text-ink-soft">{visible.length}</p>
-            </div>
-            <WineList
-              wines={visible}
-              selectedId={selected?.id ?? null}
-              onSelect={(w) => selectWine(w)}
-            />
-          </section>
-
-          <section className="panel p-5">
-            <WineDetail {...detailProps} />
-          </section>
-        </div>
+            </section>
+          }
+          detail={
+            <section className="panel p-5">
+              <WineDetail {...detailProps} />
+            </section>
+          }
+        />
 
         <div className="mobile-only mt-5">
           {mobilePanel === "mapa" && (

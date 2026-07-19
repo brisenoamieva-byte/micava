@@ -382,7 +382,7 @@ export default function CavaPage() {
             </section>
           }
           detail={
-            <section className="panel p-5">
+            <section className="panel min-w-0 overflow-hidden p-5">
               <WineDetail {...detailProps} />
             </section>
           }

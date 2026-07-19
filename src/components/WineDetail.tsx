@@ -168,7 +168,7 @@ export function WineDetail({
   }
 
   return (
-    <div>
+    <div className="min-w-0 overflow-hidden">
       {onBack ? (
         <button
           type="button"
@@ -363,13 +363,13 @@ export function WineDetail({
       ) : null}
 
       {(onOpened || onGifted || onEdit || onRemove) && (
-        <div className="mt-6 space-y-2 border-t border-[var(--line)] pt-4">
+        <div className="mt-6 min-w-0 space-y-2 border-t border-[var(--line)] pt-4">
           {(onOpened || onGifted) && (
-            <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {onOpened ? (
                 <button
                   type="button"
-                  className="btn btn-primary min-h-[44px] flex-1"
+                  className="btn btn-primary min-h-[44px] min-w-0 w-full px-3"
                   onClick={() => onOpened(wine)}
                 >
                   La abrí
@@ -378,7 +378,7 @@ export function WineDetail({
               {onGifted ? (
                 <button
                   type="button"
-                  className="btn btn-ghost min-h-[44px] flex-1"
+                  className="btn btn-ghost min-h-[44px] min-w-0 w-full px-3"
                   onClick={() => {
                     if (
                       confirm(
@@ -395,10 +395,10 @@ export function WineDetail({
             </div>
           )}
           {(onEdit || onRemove) && (
-            <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <button
                 type="button"
-                className="btn btn-ghost min-h-[44px] flex-1"
+                className="btn btn-ghost min-h-[44px] min-w-0 w-full px-3"
                 onClick={() => void handleShare()}
               >
                 {shareHint ?? "Compartir"}
@@ -406,7 +406,7 @@ export function WineDetail({
               {onEdit ? (
                 <button
                   type="button"
-                  className="btn btn-ghost min-h-[44px] flex-1"
+                  className="btn btn-ghost min-h-[44px] min-w-0 w-full px-3"
                   onClick={() => onEdit(wine)}
                 >
                   Editar
@@ -415,7 +415,7 @@ export function WineDetail({
               {onRemove ? (
                 <button
                   type="button"
-                  className="btn min-h-[44px] flex-1 border border-[rgba(110,31,44,0.35)] bg-[rgba(110,31,44,0.08)] text-[var(--wine-deep)]"
+                  className="btn min-h-[44px] min-w-0 w-full border border-[rgba(110,31,44,0.35)] bg-[rgba(110,31,44,0.08)] px-3 text-[var(--wine-deep)] sm:col-span-2"
                   onClick={() => {
                     if (
                       confirm(

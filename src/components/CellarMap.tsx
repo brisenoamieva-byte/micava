@@ -3,7 +3,7 @@
 import { useRef, useState, type DragEvent, type MutableRefObject } from "react";
 import type { Wine } from "@/lib/types";
 import { CountryFlag } from "@/components/CountryFlag";
-import { getWineBySlot } from "@/lib/wines";
+import { formatVivino, countryFlagEmoji, getWineBySlot, typeAccent } from "@/lib/wines";
 
 type Props = {
   wines: Wine[];
@@ -18,6 +18,25 @@ type Props = {
 };
 
 const DRAG_MIME = "application/x-micava-wine";
+
+/** Compact label that fits dense map cells. */
+function cellLabel(wine: Wine): string {
+  const name = wine.name.trim();
+  if (name.length <= 11) return name;
+  const words = name.split(/\s+/).filter(Boolean);
+  if (words[0] && words[0].length >= 4 && words[0].length <= 11) {
+    return words[0];
+  }
+  return `${name.slice(0, 10)}…`;
+}
+
+function cellMeta(wine: Wine): string {
+  const bits: string[] = [];
+  if (wine.vivino != null) bits.push(formatVivino(wine.vivino));
+  else if (wine.vintage != null) bits.push(String(wine.vintage));
+  else if (wine.type) bits.push(wine.type.slice(0, 3));
+  return bits[0] ?? "";
+}
 
 export function CellarMap({
   wines,
@@ -85,8 +104,10 @@ export function CellarMap({
 
       <div className="map-scroll pb-1">
         <div
-          className="grid min-w-[520px] gap-1 sm:min-w-[640px] sm:gap-1.5"
-          style={{ gridTemplateColumns: `22px repeat(${cols}, minmax(0, 1fr))` }}
+          className="grid min-w-[640px] gap-1 sm:min-w-[760px] sm:gap-1.5"
+          style={{
+            gridTemplateColumns: `20px repeat(${cols}, minmax(0, 1fr))`,
+          }}
         >
           <div />
           {Array.from({ length: cols }, (_, i) => (
@@ -304,7 +325,7 @@ function Row({
                 else onEmptySlot?.(slot);
               }}
               className={[
-                "aspect-square min-h-[36px] rounded-[6px] border border-dashed text-[9px] text-ink-soft transition sm:min-h-0 sm:rounded-[8px]",
+                "flex min-h-[52px] items-center justify-center rounded-[6px] border border-dashed text-[11px] text-ink-soft transition sm:min-h-[58px] sm:rounded-[8px]",
                 isOver || pickedId
                   ? "border-[var(--wine)] bg-[rgba(122,36,48,0.1)] text-[var(--wine)]"
                   : "border-[rgba(26,23,20,0.18)] bg-[rgba(255,252,247,0.25)] hover:border-[var(--wine)] hover:bg-[rgba(122,36,48,0.06)]",
@@ -315,11 +336,25 @@ function Row({
           );
         }
 
+        const label = cellLabel(wine);
+        const meta = cellMeta(wine);
+        const tip = [
+          slot,
+          wine.name,
+          wine.winery,
+          wine.country,
+          wine.vintage != null ? String(wine.vintage) : "",
+          wine.vivino != null ? `Vivino ${wine.vivino.toFixed(1)}` : "",
+          wine.type,
+        ]
+          .filter(Boolean)
+          .join(" · ");
+
         return (
           <button
             key={slot}
             type="button"
-            title={`${slot} · ${wine.name} — arrastra para mover`}
+            title={tip}
             draggable
             {...dropHandlers}
             onDragStart={(e) => {
@@ -340,20 +375,27 @@ function Row({
               onWineActivate(wine);
             }}
             className={[
-              "aspect-square min-h-[36px] cursor-grab rounded-[6px] border px-0.5 text-center transition active:cursor-grabbing sm:min-h-0 sm:rounded-[8px] sm:px-1",
+              "flex min-h-[52px] cursor-grab flex-col items-stretch justify-center gap-0.5 rounded-[6px] border px-0.5 py-1 text-left transition active:cursor-grabbing sm:min-h-[58px] sm:rounded-[8px] sm:px-1",
               active || isMoving
                 ? "border-[var(--wine)] bg-[rgba(122,36,48,0.12)] slot-active"
-                : "border-[rgba(122,36,48,0.18)] bg-[linear-gradient(160deg,rgba(122,36,48,0.16),rgba(122,36,48,0.05))]",
+                : "border-[rgba(122,36,48,0.18)] bg-[linear-gradient(160deg,rgba(122,36,48,0.14),rgba(255,252,247,0.55))]",
               isOver ? "ring-2 ring-[rgba(110,31,44,0.35)]" : "",
               dimmed ? "opacity-30" : "hover:border-[var(--wine)]",
               isMoving ? "opacity-50" : "",
             ].join(" ")}
+            style={{ borderLeftColor: typeAccent(wine.type), borderLeftWidth: 3 }}
           >
-            <span className="block truncate text-[8px] font-medium leading-tight text-ink sm:text-[10px]">
-              <span className="sm:hidden">{slot}</span>
-              <span className="hidden sm:inline">{wine.name}</span>
+            <span className="flex items-center gap-0.5 px-0.5 text-[11px] leading-none" aria-hidden>
+              {countryFlagEmoji[wine.country] ?? "·"}
             </span>
-            <span className="mt-0.5 hidden text-[9px] text-ink-soft sm:block">{slot}</span>
+            <span className="block truncate px-0.5 text-[9px] font-semibold leading-tight text-ink sm:text-[10px]">
+              {label}
+            </span>
+            {meta ? (
+              <span className="block truncate px-0.5 text-[8px] leading-none text-ink-soft sm:text-[9px]">
+                {meta}
+              </span>
+            ) : null}
           </button>
         );
       })}

@@ -4,7 +4,6 @@ import { type FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
-import { AuthDivider, GoogleAuthButton } from "@/components/GoogleAuthButton";
 
 export function LoginForm() {
   const router = useRouter();
@@ -54,8 +53,6 @@ export function LoginForm() {
 
   return (
     <div className="space-y-4">
-      <GoogleAuthButton next={next} label="Entrar con Google" />
-      <AuthDivider />
       <form onSubmit={onSubmit} className="space-y-4">
         <label className="block">
           <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">

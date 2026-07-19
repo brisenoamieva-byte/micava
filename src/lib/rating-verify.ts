@@ -41,9 +41,10 @@ export function searchQueryForWine(wine: Wine): string {
   return [title, vintage].filter(Boolean).join(" ").trim();
 }
 
-/** Opens Vivino search — no API; user copies the score back. */
+/** Opens Vivino search — no API; user copies the score back.
+ * Omit vintage: Vivino search often fails when the year is included. */
 export function vivinoSearchUrl(wine: Wine): string {
-  const q = searchQueryForWine(wine);
+  const q = searchQueryForWine({ ...wine, vintage: null });
   return `https://www.vivino.com/search/wines?q=${encodeURIComponent(q)}`;
 }
 

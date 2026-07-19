@@ -20,6 +20,7 @@ type AuthContextValue = {
   displayName: string | null;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  updateDisplayName: (name: string) => Promise<{ error: string | null }>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -103,6 +104,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [loadProfile, session?.user]);
 
+  const updateDisplayName = useCallback(
+    async (name: string) => {
+      const trimmed = name.trim();
+      if (!configured || !session?.user) {
+        return { error: "No hay sesión activa." };
+      }
+      if (!trimmed) {
+        return { error: "Escribe un nombre." };
+      }
+      if (trimmed.length > 60) {
+        return { error: "Máximo 60 caracteres." };
+      }
+
+      const supabase = createClient();
+      const uid = session.user.id;
+
+      const { data: existing } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("id", uid)
+        .maybeSingle();
+
+      const { error: profileErr } = existing
+        ? await supabase
+            .from("profiles")
+            .update({ display_name: trimmed })
+            .eq("id", uid)
+        : await supabase
+            .from("profiles")
+            .insert({ id: uid, display_name: trimmed });
+
+      if (profileErr) {
+        return { error: profileErr.message };
+      }
+
+      await supabase.auth.updateUser({
+        data: { display_name: trimmed },
+      });
+
+      setDisplayName(trimmed);
+      return { error: null };
+    },
+    [configured, session?.user]
+  );
+
   const value = useMemo(
     () => ({
       configured,
@@ -112,8 +158,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       displayName,
       signOut,
       refreshProfile,
+      updateDisplayName,
     }),
-    [configured, ready, session, displayName, signOut, refreshProfile]
+    [
+      configured,
+      ready,
+      session,
+      displayName,
+      signOut,
+      refreshProfile,
+      updateDisplayName,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

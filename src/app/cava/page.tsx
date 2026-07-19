@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CellarMap } from "@/components/CellarMap";
 import { CellarUnitsBar } from "@/components/CellarUnitsBar";
 import { DepartTasteModal } from "@/components/DepartTasteModal";
+import { DisplayNameEditor } from "@/components/DisplayNameEditor";
 import { FiltersBar } from "@/components/FiltersBar";
 import { ForToday } from "@/components/ForToday";
 import { RecentHistory } from "@/components/RecentHistory";
@@ -61,7 +62,7 @@ export default function CavaPage() {
     importLocalCellar,
     dismissImportOffer,
   } = useCellar();
-  const { displayName, signOut, user, configured } = useAuth();
+  const { signOut, user, configured } = useAuth();
   const [filters, setFilters] = useState<Filters>(initialFilters);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("lista");
@@ -175,11 +176,7 @@ export default function CavaPage() {
             >
               Mi Cava
             </Link>
-            <p className="mt-1 text-sm text-ink-soft md:text-base">
-              {displayName
-                ? `Hola, ${displayName}`
-                : "Inventario y mapa de tu cava."}
-            </p>
+            <DisplayNameEditor />
             <div className="mt-3 inline-flex rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.55)] p-1">
               <button
                 type="button"

@@ -277,8 +277,11 @@ export default function CavaPage() {
           </div>
         ) : null}
 
+        {/* Keep out of document flow — an in-flow "Cargando…" shifts the whole page when ready flips. */}
         {!ready ? (
-          <p className="mt-8 text-sm text-ink-soft">Cargando tu cava…</p>
+          <p className="sr-only" aria-live="polite">
+            Cargando tu cava…
+          </p>
         ) : null}
 
         {mode === "stats" ? (

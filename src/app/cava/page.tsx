@@ -383,7 +383,7 @@ export default function CavaPage() {
                   cellarId={activeCellar.id}
                   highlightedIds={new Set(visible.map((w) => w.id))}
                   selectedId={selected?.id ?? null}
-                  onSelect={(w) => selectWine(w, true)}
+                  onSelect={(w) => selectWine(w, false)}
                   onEmptySlot={(slot) => openAdd(slot)}
                   onMoveWine={handleMoveWine}
                 />

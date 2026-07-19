@@ -1,9 +1,20 @@
 "use client";
 
-import { useRef, useState, type DragEvent, type MutableRefObject } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type DragEvent,
+  type MutableRefObject,
+} from "react";
 import type { Wine } from "@/lib/types";
 import { CountryFlag } from "@/components/CountryFlag";
-import { formatVivino, countryFlagEmoji, getWineBySlot, typeAccent } from "@/lib/wines";
+import {
+  formatVivino,
+  countryFlagEmoji,
+  getWineBySlot,
+  typeAccent,
+} from "@/lib/wines";
 
 type Props = {
   wines: Wine[];
@@ -19,7 +30,6 @@ type Props = {
 
 const DRAG_MIME = "application/x-micava-wine";
 
-/** Compact label that fits dense map cells. */
 function cellLabel(wine: Wine): string {
   const name = wine.name.trim();
   if (name.length <= 11) return name;
@@ -38,6 +48,16 @@ function cellMeta(wine: Wine): string {
   return bits[0] ?? "";
 }
 
+function useTouchMoveUi() {
+  const [touchUi, setTouchUi] = useState(false);
+  useEffect(() => {
+    const coarse = window.matchMedia("(pointer: coarse)").matches;
+    const noHover = window.matchMedia("(hover: none)").matches;
+    setTouchUi(coarse || noHover || navigator.maxTouchPoints > 0);
+  }, []);
+  return touchUi;
+}
+
 export function CellarMap({
   wines,
   cols,
@@ -49,22 +69,17 @@ export function CellarMap({
   onEmptySlot,
   onMoveWine,
 }: Props) {
-  const abajo = wines.filter(
-    (w) => !w.slot || w.slot === "abajo"
-  );
+  const touchUi = useTouchMoveUi();
+  const abajo = wines.filter((w) => !w.slot || w.slot === "abajo");
   const [dragId, setDragId] = useState<string | null>(null);
   const [overTarget, setOverTarget] = useState<string | null>(null);
   const [pickedId, setPickedId] = useState<string | null>(null);
   const didDrag = useRef(false);
 
   const movingId = dragId ?? pickedId;
-
-  function isCoarsePointer() {
-    return (
-      typeof window !== "undefined" &&
-      window.matchMedia("(pointer: coarse)").matches
-    );
-  }
+  const pickedWine = pickedId
+    ? wines.find((w) => w.id === pickedId) ?? null
+    : null;
 
   function clearDrag() {
     setDragId(null);
@@ -78,14 +93,21 @@ export function CellarMap({
     clearDrag();
   }
 
+  /** Tap / click a bottle: on touch, first tap picks to move; second tap cancels. */
   function onWineActivate(wine: Wine) {
-    if (pickedId && pickedId !== wine.id) {
-      handleMove(pickedId, wine.slot ?? "abajo");
+    if (!onMoveWine) {
       onSelect(wine);
       return;
     }
 
-    if (isCoarsePointer()) {
+    // Already holding a bottle → drop onto this one (swap)
+    if (pickedId && pickedId !== wine.id) {
+      handleMove(pickedId, wine.slot && wine.slot !== "abajo" ? wine.slot : "abajo");
+      onSelect(wine);
+      return;
+    }
+
+    if (touchUi) {
       setPickedId((prev) => (prev === wine.id ? null : wine.id));
       onSelect(wine);
       return;
@@ -94,13 +116,40 @@ export function CellarMap({
     onSelect(wine);
   }
 
+  function onEmptyActivate(slot: string) {
+    if (pickedId && onMoveWine) {
+      handleMove(pickedId, slot);
+      return;
+    }
+    onEmptySlot?.(slot);
+  }
+
   return (
     <div className="space-y-4">
-      <p className="text-xs text-ink-soft">
-        {pickedId
-          ? "Toca un hueco o otra botella para mover · toca de nuevo para cancelar"
-          : "Arrastra una botella para moverla · en móvil, tócala y luego el destino"}
-      </p>
+      {pickedWine ? (
+        <div className="sticky top-0 z-10 rounded-[10px] border border-[rgba(110,31,44,0.35)] bg-[rgba(250,249,245,0.96)] px-3 py-2 shadow-sm backdrop-blur-sm">
+          <p className="text-sm font-medium text-ink">
+            Mover · {pickedWine.name}
+          </p>
+          <p className="text-xs text-ink-soft">
+            Toca un hueco (+) u otra botella para intercambiar. Toca de nuevo la
+            misma para cancelar.
+          </p>
+          <button
+            type="button"
+            className="mt-1.5 text-xs text-[var(--wine-deep)] underline-offset-2 hover:underline"
+            onClick={() => setPickedId(null)}
+          >
+            Cancelar
+          </button>
+        </div>
+      ) : (
+        <p className="text-xs text-ink-soft">
+          {touchUi
+            ? "Toca una botella y luego el destino (en móvil no se arrastra)."
+            : "Arrastra una botella para moverla · o tócala y luego el destino"}
+        </p>
+      )}
 
       <div className="map-scroll pb-1">
         <div
@@ -131,8 +180,9 @@ export function CellarMap({
               movingId={movingId}
               overTarget={overTarget}
               didDrag={didDrag}
+              touchUi={touchUi}
               onWineActivate={onWineActivate}
-              onEmptySlot={onEmptySlot}
+              onEmptyActivate={onEmptyActivate}
               onMoveWine={handleMove}
               setDragId={setDragId}
               setOverTarget={setOverTarget}
@@ -152,20 +202,19 @@ export function CellarMap({
         </div>
         <p className="mb-2 text-xs text-ink-soft">
           Zona temporal — no es un mueble. Para acomodarlas: elige el mueble
-          arriba y arrástralas a un hueco de su rejilla.
+          arriba y muévelas a un hueco de su rejilla.
         </p>
 
         <div
           onDragOver={(e) => {
-            if (!onMoveWine) return;
+            if (!onMoveWine || touchUi) return;
             e.preventDefault();
             e.dataTransfer.dropEffect = "move";
             setOverTarget("abajo");
           }}
-          onDragLeave={() => {
-            setOverTarget(null);
-          }}
+          onDragLeave={() => setOverTarget(null)}
           onDrop={(e) => {
+            if (touchUi) return;
             e.preventDefault();
             const id = e.dataTransfer.getData(DRAG_MIME) || dragId;
             if (id) handleMove(id, "abajo");
@@ -176,7 +225,7 @@ export function CellarMap({
           }}
           className={[
             "min-h-[56px] rounded-[10px] border border-dashed p-2 transition",
-            overTarget === "abajo" || (pickedId && overTarget === "abajo")
+            overTarget === "abajo" || Boolean(pickedId)
               ? "border-[var(--wine)] bg-[rgba(122,36,48,0.08)]"
               : "border-[var(--line)] bg-[rgba(255,252,247,0.35)]",
             pickedId ? "cursor-pointer" : "",
@@ -185,8 +234,8 @@ export function CellarMap({
           <div className="flex flex-wrap gap-2">
             {abajo.length === 0 ? (
               <p className="px-1 py-2 text-sm text-ink-soft">
-                {pickedId || dragId
-                  ? "Suelta aquí para mandar abajo"
+                {pickedId
+                  ? "Toca aquí para mandar abajo / fuera"
                   : "Sin botellas fuera de la rejilla."}
               </p>
             ) : (
@@ -199,8 +248,9 @@ export function CellarMap({
                   <button
                     key={wine.id}
                     type="button"
-                    draggable={Boolean(onMoveWine)}
+                    draggable={!touchUi && Boolean(onMoveWine)}
                     onDragStart={(e) => {
+                      if (touchUi) return;
                       didDrag.current = false;
                       setDragId(wine.id);
                       e.dataTransfer.setData(DRAG_MIME, wine.id);
@@ -218,12 +268,12 @@ export function CellarMap({
                       onWineActivate(wine);
                     }}
                     className={[
-                      "inline-flex min-h-[44px] max-w-full cursor-grab items-center gap-2 rounded-[10px] border px-2.5 py-2 text-left text-sm transition active:cursor-grabbing",
+                      "inline-flex min-h-[44px] max-w-full cursor-pointer items-center gap-2 rounded-[10px] border px-2.5 py-2 text-left text-sm transition",
                       active || isMoving
                         ? "border-[var(--wine)] bg-[rgba(122,36,48,0.08)] text-ink slot-active"
                         : "border-[var(--line)] bg-[rgba(255,252,247,0.55)] text-ink hover:border-[rgba(122,36,48,0.35)]",
                       dimmed ? "opacity-35" : "",
-                      isMoving ? "opacity-60" : "",
+                      isMoving ? "ring-2 ring-[var(--wine)] opacity-90" : "",
                     ].join(" ")}
                   >
                     <CountryFlag country={wine.country} size="sm" />
@@ -256,8 +306,9 @@ function Row({
   movingId,
   overTarget,
   didDrag,
+  touchUi,
   onWineActivate,
-  onEmptySlot,
+  onEmptyActivate,
   onMoveWine,
   setDragId,
   setOverTarget,
@@ -273,8 +324,9 @@ function Row({
   movingId: string | null;
   overTarget: string | null;
   didDrag: MutableRefObject<boolean>;
+  touchUi: boolean;
   onWineActivate: (wine: Wine) => void;
-  onEmptySlot?: (slot: string) => void;
+  onEmptyActivate: (slot: string) => void;
   onMoveWine: (wineId: string, target: string) => void;
   setDragId: (id: string | null) => void;
   setOverTarget: (slot: string | null) => void;
@@ -293,45 +345,49 @@ function Row({
         const active = wine?.id === selectedId;
         const isOver = overTarget === slot;
         const dimmed =
-          wine != null && highlightedIds.size > 0 && !highlightedIds.has(wine.id);
+          wine != null &&
+          highlightedIds.size > 0 &&
+          !highlightedIds.has(wine.id);
         const isMoving = wine != null && movingId === wine.id;
+        const dropReady = Boolean(pickedId);
 
-        const dropHandlers = {
-          onDragOver: (e: DragEvent) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = "move";
-            setOverTarget(slot);
-          },
-          onDragLeave: () => {
-            setOverTarget(null);
-          },
-          onDrop: (e: DragEvent) => {
-            e.preventDefault();
-            const id = e.dataTransfer.getData(DRAG_MIME);
-            if (id) onMoveWine(id, slot);
-            else clearDrag();
-          },
-        };
+        const dropHandlers = touchUi
+          ? {}
+          : {
+              onDragOver: (e: DragEvent) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                setOverTarget(slot);
+              },
+              onDragLeave: () => setOverTarget(null),
+              onDrop: (e: DragEvent) => {
+                e.preventDefault();
+                const id = e.dataTransfer.getData(DRAG_MIME);
+                if (id) onMoveWine(id, slot);
+                else clearDrag();
+              },
+            };
 
         if (!wine) {
           return (
             <button
               key={slot}
               type="button"
-              title={`${slot} vacío — soltar aquí o tocar para agregar`}
+              title={
+                dropReady
+                  ? `Soltar aquí (${slot})`
+                  : `${slot} vacío — tocar para agregar`
+              }
               {...dropHandlers}
-              onClick={() => {
-                if (pickedId) onMoveWine(pickedId, slot);
-                else onEmptySlot?.(slot);
-              }}
+              onClick={() => onEmptyActivate(slot)}
               className={[
-                "flex min-h-[52px] items-center justify-center rounded-[6px] border border-dashed text-[11px] text-ink-soft transition sm:min-h-[58px] sm:rounded-[8px]",
-                isOver || pickedId
-                  ? "border-[var(--wine)] bg-[rgba(122,36,48,0.1)] text-[var(--wine)]"
-                  : "border-[rgba(26,23,20,0.18)] bg-[rgba(255,252,247,0.25)] hover:border-[var(--wine)] hover:bg-[rgba(122,36,48,0.06)]",
+                "flex min-h-[52px] items-center justify-center rounded-[6px] border border-dashed text-[11px] transition sm:min-h-[58px] sm:rounded-[8px]",
+                isOver || dropReady
+                  ? "border-[var(--wine)] bg-[rgba(122,36,48,0.14)] text-[var(--wine)]"
+                  : "border-[rgba(26,23,20,0.18)] bg-[rgba(255,252,247,0.25)] text-ink-soft hover:border-[var(--wine)] hover:bg-[rgba(122,36,48,0.06)]",
               ].join(" ")}
             >
-              +
+              {dropReady ? "↓" : "+"}
             </button>
           );
         }
@@ -355,9 +411,10 @@ function Row({
             key={slot}
             type="button"
             title={tip}
-            draggable
+            draggable={!touchUi}
             {...dropHandlers}
             onDragStart={(e) => {
+              if (touchUi) return;
               didDrag.current = false;
               setDragId(wine.id);
               e.dataTransfer.setData(DRAG_MIME, wine.id);
@@ -375,17 +432,26 @@ function Row({
               onWineActivate(wine);
             }}
             className={[
-              "flex min-h-[52px] cursor-grab flex-col items-stretch justify-center gap-0.5 rounded-[6px] border px-0.5 py-1 text-left transition active:cursor-grabbing sm:min-h-[58px] sm:rounded-[8px] sm:px-1",
+              "flex min-h-[52px] cursor-pointer flex-col items-stretch justify-center gap-0.5 rounded-[6px] border px-0.5 py-1 text-left transition sm:min-h-[58px] sm:rounded-[8px] sm:px-1",
               active || isMoving
                 ? "border-[var(--wine)] bg-[rgba(122,36,48,0.12)] slot-active"
                 : "border-[rgba(122,36,48,0.18)] bg-[linear-gradient(160deg,rgba(122,36,48,0.14),rgba(255,252,247,0.55))]",
               isOver ? "ring-2 ring-[rgba(110,31,44,0.35)]" : "",
               dimmed ? "opacity-30" : "hover:border-[var(--wine)]",
-              isMoving ? "opacity-50" : "",
+              isMoving ? "ring-2 ring-[var(--wine)] opacity-95" : "",
+              dropReady && !isMoving
+                ? "border-dashed border-[var(--wine)]"
+                : "",
             ].join(" ")}
-            style={{ borderLeftColor: typeAccent(wine.type), borderLeftWidth: 3 }}
+            style={{
+              borderLeftColor: typeAccent(wine.type),
+              borderLeftWidth: 3,
+            }}
           >
-            <span className="flex items-center gap-0.5 px-0.5 text-[11px] leading-none" aria-hidden>
+            <span
+              className="flex items-center gap-0.5 px-0.5 text-[11px] leading-none"
+              aria-hidden
+            >
               {countryFlagEmoji[wine.country] ?? "·"}
             </span>
             <span className="block truncate px-0.5 text-[9px] font-semibold leading-tight text-ink sm:text-[10px]">

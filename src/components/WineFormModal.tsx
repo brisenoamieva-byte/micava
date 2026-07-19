@@ -2,7 +2,13 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import type { Wine, WineDraft } from "@/lib/types";
-import { countryFlagEmoji, getEmptySlots, getWineBySlot, parseLocation } from "@/lib/wines";
+import {
+  countryFlagEmoji,
+  formatVivino,
+  getEmptySlots,
+  getWineBySlot,
+  parseLocation,
+} from "@/lib/wines";
 import { wineToDraft } from "@/lib/cellar-store";
 
 type Props = {
@@ -34,11 +40,39 @@ const emptyDraft = (slot = "", cellarId: string | null = null): WineDraft => ({
   location: slot,
 });
 
+function wineKey(w: Pick<Wine, "name" | "winery" | "vintage">): string {
+  return [w.name, w.winery, w.vintage ?? ""]
+    .map((s) => String(s).trim().toLowerCase())
+    .join("|");
+}
+
 function parseOptionalNumber(value: string): number | null {
   const trimmed = value.trim();
   if (!trimmed) return null;
   const n = Number(trimmed.replace(",", "."));
   return Number.isFinite(n) ? n : null;
+}
+
+/** Unique wines already in the cellar (one row per name/winery/vintage). */
+function buildCatalog(wines: Wine[]): Wine[] {
+  const map = new Map<string, Wine>();
+  for (const w of wines) {
+    const key = wineKey(w);
+    const prev = map.get(key);
+    if (!prev) {
+      map.set(key, w);
+      continue;
+    }
+    // Prefer the one with more complete data
+    const score = (x: Wine) =>
+      (x.vivino != null ? 2 : 0) + (x.price != null ? 1 : 0) + (x.grape ? 1 : 0);
+    if (score(w) > score(prev)) map.set(key, w);
+  }
+  return [...map.values()].sort((a, b) =>
+    a.name.localeCompare(b.name, "es") ||
+    a.winery.localeCompare(b.winery, "es") ||
+    (b.vintage ?? 0) - (a.vintage ?? 0)
+  );
 }
 
 export function WineFormModal({
@@ -55,6 +89,24 @@ export function WineFormModal({
     emptyDraft(initialSlot, activeCellarId)
   );
   const [error, setError] = useState("");
+  /** When adding: pick from catalog first, or go straight to form. */
+  const [step, setStep] = useState<"pick" | "form">("pick");
+  const [catalogQuery, setCatalogQuery] = useState("");
+  const [fromExisting, setFromExisting] = useState(false);
+
+  const catalog = useMemo(() => buildCatalog(wines), [wines]);
+
+  const filteredCatalog = useMemo(() => {
+    const q = catalogQuery.trim().toLowerCase();
+    if (!q) return catalog;
+    return catalog.filter((w) => {
+      const blob = [w.name, w.winery, w.country, w.region, w.grape, w.vintage]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return blob.includes(q);
+    });
+  }, [catalog, catalogQuery]);
 
   const targetCellarId =
     draft.location === "abajo" || !draft.location
@@ -85,15 +137,40 @@ export function WineFormModal({
   useEffect(() => {
     if (!open) return;
     setError("");
+    setCatalogQuery("");
+    setFromExisting(false);
     if (editing) {
+      setStep("form");
       setDraft(wineToDraft(editing));
-    } else setDraft(emptyDraft(initialSlot, activeCellarId));
-  }, [open, editing, initialSlot, activeCellarId]);
+    } else {
+      setDraft(emptyDraft(initialSlot, activeCellarId));
+      setStep(catalog.length > 0 ? "pick" : "form");
+    }
+  }, [open, editing, initialSlot, activeCellarId, catalog.length]);
 
   if (!open) return null;
 
   function patch<K extends keyof WineDraft>(key: K, value: WineDraft[K]) {
     setDraft((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function applyExisting(wine: Wine) {
+    const base = wineToDraft(wine);
+    setDraft({
+      ...base,
+      cellarId: activeCellarId,
+      location: initialSlot || "",
+    });
+    setFromExisting(true);
+    setStep("form");
+    setError("");
+  }
+
+  function startBlank() {
+    setDraft(emptyDraft(initialSlot, activeCellarId));
+    setFromExisting(false);
+    setStep("form");
+    setError("");
   }
 
   function handleSubmit(e: FormEvent) {
@@ -128,6 +205,8 @@ export function WineFormModal({
     onClose();
   }
 
+  const showingPick = !editing && step === "pick";
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-[rgba(20,18,16,0.45)] p-0 sm:items-center sm:p-4"
@@ -136,232 +215,343 @@ export function WineFormModal({
       aria-labelledby="wine-form-title"
       onClick={onClose}
     >
-      <form
+      <div
         className="panel max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[18px] p-4 sm:rounded-[14px] sm:p-5"
         onClick={(e) => e.stopPropagation()}
-        onSubmit={handleSubmit}
       >
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <h2 id="wine-form-title" className="display text-2xl text-ink">
-              {editing ? "Editar vino" : "Agregar vino"}
+              {editing
+                ? "Editar vino"
+                : showingPick
+                  ? "¿Qué botella sumas?"
+                  : fromExisting
+                    ? "Otra botella"
+                    : "Vino nuevo"}
             </h2>
             <p className="mt-1 text-sm text-ink-soft">
               {editing
                 ? "Actualiza datos o ubicación de la botella."
-                : "Suma una botella a tu inventario y mapa."}
+                : showingPick
+                  ? "Elige uno que ya tengas, o agrega uno distinto."
+                  : fromExisting
+                    ? "Datos copiados · elige mueble y ubicación."
+                    : "Completa los datos de un vino que aún no está en tu cava."}
             </p>
           </div>
-          <button type="button" className="btn btn-ghost min-h-[40px] px-3 text-sm" onClick={onClose}>
+          <button
+            type="button"
+            className="btn btn-ghost min-h-[40px] px-3 text-sm"
+            onClick={onClose}
+          >
             Cerrar
           </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="sm:col-span-2">
-            <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-              Nombre *
-            </span>
-            <input
-              className={fieldClass}
-              value={draft.name}
-              onChange={(e) => patch("name", e.target.value)}
-              placeholder="Ej. Viña Alberdi"
-              required
-            />
-          </label>
+        {showingPick ? (
+          <div className="space-y-3">
+            <label className="block">
+              <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                Buscar en tu cava
+              </span>
+              <input
+                className={fieldClass}
+                value={catalogQuery}
+                onChange={(e) => setCatalogQuery(e.target.value)}
+                placeholder="Nombre, bodega, uva…"
+                autoFocus
+                enterKeyHint="search"
+              />
+            </label>
 
-          <label>
-            <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-              Bodega
-            </span>
-            <input
-              className={fieldClass}
-              value={draft.winery}
-              onChange={(e) => patch("winery", e.target.value)}
-            />
-          </label>
-
-          <label>
-            <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-              Tipo
-            </span>
-            <select
-              className={fieldClass}
-              value={draft.type}
-              onChange={(e) => patch("type", e.target.value)}
+            <button
+              type="button"
+              className="btn btn-primary flex min-h-[48px] w-full items-center justify-center"
+              onClick={startBlank}
             >
-              <option>Tinto</option>
-              <option>Blanco</option>
-              <option>Rosado</option>
-              <option>Espumoso</option>
-            </select>
-          </label>
+              Es un vino nuevo
+            </button>
 
-          <label>
-            <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-              País *
-            </span>
-            <select
-              className={fieldClass}
-              value={draft.country}
-              onChange={(e) => patch("country", e.target.value)}
-            >
-              {Object.keys(countryFlagEmoji).map((c) => (
-                <option key={c} value={c}>
-                  {countryFlagEmoji[c]} {c}
-                </option>
-              ))}
-              <option value="Otro">Otro</option>
-            </select>
-          </label>
+            <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+              Ya en tu cava ({filteredCatalog.length})
+            </p>
 
-          <label>
-            <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-              Región
-            </span>
-            <input
-              className={fieldClass}
-              value={draft.region}
-              onChange={(e) => patch("region", e.target.value)}
-            />
-          </label>
+            <ul className="max-h-[50dvh] space-y-1.5 overflow-y-auto pr-0.5">
+              {filteredCatalog.length === 0 ? (
+                <li className="rounded-[10px] border border-dashed border-[var(--line)] px-3 py-4 text-sm text-ink-soft">
+                  No hay coincidencias. Prueba otra búsqueda o agrega uno nuevo.
+                </li>
+              ) : (
+                filteredCatalog.map((w) => {
+                  const copies = wines.filter(
+                    (x) => wineKey(x) === wineKey(w)
+                  ).length;
+                  return (
+                    <li key={wineKey(w)}>
+                      <button
+                        type="button"
+                        onClick={() => applyExisting(w)}
+                        className="flex w-full items-start gap-2 rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.55)] px-3 py-2.5 text-left transition hover:border-[rgba(110,31,44,0.35)] hover:bg-[rgba(110,31,44,0.06)]"
+                      >
+                        <span className="mt-0.5 text-base leading-none" aria-hidden>
+                          {countryFlagEmoji[w.country] ?? "·"}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-medium text-ink">
+                            {w.name}
+                          </span>
+                          <span className="block truncate text-xs text-ink-soft">
+                            {[w.winery, w.vintage, formatVivino(w.vivino)]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </span>
+                        </span>
+                        <span className="shrink-0 text-xs text-ink-soft">
+                          {copies > 1 ? `${copies} bot.` : "1 bot."}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })
+              )}
+            </ul>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            {!editing ? (
+              <button
+                type="button"
+                className="mb-3 text-sm text-ink-soft underline-offset-2 hover:text-ink hover:underline"
+                onClick={() => {
+                  setStep("pick");
+                  setCatalogQuery("");
+                }}
+              >
+                ← Elegir de mi cava
+              </button>
+            ) : null}
 
-          <label className="sm:col-span-2">
-            <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-              Uva
-            </span>
-            <input
-              className={fieldClass}
-              value={draft.grape}
-              onChange={(e) => patch("grape", e.target.value)}
-              placeholder="Tempranillo, Malbec…"
-            />
-          </label>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className="sm:col-span-2">
+                <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                  Nombre *
+                </span>
+                <input
+                  className={fieldClass}
+                  value={draft.name}
+                  onChange={(e) => patch("name", e.target.value)}
+                  placeholder="Ej. Viña Alberdi"
+                  required
+                  autoFocus={!fromExisting}
+                />
+              </label>
 
-          <label>
-            <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-              Añejamiento
-            </span>
-            <input
-              className={fieldClass}
-              value={draft.aging}
-              onChange={(e) => patch("aging", e.target.value)}
-              placeholder="Reserva, 12 meses…"
-            />
-          </label>
+              <label>
+                <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                  Bodega
+                </span>
+                <input
+                  className={fieldClass}
+                  value={draft.winery}
+                  onChange={(e) => patch("winery", e.target.value)}
+                />
+              </label>
 
-          <label>
-            <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-              Año
-            </span>
-            <input
-              className={fieldClass}
-              inputMode="numeric"
-              value={draft.vintage ?? ""}
-              onChange={(e) => patch("vintage", parseOptionalNumber(e.target.value))}
-              placeholder="2021"
-            />
-          </label>
+              <label>
+                <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                  Tipo
+                </span>
+                <select
+                  className={fieldClass}
+                  value={draft.type}
+                  onChange={(e) => patch("type", e.target.value)}
+                >
+                  <option>Tinto</option>
+                  <option>Blanco</option>
+                  <option>Rosado</option>
+                  <option>Espumoso</option>
+                </select>
+              </label>
 
-          <label>
-            <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-              Vivino
-            </span>
-            <input
-              className={fieldClass}
-              inputMode="decimal"
-              value={draft.vivino ?? ""}
-              onChange={(e) => patch("vivino", parseOptionalNumber(e.target.value))}
-              placeholder="4.1"
-            />
-          </label>
+              <label>
+                <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                  País *
+                </span>
+                <select
+                  className={fieldClass}
+                  value={draft.country}
+                  onChange={(e) => patch("country", e.target.value)}
+                >
+                  {Object.keys(countryFlagEmoji).map((c) => (
+                    <option key={c} value={c}>
+                      {countryFlagEmoji[c]} {c}
+                    </option>
+                  ))}
+                  <option value="Otro">Otro</option>
+                </select>
+              </label>
 
-          <label>
-            <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-              Precio (MXN)
-            </span>
-            <input
-              className={fieldClass}
-              inputMode="numeric"
-              value={draft.price ?? ""}
-              onChange={(e) => patch("price", parseOptionalNumber(e.target.value))}
-              placeholder="450"
-            />
-          </label>
+              <label>
+                <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                  Región
+                </span>
+                <input
+                  className={fieldClass}
+                  value={draft.region}
+                  onChange={(e) => patch("region", e.target.value)}
+                />
+              </label>
 
-          <label className="sm:col-span-2">
-            <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-              Mueble
-            </span>
-            <select
-              className={fieldClass}
-              value={draft.cellarId ?? activeCellarId ?? ""}
-              onChange={(e) => {
-                const nextId = e.target.value ? e.target.value : null;
-                setDraft((prev) => {
-                  const loc = parseLocation(prev.location);
-                  if (!loc.slot || loc.slot === "abajo") {
-                    return { ...prev, cellarId: nextId };
+              <label className="sm:col-span-2">
+                <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                  Uva
+                </span>
+                <input
+                  className={fieldClass}
+                  value={draft.grape}
+                  onChange={(e) => patch("grape", e.target.value)}
+                  placeholder="Tempranillo, Malbec…"
+                />
+              </label>
+
+              <label>
+                <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                  Añejamiento
+                </span>
+                <input
+                  className={fieldClass}
+                  value={draft.aging}
+                  onChange={(e) => patch("aging", e.target.value)}
+                  placeholder="Reserva, 12 meses…"
+                />
+              </label>
+
+              <label>
+                <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                  Año
+                </span>
+                <input
+                  className={fieldClass}
+                  inputMode="numeric"
+                  value={draft.vintage ?? ""}
+                  onChange={(e) =>
+                    patch("vintage", parseOptionalNumber(e.target.value))
                   }
-                  const unit = cellars.find((c) => c.id === nextId);
-                  if (!unit) return { ...prev, cellarId: nextId };
-                  const stillFree = getEmptySlots(
-                    wines,
-                    unit.cols,
-                    unit.rows,
-                    unit.id
-                  ).includes(loc.slot);
-                  const keepOwn =
-                    editing?.cellarId === unit.id &&
-                    editing.slot === loc.slot;
-                  return {
-                    ...prev,
-                    cellarId: nextId,
-                    location: stillFree || keepOwn ? prev.location : "",
-                  };
-                });
-              }}
-            >
-              {cellars.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({c.cols}×{c.rows.length})
-                </option>
-              ))}
-            </select>
-          </label>
+                  placeholder="2021"
+                />
+              </label>
 
-          <label className="sm:col-span-2">
-            <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-              Ubicación
-            </span>
-            <select
-              className={fieldClass}
-              value={draft.location}
-              onChange={(e) => patch("location", e.target.value)}
-            >
-              <option value="">Sin ubicación</option>
-              <option value="abajo">Abajo / fuera</option>
-              {emptySlots.map((slot) => (
-                <option key={slot} value={slot}>
-                  Slot {slot}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+              <label>
+                <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                  Vivino
+                </span>
+                <input
+                  className={fieldClass}
+                  inputMode="decimal"
+                  value={draft.vivino ?? ""}
+                  onChange={(e) =>
+                    patch("vivino", parseOptionalNumber(e.target.value))
+                  }
+                  placeholder="4.1"
+                />
+              </label>
 
-        {error ? <p className="mt-3 text-sm text-[var(--wine)]">{error}</p> : null}
+              <label>
+                <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                  Precio (MXN)
+                </span>
+                <input
+                  className={fieldClass}
+                  inputMode="numeric"
+                  value={draft.price ?? ""}
+                  onChange={(e) =>
+                    patch("price", parseOptionalNumber(e.target.value))
+                  }
+                  placeholder="450"
+                />
+              </label>
 
-        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <button type="button" className="btn btn-ghost min-h-[44px]" onClick={onClose}>
-            Cancelar
-          </button>
-          <button type="submit" className="btn btn-primary min-h-[44px]">
-            {editing ? "Guardar cambios" : "Agregar a la cava"}
-          </button>
-        </div>
-      </form>
+              <label className="sm:col-span-2">
+                <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                  Mueble
+                </span>
+                <select
+                  className={fieldClass}
+                  value={draft.cellarId ?? activeCellarId ?? ""}
+                  onChange={(e) => {
+                    const nextId = e.target.value ? e.target.value : null;
+                    setDraft((prev) => {
+                      const loc = parseLocation(prev.location);
+                      if (!loc.slot || loc.slot === "abajo") {
+                        return { ...prev, cellarId: nextId };
+                      }
+                      const unit = cellars.find((c) => c.id === nextId);
+                      if (!unit) return { ...prev, cellarId: nextId };
+                      const stillFree = getEmptySlots(
+                        wines,
+                        unit.cols,
+                        unit.rows,
+                        unit.id
+                      ).includes(loc.slot);
+                      const keepOwn =
+                        editing?.cellarId === unit.id &&
+                        editing.slot === loc.slot;
+                      return {
+                        ...prev,
+                        cellarId: nextId,
+                        location: stillFree || keepOwn ? prev.location : "",
+                      };
+                    });
+                  }}
+                >
+                  {cellars.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} ({c.cols}×{c.rows.length})
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="sm:col-span-2">
+                <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                  Ubicación
+                </span>
+                <select
+                  className={fieldClass}
+                  value={draft.location}
+                  onChange={(e) => patch("location", e.target.value)}
+                >
+                  <option value="">Sin ubicación</option>
+                  <option value="abajo">Abajo / fuera</option>
+                  {emptySlots.map((slot) => (
+                    <option key={slot} value={slot}>
+                      Slot {slot}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            {error ? (
+              <p className="mt-3 text-sm text-[var(--wine)]">{error}</p>
+            ) : null}
+
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                className="btn btn-ghost min-h-[44px]"
+                onClick={onClose}
+              >
+                Cancelar
+              </button>
+              <button type="submit" className="btn btn-primary min-h-[44px]">
+                {editing ? "Guardar cambios" : "Agregar a la cava"}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
     </div>
   );
 }

@@ -69,6 +69,8 @@ export default function CavaPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("lista");
   const [mode, setMode] = useState<AppMode>("cava");
+  /** Where to return after leaving Detalle (mapa vs lista). */
+  const [detailReturn, setDetailReturn] = useState<MobilePanel>("lista");
   const [formOpen, setFormOpen] = useState(false);
   const [formSlot, setFormSlot] = useState("");
   const [editing, setEditing] = useState<Wine | null>(null);
@@ -96,11 +98,22 @@ export default function CavaPage() {
     cellarId: activeCellar?.id ?? null,
   });
 
-  function selectWine(wine: Wine, goToDetail = false) {
+  function selectWine(
+    wine: Wine,
+    goToDetail = false,
+    from: MobilePanel = "lista"
+  ) {
     setSelectedId(wine.id);
     setMode("cava");
     if (wine.cellarId) setActiveCellarId(wine.cellarId);
-    if (goToDetail) setMobilePanel("detalle");
+    if (goToDetail) {
+      setDetailReturn(from);
+      setMobilePanel("detalle");
+    }
+  }
+
+  function leaveDetail() {
+    setMobilePanel(detailReturn);
   }
 
   function openAdd(slot = "") {
@@ -128,7 +141,7 @@ export default function CavaPage() {
   ) {
     departWine(wine.id, action, extras);
     setSelectedId((prev) => (prev === wine.id ? null : prev));
-    setMobilePanel("lista");
+    setMobilePanel(detailReturn);
     setDepartWineTarget(null);
   }
 
@@ -160,6 +173,8 @@ export default function CavaPage() {
 
   const detailProps = {
     wine: selected,
+    onBack: leaveDetail,
+    backLabel: detailReturn === "mapa" ? "Volver al mapa" : "Volver a la lista",
     onEdit: openEdit,
     onRemove: (w: Wine) => handleDepart(w, "removed"),
     onOpened: (w: Wine) => openDepart(w, "opened"),
@@ -291,7 +306,7 @@ export default function CavaPage() {
               wines={wines}
               cellars={cellars}
               history={history}
-              onSelectWine={(w) => selectWine(w, true)}
+              onSelectWine={(w) => selectWine(w, true, "lista")}
             />
           </div>
         ) : (
@@ -313,7 +328,7 @@ export default function CavaPage() {
           />
           <ForToday
             picks={todayPicks}
-            onSelect={(w) => selectWine(w, true)}
+            onSelect={(w) => selectWine(w, true, mobilePanel === "mapa" ? "mapa" : "lista")}
           />
           <FiltersBar
             filters={filters}
@@ -392,7 +407,7 @@ export default function CavaPage() {
                   cellarId={activeCellar.id}
                   highlightedIds={new Set(visible.map((w) => w.id))}
                   selectedId={selected?.id ?? null}
-                  onSelect={(w) => selectWine(w, false)}
+                  onSelect={(w) => selectWine(w, true, "mapa")}
                   onEmptySlot={(slot) => openAdd(slot)}
                   onMoveWine={handleMoveWine}
                 />
@@ -413,7 +428,7 @@ export default function CavaPage() {
               <WineList
                 wines={visible}
                 selectedId={selected?.id ?? null}
-                onSelect={(w) => selectWine(w, true)}
+                onSelect={(w) => selectWine(w, true, "lista")}
                 compact
               />
             </section>

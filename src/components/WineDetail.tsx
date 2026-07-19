@@ -26,6 +26,8 @@ function shareText(wine: Wine): string {
 
 type Props = {
   wine: Wine | null;
+  onBack?: () => void;
+  backLabel?: string;
   onEdit?: (wine: Wine) => void;
   onRemove?: (wine: Wine) => void;
   onOpened?: (wine: Wine) => void;
@@ -43,6 +45,8 @@ type Props = {
 
 export function WineDetail({
   wine,
+  onBack,
+  backLabel = "Volver",
   onEdit,
   onRemove,
   onOpened,
@@ -69,8 +73,19 @@ export function WineDetail({
 
   if (!wine) {
     return (
-      <div className="flex h-full min-h-[200px] items-center justify-center px-4 text-center text-sm text-ink-soft sm:min-h-[280px]">
-        Selecciona un vino desde el mapa o la lista
+      <div>
+        {onBack ? (
+          <button
+            type="button"
+            className="mobile-only mb-3 text-sm text-ink-soft underline-offset-2 hover:text-ink hover:underline"
+            onClick={onBack}
+          >
+            ← {backLabel}
+          </button>
+        ) : null}
+        <div className="flex h-full min-h-[200px] items-center justify-center px-4 text-center text-sm text-ink-soft sm:min-h-[280px]">
+          Selecciona un vino desde el mapa o la lista
+        </div>
       </div>
     );
   }
@@ -154,6 +169,15 @@ export function WineDetail({
 
   return (
     <div>
+      {onBack ? (
+        <button
+          type="button"
+          className="mobile-only mb-3 text-sm text-ink-soft underline-offset-2 hover:text-ink hover:underline"
+          onClick={onBack}
+        >
+          ← {backLabel}
+        </button>
+      ) : null}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[11px] uppercase tracking-[0.16em] text-ink-soft sm:text-xs">

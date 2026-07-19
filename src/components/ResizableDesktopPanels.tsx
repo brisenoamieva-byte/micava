@@ -44,7 +44,7 @@ function loadCols(): [number, number, number] {
 }
 
 export function ResizableDesktopPanels({ map, inventory, detail }: Props) {
-  const [cols, setCols] = useState<[number, number, number]>([...DEFAULT_COLS]);
+  const [cols, setCols] = useState<[number, number, number] | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
     index: 0 | 1;
@@ -57,6 +57,7 @@ export function ResizableDesktopPanels({ map, inventory, detail }: Props) {
   }, []);
 
   useEffect(() => {
+    if (!cols) return;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(cols));
   }, [cols]);
 
@@ -70,7 +71,6 @@ export function ResizableDesktopPanels({ map, inventory, detail }: Props) {
     const next: [number, number, number] = [...drag.startCols];
 
     if (drag.index === 0) {
-      // Resize between map and inventory
       let a = drag.startCols[0] + deltaPct;
       let b = drag.startCols[1] - deltaPct;
       if (a < MIN[0]) {
@@ -84,7 +84,6 @@ export function ResizableDesktopPanels({ map, inventory, detail }: Props) {
       next[0] = a;
       next[1] = b;
     } else {
-      // Resize between inventory and detail
       let b = drag.startCols[1] + deltaPct;
       let c = drag.startCols[2] - deltaPct;
       if (b < MIN[1]) {
@@ -110,6 +109,7 @@ export function ResizableDesktopPanels({ map, inventory, detail }: Props) {
   }, [onPointerMove]);
 
   function startDrag(index: 0 | 1, e: ReactPointerEvent) {
+    if (!cols) return;
     e.preventDefault();
     dragRef.current = {
       index,
@@ -124,6 +124,11 @@ export function ResizableDesktopPanels({ map, inventory, detail }: Props) {
 
   function reset() {
     setCols([...DEFAULT_COLS]);
+  }
+
+  // Wait for local widths so we don't flash default → saved (layout jump).
+  if (!cols) {
+    return <div className="desktop-only mt-6 min-h-[480px]" aria-hidden />;
   }
 
   return (

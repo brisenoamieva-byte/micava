@@ -33,6 +33,12 @@ export function InstallAppHint() {
 
   useEffect(() => {
     if (isStandalone()) return;
+    // Desktop: don't inject a banner (causes a vertical jump on load).
+    const desktop =
+      window.matchMedia("(pointer: fine)").matches &&
+      window.matchMedia("(hover: hover)").matches;
+    if (desktop) return;
+
     const key = "micava.install.dismissed";
     if (localStorage.getItem(key) === "1") return;
     setDismissed(false);

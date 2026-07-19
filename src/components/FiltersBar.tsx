@@ -187,189 +187,193 @@ export function FiltersBar({ filters, onChange, total, wines }: Props) {
 
   return (
     <div className="panel p-3 sm:p-4">
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 xl:items-end">
-        <label className="col-span-2 min-w-0 sm:col-span-3 lg:col-span-4 xl:col-span-2">
-          <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
-            Buscar
-          </span>
-          <input
-            value={filters.query}
-            onChange={(e) => patch({ query: e.target.value })}
-            placeholder="Nombre, uva, región…"
-            className={fieldClass}
-            enterKeyHint="search"
-            autoCapitalize="off"
-            autoCorrect="off"
-          />
-        </label>
-
-        <label className="min-w-0">
-          <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
-            Ordenar
-          </span>
-          <select
-            value={filters.sort}
-            onChange={(e) => patch({ sort: e.target.value as SortOption })}
-            className={fieldClass}
-          >
-            {sortOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="min-w-0">
-          <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
-            País
-          </span>
-          <select
-            value={filters.country}
-            onChange={(e) => patch({ country: e.target.value })}
-            className={fieldClass}
-          >
-            <option value="">Todos</option>
-            {countries.map((c) => (
-              <option key={c} value={c}>
-                {countryFlagEmoji[c] ? `${countryFlagEmoji[c]} ${c}` : c}
-                {` (${countryCounts.get(c) ?? 0})`}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="min-w-0">
-          <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
-            Tipo
-          </span>
-          <select
-            value={filters.type}
-            onChange={(e) => patch({ type: e.target.value })}
-            className={fieldClass}
-          >
-            <option value="">Todos</option>
-            {types.map((t) => (
-              <option key={t} value={t}>
-                {t} ({typeCounts.get(t) ?? 0})
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="min-w-0">
-          <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
-            Uva
-          </span>
-          <select
-            value={filters.grape}
-            onChange={(e) => patch({ grape: e.target.value })}
-            className={fieldClass}
-          >
-            <option value="">Todas</option>
-            {grapes.map((g) => (
-              <option key={g.name} value={g.name}>
-                {g.name} ({g.count})
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="col-span-2 min-w-0 sm:col-span-1 lg:col-span-1 xl:col-span-1">
-          <span className="mb-1 flex items-center justify-between gap-2 text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
-            <span>Vivino</span>
-            <span className="normal-case tracking-normal text-ink">
-              {vivinoLabel}
+      <div className="space-y-3">
+        {/* Búsqueda + selects */}
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6 lg:items-end">
+          <label className="col-span-2 min-w-0 sm:col-span-3 lg:col-span-2">
+            <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
+              Buscar
             </span>
-          </span>
-          <div className="flex min-h-[44px] flex-col justify-center rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.8)] px-3 py-2">
-            <div
-              className="dual-range"
-              style={
-                {
-                  "--fill-start": `${Math.min(100, Math.max(0, vivinoFillStart))}%`,
-                  "--fill-end": `${Math.min(100, Math.max(0, vivinoFillEnd))}%`,
-                } as CSSProperties
-              }
-            >
-              <div className="dual-range-track" aria-hidden />
-              <input
-                type="range"
-                min={vivinoBounds.min}
-                max={vivinoBounds.max}
-                step={0.1}
-                value={vivinoMin}
-                onChange={(e) => onMinVivinoSlide(Number(e.target.value))}
-                aria-label="Vivino mínimo"
-                className="dual-range-input is-min"
-              />
-              <input
-                type="range"
-                min={vivinoBounds.min}
-                max={vivinoBounds.max}
-                step={0.1}
-                value={vivinoMax}
-                onChange={(e) => onMaxVivinoSlide(Number(e.target.value))}
-                aria-label="Vivino máximo"
-                className="dual-range-input is-max"
-              />
-            </div>
-            <div className="mt-1 flex justify-between text-[10px] text-ink-soft">
-              <span>{vivinoBounds.min.toFixed(1)}</span>
-              <span>{vivinoBounds.max.toFixed(1)}</span>
-            </div>
-          </div>
-        </label>
+            <input
+              value={filters.query}
+              onChange={(e) => patch({ query: e.target.value })}
+              placeholder="Nombre, uva, región…"
+              className={fieldClass}
+              enterKeyHint="search"
+              autoCapitalize="off"
+              autoCorrect="off"
+            />
+          </label>
 
-        <label className="col-span-2 min-w-0 sm:col-span-2 lg:col-span-2 xl:col-span-1">
-          <span className="mb-1 flex items-center justify-between gap-2 text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
-            <span>Precio</span>
-            <span className="normal-case tracking-normal text-ink">
-              {priceLabel}
+          <label className="min-w-0">
+            <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
+              Ordenar
             </span>
-          </span>
-          <div className="flex min-h-[44px] flex-col justify-center rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.8)] px-3 py-2">
-            <div
-              className="dual-range"
-              style={
-                {
-                  "--fill-start": `${Math.min(100, Math.max(0, fillStart))}%`,
-                  "--fill-end": `${Math.min(100, Math.max(0, fillEnd))}%`,
-                } as CSSProperties
-              }
+            <select
+              value={filters.sort}
+              onChange={(e) => patch({ sort: e.target.value as SortOption })}
+              className={fieldClass}
             >
-              <div className="dual-range-track" aria-hidden />
-              <input
-                type="range"
-                min={priceBounds.min}
-                max={priceBounds.max}
-                step={priceBounds.step}
-                value={minValue}
-                onChange={(e) => onMinPriceSlide(Number(e.target.value))}
-                aria-label="Precio mínimo"
-                className="dual-range-input is-min"
-              />
-              <input
-                type="range"
-                min={priceBounds.min}
-                max={priceBounds.max}
-                step={priceBounds.step}
-                value={maxValue}
-                onChange={(e) => onMaxPriceSlide(Number(e.target.value))}
-                aria-label="Precio máximo"
-                className="dual-range-input is-max"
-              />
-            </div>
-            <div className="mt-1 flex justify-between text-[10px] text-ink-soft">
-              <span>{formatPrice(priceBounds.min)}</span>
-              <span>{formatPrice(priceBounds.max)}+</span>
-            </div>
-          </div>
-        </label>
+              {sortOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
 
-        <div className="col-span-2 flex items-end pt-1 text-sm text-ink-soft sm:col-span-3 lg:col-span-4 xl:col-span-7">
-          <span>{total} resultados</span>
+          <label className="min-w-0">
+            <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
+              País
+            </span>
+            <select
+              value={filters.country}
+              onChange={(e) => patch({ country: e.target.value })}
+              className={fieldClass}
+            >
+              <option value="">Todos</option>
+              {countries.map((c) => (
+                <option key={c} value={c}>
+                  {countryFlagEmoji[c] ? `${countryFlagEmoji[c]} ${c}` : c}
+                  {` (${countryCounts.get(c) ?? 0})`}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="min-w-0">
+            <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
+              Tipo
+            </span>
+            <select
+              value={filters.type}
+              onChange={(e) => patch({ type: e.target.value })}
+              className={fieldClass}
+            >
+              <option value="">Todos</option>
+              {types.map((t) => (
+                <option key={t} value={t}>
+                  {t} ({typeCounts.get(t) ?? 0})
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="min-w-0">
+            <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
+              Uva
+            </span>
+            <select
+              value={filters.grape}
+              onChange={(e) => patch({ grape: e.target.value })}
+              className={fieldClass}
+            >
+              <option value="">Todas</option>
+              {grapes.map((g) => (
+                <option key={g.name} value={g.name}>
+                  {g.name} ({g.count})
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
+
+        {/* Rangos: Vivino + Precio en paralelo en desktop */}
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          <label className="min-w-0">
+            <span className="mb-1 flex items-center justify-between gap-2 text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
+              <span>Vivino</span>
+              <span className="normal-case tracking-normal text-ink">
+                {vivinoLabel}
+              </span>
+            </span>
+            <div className="flex min-h-[44px] flex-col justify-center rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.8)] px-3 py-2">
+              <div
+                className="dual-range"
+                style={
+                  {
+                    "--fill-start": `${Math.min(100, Math.max(0, vivinoFillStart))}%`,
+                    "--fill-end": `${Math.min(100, Math.max(0, vivinoFillEnd))}%`,
+                  } as CSSProperties
+                }
+              >
+                <div className="dual-range-track" aria-hidden />
+                <input
+                  type="range"
+                  min={vivinoBounds.min}
+                  max={vivinoBounds.max}
+                  step={0.1}
+                  value={vivinoMin}
+                  onChange={(e) => onMinVivinoSlide(Number(e.target.value))}
+                  aria-label="Vivino mínimo"
+                  className="dual-range-input is-min"
+                />
+                <input
+                  type="range"
+                  min={vivinoBounds.min}
+                  max={vivinoBounds.max}
+                  step={0.1}
+                  value={vivinoMax}
+                  onChange={(e) => onMaxVivinoSlide(Number(e.target.value))}
+                  aria-label="Vivino máximo"
+                  className="dual-range-input is-max"
+                />
+              </div>
+              <div className="mt-1 flex justify-between text-[10px] text-ink-soft">
+                <span>{vivinoBounds.min.toFixed(1)}</span>
+                <span>{vivinoBounds.max.toFixed(1)}</span>
+              </div>
+            </div>
+          </label>
+
+          <label className="min-w-0">
+            <span className="mb-1 flex items-center justify-between gap-2 text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
+              <span>Precio</span>
+              <span className="normal-case tracking-normal text-ink">
+                {priceLabel}
+              </span>
+            </span>
+            <div className="flex min-h-[44px] flex-col justify-center rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.8)] px-3 py-2">
+              <div
+                className="dual-range"
+                style={
+                  {
+                    "--fill-start": `${Math.min(100, Math.max(0, fillStart))}%`,
+                    "--fill-end": `${Math.min(100, Math.max(0, fillEnd))}%`,
+                  } as CSSProperties
+                }
+              >
+                <div className="dual-range-track" aria-hidden />
+                <input
+                  type="range"
+                  min={priceBounds.min}
+                  max={priceBounds.max}
+                  step={priceBounds.step}
+                  value={minValue}
+                  onChange={(e) => onMinPriceSlide(Number(e.target.value))}
+                  aria-label="Precio mínimo"
+                  className="dual-range-input is-min"
+                />
+                <input
+                  type="range"
+                  min={priceBounds.min}
+                  max={priceBounds.max}
+                  step={priceBounds.step}
+                  value={maxValue}
+                  onChange={(e) => onMaxPriceSlide(Number(e.target.value))}
+                  aria-label="Precio máximo"
+                  className="dual-range-input is-max"
+                />
+              </div>
+              <div className="mt-1 flex justify-between text-[10px] text-ink-soft">
+                <span>{formatPrice(priceBounds.min)}</span>
+                <span>{formatPrice(priceBounds.max)}+</span>
+              </div>
+            </div>
+          </label>
+        </div>
+
+        <p className="text-sm text-ink-soft">{total} resultados</p>
       </div>
     </div>
   );

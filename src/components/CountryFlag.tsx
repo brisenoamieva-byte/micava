@@ -2,13 +2,14 @@ import { countryCode, countryFlagEmoji, countryIso } from "@/lib/wines";
 
 type Props = {
   country: string;
-  size?: "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg";
   showLabel?: boolean;
   className?: string;
 };
 
 /** Rectangular flag frames (≈3:2), not square — avoids cropping stars/cantons */
 const sizes = {
+  xs: { box: "h-3 w-[1.125rem]", width: 24, emoji: "text-[9px]" },
   sm: { box: "h-5 w-[1.875rem]", width: 40, emoji: "text-sm" },
   md: { box: "h-6 w-9", width: 48, emoji: "text-base" },
   lg: { box: "h-8 w-12", width: 64, emoji: "text-xl" },

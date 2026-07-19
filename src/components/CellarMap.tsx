@@ -11,7 +11,6 @@ import type { Wine } from "@/lib/types";
 import { CountryFlag } from "@/components/CountryFlag";
 import {
   formatVivino,
-  countryFlagEmoji,
   getWineBySlot,
   typeAccent,
 } from "@/lib/wines";
@@ -448,11 +447,8 @@ function Row({
               borderLeftWidth: 3,
             }}
           >
-            <span
-              className="flex items-center gap-0.5 px-0.5 text-[11px] leading-none"
-              aria-hidden
-            >
-              {countryFlagEmoji[wine.country] ?? "·"}
+            <span className="flex items-center px-0.5">
+              <CountryFlag country={wine.country} size="xs" />
             </span>
             <span className="block truncate px-0.5 text-[9px] font-semibold leading-tight text-ink sm:text-[10px]">
               {label}

@@ -14,6 +14,16 @@ import {
 } from "@/lib/rating-verify";
 import { formatPrice, formatVivino, typeAccent } from "@/lib/wines";
 
+function shareText(wine: Wine): string {
+  const lines = [
+    wine.name,
+    [wine.winery, wine.vintage, wine.region].filter(Boolean).join(" · "),
+    `Vivino ${formatVivino(wine.vivino)} · ${formatPrice(wine.price)}`,
+    wine.slot ? `Ubicación: ${wine.slot}` : null,
+  ].filter(Boolean);
+  return lines.join("\n");
+}
+
 type Props = {
   wine: Wine | null;
   onEdit?: (wine: Wine) => void;
@@ -44,6 +54,7 @@ export function WineDetail({
   const [source, setSource] = useState<RatingSource>("vivino");
   const [confidence, setConfidence] = useState<MatchConfidence>("confirmed");
   const [syncVivino, setSyncVivino] = useState(false);
+  const [shareHint, setShareHint] = useState<string | null>(null);
 
   useEffect(() => {
     setVerifyOpen(false);
@@ -53,6 +64,7 @@ export function WineDetail({
     setSource(wine?.ratingSource ?? "vivino");
     setConfidence(wine?.matchConfidence ?? "confirmed");
     setSyncVivino(false);
+    setShareHint(null);
   }, [wine?.id]);
 
   if (!wine) {
@@ -122,6 +134,22 @@ export function WineDetail({
       syncVivino,
     });
     setVerifyOpen(false);
+  }
+
+  async function handleShare() {
+    if (!wine) return;
+    const text = shareText(wine);
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: wine.name, text });
+        return;
+      }
+      await navigator.clipboard.writeText(text);
+      setShareHint("Copiado");
+      window.setTimeout(() => setShareHint(null), 2000);
+    } catch {
+      // user cancelled share — ignore
+    }
   }
 
   return (
@@ -352,6 +380,13 @@ export function WineDetail({
           )}
           {(onEdit || onRemove) && (
             <div className="flex flex-col gap-2 sm:flex-row">
+              <button
+                type="button"
+                className="btn btn-ghost min-h-[44px] flex-1"
+                onClick={() => void handleShare()}
+              >
+                {shareHint ?? "Compartir"}
+              </button>
               {onEdit ? (
                 <button
                   type="button"

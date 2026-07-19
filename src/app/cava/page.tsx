@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CellarMap } from "@/components/CellarMap";
+import { CellarUnitsBar } from "@/components/CellarUnitsBar";
 import { FiltersBar } from "@/components/FiltersBar";
 import { ForToday } from "@/components/ForToday";
 import { RecentHistory } from "@/components/RecentHistory";
@@ -11,6 +12,7 @@ import { WineDetail } from "@/components/WineDetail";
 import { WineFormModal } from "@/components/WineFormModal";
 import { WineList } from "@/components/WineList";
 import { useCellar } from "@/lib/cellar-store";
+import { useAuth } from "@/lib/auth-store";
 import { picksForToday } from "@/lib/suggest-today";
 import type { Filters, MatchConfidence, RatingSource, Wine } from "@/lib/types";
 import {
@@ -39,13 +41,26 @@ export default function CavaPage() {
   const {
     wines,
     history,
+    ready,
+    canImportLocal,
+    cellars,
+    activeCellar,
+    activeCellarId,
+    setActiveCellarId,
+    addCellarUnit,
+    updateCellarUnit,
+    deleteCellarUnit,
     addWine,
     updateWine,
     verifyWineRating,
     moveWine,
     departWine,
     resetCellar,
+    loadDemoSeed,
+    importLocalCellar,
+    dismissImportOffer,
   } = useCellar();
+  const { displayName, signOut, user, configured } = useAuth();
   const [filters, setFilters] = useState<Filters>(initialFilters);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("lista");
@@ -69,11 +84,16 @@ export default function CavaPage() {
     visible[0] ??
     null;
 
-  const stats = cellarStats(visible);
+  const stats = cellarStats(visible, {
+    cols: activeCellar?.cols,
+    rows: activeCellar?.rows,
+    cellarId: activeCellar?.id ?? null,
+  });
 
   function selectWine(wine: Wine, goToDetail = false) {
     setSelectedId(wine.id);
     setMode("cava");
+    if (wine.cellarId) setActiveCellarId(wine.cellarId);
     if (goToDetail) setMobilePanel("detalle");
   }
 
@@ -82,6 +102,10 @@ export default function CavaPage() {
     setFormSlot(slot);
     setFormOpen(true);
     setMode("cava");
+  }
+
+  function handleMoveWine(wineId: string, targetLocation: string) {
+    moveWine(wineId, targetLocation, activeCellarId);
   }
 
   function openEdit(wine: Wine) {
@@ -139,7 +163,9 @@ export default function CavaPage() {
               Mi Cava
             </Link>
             <p className="mt-1 text-sm text-ink-soft md:text-base">
-              Inventario y mapa de tu cava.
+              {displayName
+                ? `Hola, ${displayName}`
+                : "Inventario y mapa de tu cava."}
             </p>
             <div className="mt-3 inline-flex rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.55)] p-1">
               <button
@@ -185,14 +211,68 @@ export default function CavaPage() {
             >
               + Agregar
             </button>
+            <button
+              type="button"
+              className="min-h-[40px] text-sm underline-offset-2 hover:text-ink hover:underline"
+              onClick={() => {
+                void signOut().then(() => {
+                  window.location.href = "/";
+                });
+              }}
+            >
+              Salir
+            </button>
           </div>
         </header>
+
+        {!configured ? (
+          <div className="mt-4 rounded-[12px] border border-[var(--line)] bg-[rgba(255,252,247,0.7)] p-4 text-sm text-ink">
+            <p className="font-medium">Falta conectar Supabase</p>
+            <p className="mt-1 text-ink-soft">
+              Crea un proyecto gratis, ejecuta{" "}
+              <code className="text-ink">supabase/schema.sql</code> y añade{" "}
+              <code className="text-ink">NEXT_PUBLIC_SUPABASE_URL</code> y{" "}
+              <code className="text-ink">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> en
+              Vercel / <code className="text-ink">.env.local</code>.
+            </p>
+          </div>
+        ) : null}
+
+        {canImportLocal ? (
+          <div className="mt-4 rounded-[12px] border border-[rgba(110,31,44,0.25)] bg-[rgba(110,31,44,0.06)] p-4 text-sm text-ink">
+            <p className="font-medium">Hay una cava guardada en este navegador.</p>
+            <p className="mt-1 text-ink-soft">
+              ¿La importas a tu cuenta en la nube?
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="btn btn-primary min-h-[40px] px-3 text-sm"
+                onClick={() => void importLocalCellar()}
+              >
+                Importar
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost min-h-[40px] px-3 text-sm"
+                onClick={dismissImportOffer}
+              >
+                Ahora no
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {!ready ? (
+          <p className="mt-8 text-sm text-ink-soft">Cargando tu cava…</p>
+        ) : null}
 
         {mode === "stats" ? (
           <div className="mt-6 space-y-5">
             <RecentHistory entries={history} />
             <StatsDashboard
               wines={wines}
+              cellars={cellars}
               onSelectWine={(w) => selectWine(w, true)}
             />
           </div>
@@ -204,6 +284,15 @@ export default function CavaPage() {
             mobilePanel === "detalle" ? "hidden xl:block" : "",
           ].join(" ")}
         >
+          <CellarUnitsBar
+            cellars={cellars}
+            wines={wines}
+            activeId={activeCellar?.id ?? null}
+            onSelect={setActiveCellarId}
+            onAdd={addCellarUnit}
+            onUpdate={updateCellarUnit}
+            onDelete={deleteCellarUnit}
+          />
           <ForToday
             picks={todayPicks}
             onSelect={(w) => selectWine(w, true)}
@@ -219,19 +308,30 @@ export default function CavaPage() {
         <div className="desktop-only mt-6">
           <section className="panel p-5">
             <div className="mb-4 flex items-baseline justify-between gap-3">
-              <h2 className="display text-2xl text-ink">Mapa de la cava</h2>
+              <h2 className="display text-2xl text-ink">
+                {activeCellar ? activeCellar.name : "Mapa de la cava"}
+              </h2>
               <p className="text-xs uppercase tracking-[0.16em] text-ink-soft">
                 {stats.emptySlots} libres
               </p>
             </div>
-            <CellarMap
-              wines={wines}
-              highlightedIds={new Set(visible.map((w) => w.id))}
-              selectedId={selected?.id ?? null}
-              onSelect={(w) => selectWine(w)}
-              onEmptySlot={(slot) => openAdd(slot)}
-              onMoveWine={moveWine}
-            />
+            {activeCellar ? (
+              <CellarMap
+                wines={wines}
+                cols={activeCellar.cols}
+                rows={activeCellar.rows}
+                cellarId={activeCellar.id}
+                highlightedIds={new Set(visible.map((w) => w.id))}
+                selectedId={selected?.id ?? null}
+                onSelect={(w) => selectWine(w)}
+                onEmptySlot={(slot) => openAdd(slot)}
+                onMoveWine={handleMoveWine}
+              />
+            ) : (
+              <p className="text-sm text-ink-soft">
+                Crea un mueble para empezar a acomodar botellas.
+              </p>
+            )}
           </section>
 
           <section className="panel flex min-h-[420px] flex-col p-5">
@@ -255,19 +355,30 @@ export default function CavaPage() {
           {mobilePanel === "mapa" && (
             <section className="panel p-3 sm:p-4">
               <div className="mb-3 flex items-baseline justify-between gap-3">
-                <h2 className="display text-xl text-ink sm:text-2xl">Mapa de la cava</h2>
+                <h2 className="display text-xl text-ink sm:text-2xl">
+                  {activeCellar ? activeCellar.name : "Mapa"}
+                </h2>
                 <p className="text-[10px] uppercase tracking-[0.16em] text-ink-soft sm:text-xs">
                   + en huecos
                 </p>
               </div>
-              <CellarMap
-                wines={wines}
-                highlightedIds={new Set(visible.map((w) => w.id))}
-                selectedId={selected?.id ?? null}
-                onSelect={(w) => selectWine(w, true)}
-                onEmptySlot={(slot) => openAdd(slot)}
-                onMoveWine={moveWine}
-              />
+              {activeCellar ? (
+                <CellarMap
+                  wines={wines}
+                  cols={activeCellar.cols}
+                  rows={activeCellar.rows}
+                  cellarId={activeCellar.id}
+                  highlightedIds={new Set(visible.map((w) => w.id))}
+                  selectedId={selected?.id ?? null}
+                  onSelect={(w) => selectWine(w, true)}
+                  onEmptySlot={(slot) => openAdd(slot)}
+                  onMoveWine={handleMoveWine}
+                />
+              ) : (
+                <p className="text-sm text-ink-soft">
+                  Crea un mueble para ver su rejilla.
+                </p>
+              )}
             </section>
           )}
 
@@ -294,22 +405,36 @@ export default function CavaPage() {
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-ink-soft xl:mt-6">
-          <button
-            type="button"
-            className="underline-offset-2 hover:text-ink hover:underline"
-            onClick={() => {
-              if (
-                confirm(
-                  "¿Restaurar la cava al Excel original?\nSe perderán altas y bajas hechas aquí."
-                )
-              ) {
-                resetCellar();
-              }
-            }}
-          >
-            Restaurar inventario original
-          </button>
-          <span>Los cambios se guardan en este navegador.</span>
+          {wines.length === 0 ? (
+            <button
+              type="button"
+              className="underline-offset-2 hover:text-ink hover:underline"
+              onClick={() => void loadDemoSeed()}
+            >
+              Cargar cava de ejemplo
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="underline-offset-2 hover:text-ink hover:underline"
+              onClick={() => {
+                if (
+                  confirm(
+                    "¿Vaciar tu cava en la nube?\nEsta acción no se puede deshacer."
+                  )
+                ) {
+                  resetCellar();
+                }
+              }}
+            >
+              Vaciar cava
+            </button>
+          )}
+          <span>
+            {user?.email
+              ? `Guardado en la nube · ${user.email}`
+              : "Los cambios se guardan en la nube."}
+          </span>
         </div>
           </>
         )}
@@ -355,6 +480,8 @@ export default function CavaPage() {
       <WineFormModal
         open={formOpen}
         wines={wines}
+        cellars={cellars}
+        activeCellarId={activeCellar?.id ?? null}
         initialSlot={formSlot}
         editing={editing}
         onClose={() => {

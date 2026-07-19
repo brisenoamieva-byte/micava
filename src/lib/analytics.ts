@@ -1,4 +1,4 @@
-import type { Wine } from "@/lib/types";
+import type { CellarUnit, Wine } from "@/lib/types";
 import { GRID_COLS, GRID_ROWS, getEmptySlots } from "@/lib/wines";
 
 export type NamedCount = {
@@ -63,15 +63,34 @@ function groupCount(
     .sort((a, b) => b.count - a.count || b.value - a.value);
 }
 
-export function buildInsights(wines: Wine[]): CellarInsights {
+export function buildInsights(
+  wines: Wine[],
+  cellars: CellarUnit[] = []
+): CellarInsights {
   const withPrice = wines.filter((w) => w.price != null);
   const withVivino = wines.filter((w) => w.vivino != null);
   const value = sum(withPrice.map((w) => w.price ?? 0));
-  const emptySlots = getEmptySlots(wines).length;
-  const totalSlots = GRID_COLS * GRID_ROWS.length;
-  const occupiedGrid = wines.filter(
-    (w) => w.slot && w.slot !== "abajo"
-  ).length;
+
+  const units =
+    cellars.length > 0
+      ? cellars
+      : [
+          {
+            id: "__default",
+            name: "Principal",
+            cols: GRID_COLS,
+            rows: [...GRID_ROWS],
+            sortOrder: 0,
+          } satisfies CellarUnit,
+        ];
+
+  let emptySlots = 0;
+  let totalSlots = 0;
+  for (const unit of units) {
+    totalSlots += unit.cols * unit.rows.length;
+    emptySlots += getEmptySlots(wines, unit.cols, unit.rows, unit.id).length;
+  }
+  const occupiedGrid = totalSlots - emptySlots;
 
   const vivinoDefs = [
     { label: "4.2+", test: (v: number) => v >= 4.2 },

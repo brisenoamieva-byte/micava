@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Outfit } from "next/font/google";
+import { AuthProvider } from "@/lib/auth-store";
 import { CellarProvider } from "@/lib/cellar-store";
 import "./globals.css";
 
@@ -46,7 +47,9 @@ export default function RootLayout({
   return (
     <html lang="es" className={`${outfit.variable} ${cormorant.variable} h-full`}>
       <body className="min-h-full antialiased">
-        <CellarProvider>{children}</CellarProvider>
+        <AuthProvider>
+          <CellarProvider>{children}</CellarProvider>
+        </AuthProvider>
       </body>
     </html>
   );

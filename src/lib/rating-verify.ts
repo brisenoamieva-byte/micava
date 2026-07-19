@@ -94,9 +94,10 @@ export const sourceLabel: Record<RatingSource, string> = {
 /** Ensure older localStorage wines have verification fields. */
 export function withVerificationDefaults<T extends Partial<Wine>>(
   wine: T
-): T & RatingVerification {
+): T & RatingVerification & { cellarId: string | null } {
   return {
     ...wine,
+    cellarId: wine.cellarId ?? null,
     externalRating: wine.externalRating ?? null,
     ratingSource: wine.ratingSource ?? null,
     lastCheckedAt: wine.lastCheckedAt ?? null,

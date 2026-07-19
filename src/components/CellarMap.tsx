@@ -3,10 +3,13 @@
 import { useRef, useState, type DragEvent, type MutableRefObject } from "react";
 import type { Wine } from "@/lib/types";
 import { CountryFlag } from "@/components/CountryFlag";
-import { GRID_COLS, GRID_ROWS, getWineBySlot } from "@/lib/wines";
+import { getWineBySlot } from "@/lib/wines";
 
 type Props = {
   wines: Wine[];
+  cols: number;
+  rows: string[];
+  cellarId: string | null;
   highlightedIds: Set<string>;
   selectedId: string | null;
   onSelect: (wine: Wine) => void;
@@ -18,13 +21,18 @@ const DRAG_MIME = "application/x-micava-wine";
 
 export function CellarMap({
   wines,
+  cols,
+  rows,
+  cellarId,
   highlightedIds,
   selectedId,
   onSelect,
   onEmptySlot,
   onMoveWine,
 }: Props) {
-  const abajo = wines.filter((w) => w.slot === "abajo");
+  const abajo = wines.filter(
+    (w) => !w.slot || w.slot === "abajo"
+  );
   const [dragId, setDragId] = useState<string | null>(null);
   const [overTarget, setOverTarget] = useState<string | null>(null);
   const [pickedId, setPickedId] = useState<string | null>(null);
@@ -78,10 +86,10 @@ export function CellarMap({
       <div className="map-scroll pb-1">
         <div
           className="grid min-w-[520px] gap-1 sm:min-w-[640px] sm:gap-1.5"
-          style={{ gridTemplateColumns: `22px repeat(${GRID_COLS}, minmax(0, 1fr))` }}
+          style={{ gridTemplateColumns: `22px repeat(${cols}, minmax(0, 1fr))` }}
         >
           <div />
-          {Array.from({ length: GRID_COLS }, (_, i) => (
+          {Array.from({ length: cols }, (_, i) => (
             <div
               key={`col-${i + 1}`}
               className="pb-1 text-center text-[10px] font-medium text-ink-soft sm:text-[11px]"
@@ -90,10 +98,12 @@ export function CellarMap({
             </div>
           ))}
 
-          {GRID_ROWS.map((row) => (
+          {rows.map((row) => (
             <Row
               key={row}
               row={row}
+              cols={cols}
+              cellarId={cellarId}
               wines={wines}
               highlightedIds={highlightedIds}
               selectedId={selectedId}
@@ -119,6 +129,10 @@ export function CellarMap({
           </p>
           <p className="text-xs text-ink-soft">{abajo.length} botellas</p>
         </div>
+        <p className="mb-2 text-xs text-ink-soft">
+          Zona temporal — no es un mueble. Para acomodarlas: elige el mueble
+          arriba y arrástralas a un hueco de su rejilla.
+        </p>
 
         <div
           onDragOver={(e) => {
@@ -196,7 +210,9 @@ export function CellarMap({
                       <span className="block max-w-[10rem] truncate font-medium leading-tight sm:max-w-[14rem]">
                         {wine.name}
                       </span>
-                      <span className="block text-xs text-ink-soft">{wine.country}</span>
+                      <span className="block text-xs text-ink-soft">
+                        {wine.country}
+                      </span>
                     </span>
                   </button>
                 );
@@ -211,6 +227,8 @@ export function CellarMap({
 
 function Row({
   row,
+  cols,
+  cellarId,
   wines,
   highlightedIds,
   selectedId,
@@ -226,6 +244,8 @@ function Row({
   pickedId,
 }: {
   row: string;
+  cols: number;
+  cellarId: string | null;
   wines: Wine[];
   highlightedIds: Set<string>;
   selectedId: string | null;
@@ -245,10 +265,10 @@ function Row({
       <div className="flex items-center text-[10px] font-medium text-ink-soft sm:text-[11px]">
         {row}
       </div>
-      {Array.from({ length: GRID_COLS }, (_, i) => {
+      {Array.from({ length: cols }, (_, i) => {
         const col = i + 1;
         const slot = `${col}${row}`;
-        const wine = getWineBySlot(wines, slot);
+        const wine = getWineBySlot(wines, slot, cellarId);
         const active = wine?.id === selectedId;
         const isOver = overTarget === slot;
         const dimmed =

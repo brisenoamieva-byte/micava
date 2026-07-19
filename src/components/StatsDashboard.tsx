@@ -1,18 +1,22 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import type { Wine } from "@/lib/types";
+import type { CellarUnit, Wine } from "@/lib/types";
 import { CountryFlag } from "@/components/CountryFlag";
 import { buildInsights } from "@/lib/analytics";
 import { formatPrice, formatVivino, typeAccent } from "@/lib/wines";
 
 type Props = {
   wines: Wine[];
+  cellars?: CellarUnit[];
   onSelectWine?: (wine: Wine) => void;
 };
 
-export function StatsDashboard({ wines, onSelectWine }: Props) {
-  const insights = useMemo(() => buildInsights(wines), [wines]);
+export function StatsDashboard({ wines, cellars = [], onSelectWine }: Props) {
+  const insights = useMemo(
+    () => buildInsights(wines, cellars),
+    [wines, cellars]
+  );
   const maxCountry = Math.max(...insights.byCountry.map((c) => c.count), 1);
   const maxVintage = Math.max(...insights.vintages.map((v) => v.count), 1);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);

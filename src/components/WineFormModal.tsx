@@ -8,6 +8,8 @@ import { wineToDraft } from "@/lib/cellar-store";
 type Props = {
   open: boolean;
   wines: Wine[];
+  cellars: { id: string; name: string; cols: number; rows: string[] }[];
+  activeCellarId: string | null;
   initialSlot?: string;
   editing?: Wine | null;
   onClose: () => void;
@@ -17,7 +19,7 @@ type Props = {
 const fieldClass =
   "w-full min-h-[44px] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.95)] px-3 py-2.5 outline-none focus:border-[rgba(122,36,48,0.45)]";
 
-const emptyDraft = (slot = ""): WineDraft => ({
+const emptyDraft = (slot = "", cellarId: string | null = null): WineDraft => ({
   name: "",
   winery: "",
   country: "México",
@@ -28,6 +30,7 @@ const emptyDraft = (slot = ""): WineDraft => ({
   vintage: null,
   vivino: null,
   price: null,
+  cellarId,
   location: slot,
 });
 
@@ -41,31 +44,51 @@ function parseOptionalNumber(value: string): number | null {
 export function WineFormModal({
   open,
   wines,
+  cellars,
+  activeCellarId,
   initialSlot = "",
   editing = null,
   onClose,
   onSubmit,
 }: Props) {
-  const [draft, setDraft] = useState<WineDraft>(emptyDraft(initialSlot));
+  const [draft, setDraft] = useState<WineDraft>(
+    emptyDraft(initialSlot, activeCellarId)
+  );
   const [error, setError] = useState("");
 
+  const targetCellarId =
+    draft.location === "abajo" || !draft.location
+      ? null
+      : draft.cellarId ?? activeCellarId;
+  const targetCellar =
+    cellars.find((c) => c.id === targetCellarId) ?? cellars[0] ?? null;
+
   const emptySlots = useMemo(() => {
-    const free = getEmptySlots(wines);
-    if (editing?.slot && editing.slot !== "abajo" && !free.includes(editing.slot)) {
+    if (!targetCellar) return [];
+    const free = getEmptySlots(
+      wines,
+      targetCellar.cols,
+      targetCellar.rows,
+      targetCellar.id
+    );
+    if (
+      editing?.slot &&
+      editing.slot !== "abajo" &&
+      editing.cellarId === targetCellar.id &&
+      !free.includes(editing.slot)
+    ) {
       return [editing.slot, ...free];
     }
-    if (initialSlot && !free.includes(initialSlot) && !editing) {
-      // slot might already be in free
-    }
     return free;
-  }, [wines, editing, initialSlot]);
+  }, [wines, editing, targetCellar]);
 
   useEffect(() => {
     if (!open) return;
     setError("");
-    if (editing) setDraft(wineToDraft(editing));
-    else setDraft(emptyDraft(initialSlot));
-  }, [open, editing, initialSlot]);
+    if (editing) {
+      setDraft(wineToDraft(editing));
+    } else setDraft(emptyDraft(initialSlot, activeCellarId));
+  }, [open, editing, initialSlot, activeCellarId]);
 
   if (!open) return null;
 
@@ -86,14 +109,22 @@ export function WineFormModal({
 
     const loc = parseLocation(draft.location);
     if (loc.slot && loc.slot !== "abajo") {
-      const taken = getWineBySlot(wines, loc.slot);
+      const cellarId = draft.cellarId ?? activeCellarId;
+      const taken = getWineBySlot(wines, loc.slot, cellarId);
       if (taken && taken.id !== editing?.id) {
         setError(`El slot ${loc.slot} ya está ocupado por ${taken.name}.`);
         return;
       }
     }
 
-    onSubmit({ ...draft, location: loc.slot ?? "" });
+    onSubmit({
+      ...draft,
+      cellarId:
+        loc.slot === "abajo" || !loc.slot
+          ? null
+          : draft.cellarId ?? activeCellarId,
+      location: loc.slot ?? "",
+    });
     onClose();
   }
 
@@ -257,6 +288,47 @@ export function WineFormModal({
               onChange={(e) => patch("price", parseOptionalNumber(e.target.value))}
               placeholder="450"
             />
+          </label>
+
+          <label className="sm:col-span-2">
+            <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+              Mueble
+            </span>
+            <select
+              className={fieldClass}
+              value={draft.cellarId ?? activeCellarId ?? ""}
+              onChange={(e) => {
+                const nextId = e.target.value ? e.target.value : null;
+                setDraft((prev) => {
+                  const loc = parseLocation(prev.location);
+                  if (!loc.slot || loc.slot === "abajo") {
+                    return { ...prev, cellarId: nextId };
+                  }
+                  const unit = cellars.find((c) => c.id === nextId);
+                  if (!unit) return { ...prev, cellarId: nextId };
+                  const stillFree = getEmptySlots(
+                    wines,
+                    unit.cols,
+                    unit.rows,
+                    unit.id
+                  ).includes(loc.slot);
+                  const keepOwn =
+                    editing?.cellarId === unit.id &&
+                    editing.slot === loc.slot;
+                  return {
+                    ...prev,
+                    cellarId: nextId,
+                    location: stillFree || keepOwn ? prev.location : "",
+                  };
+                });
+              }}
+            >
+              {cellars.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} ({c.cols}×{c.rows.length})
+                </option>
+              ))}
+            </select>
           </label>
 
           <label className="sm:col-span-2">

@@ -30,8 +30,17 @@ export function getWineById(list: Wine[], id: string): Wine | undefined {
   return list.find((w) => w.id === id);
 }
 
-export function getWineBySlot(list: Wine[], slot: string): Wine | undefined {
-  return list.find((w) => w.slot === slot);
+export function getWineBySlot(
+  list: Wine[],
+  slot: string,
+  cellarId?: string | null
+): Wine | undefined {
+  return list.find((w) => {
+    if (w.slot !== slot) return false;
+    if (slot === "abajo") return true;
+    if (cellarId === undefined) return true;
+    return (w.cellarId ?? null) === (cellarId ?? null);
+  });
 }
 
 export function parseLocation(location: string): {
@@ -44,7 +53,7 @@ export function parseLocation(location: string): {
   if (value.toLowerCase() === "abajo") {
     return { slot: "abajo", col: null, row: null };
   }
-  const match = value.toUpperCase().match(/^(\d{1,2})([A-F])$/);
+  const match = value.toUpperCase().match(/^(\d{1,2})([A-Z])$/);
   if (!match) return { slot: value, col: null, row: null };
   return {
     slot: `${Number(match[1])}${match[2]}`,
@@ -53,15 +62,24 @@ export function parseLocation(location: string): {
   };
 }
 
-export function getEmptySlots(list: Wine[]): string[] {
+export function getEmptySlots(
+  list: Wine[],
+  cols: number = GRID_COLS,
+  rows: string[] = GRID_ROWS,
+  cellarId?: string | null
+): string[] {
   const occupied = new Set(
     list
-      .map((w) => w.slot)
-      .filter((s): s is string => Boolean(s) && s !== "abajo")
+      .filter((w) => {
+        if (!w.slot || w.slot === "abajo") return false;
+        if (cellarId === undefined) return true;
+        return (w.cellarId ?? null) === (cellarId ?? null);
+      })
+      .map((w) => w.slot as string)
   );
   const empty: string[] = [];
-  for (const row of GRID_ROWS) {
-    for (let col = 1; col <= GRID_COLS; col++) {
+  for (const row of rows) {
+    for (let col = 1; col <= cols; col++) {
       const slot = `${col}${row}`;
       if (!occupied.has(slot)) empty.push(slot);
     }
@@ -69,7 +87,12 @@ export function getEmptySlots(list: Wine[]): string[] {
   return empty;
 }
 
-export function cellarStats(list: Wine[] = wines) {
+export function cellarStats(
+  list: Wine[] = wines,
+  opts?: { cols?: number; rows?: string[]; cellarId?: string | null }
+) {
+  const cols = opts?.cols ?? GRID_COLS;
+  const rows = opts?.rows ?? GRID_ROWS;
   const withPrice = list.filter((w) => w.price != null);
   const value = withPrice.reduce((sum, w) => sum + (w.price ?? 0), 0);
   const countries = new Set(list.map((w) => w.country).filter(Boolean));
@@ -79,12 +102,17 @@ export function cellarStats(list: Wine[] = wines) {
       ? null
       : rated.reduce((sum, w) => sum + (w.vivino ?? 0), 0) / rated.length;
 
+  const inGrid =
+    opts?.cellarId !== undefined
+      ? list.filter((w) => (w.cellarId ?? null) === (opts.cellarId ?? null))
+      : list;
+
   return {
     bottles: list.length,
     value,
     countries: countries.size,
     avgVivino,
-    emptySlots: getEmptySlots(list).length,
+    emptySlots: getEmptySlots(inGrid, cols, rows, opts?.cellarId).length,
   };
 }
 

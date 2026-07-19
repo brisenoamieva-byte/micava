@@ -5,6 +5,8 @@ export type MatchConfidence = "confirmed" | "likely" | "uncertain";
 
 export type Wine = {
   id: string;
+  /** Furniture unit this bottle sits in (null = unassigned / abajo). */
+  cellarId: string | null;
   slot: string | null;
   col: number | null;
   row: string | null;
@@ -24,6 +26,15 @@ export type Wine = {
   /** ISO timestamp of last verification. */
   lastCheckedAt: string | null;
   matchConfidence: MatchConfidence | null;
+};
+
+/** One physical furniture unit / grid belonging to a user. */
+export type CellarUnit = {
+  id: string;
+  name: string;
+  cols: number;
+  rows: string[];
+  sortOrder: number;
 };
 
 export type CellarData = {
@@ -68,6 +79,7 @@ export type WineDraft = {
   vintage: number | null;
   vivino: number | null;
   price: number | null;
+  cellarId: string | null;
   location: string; // "11F" | "abajo" | ""
 };
 

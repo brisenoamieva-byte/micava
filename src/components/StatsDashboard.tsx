@@ -1,21 +1,27 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import type { CellarUnit, Wine } from "@/lib/types";
+import type { CellarLogEntry, CellarUnit, Wine } from "@/lib/types";
 import { CountryFlag } from "@/components/CountryFlag";
-import { buildInsights } from "@/lib/analytics";
+import { buildInsights, type ReplenishItem } from "@/lib/analytics";
 import { formatPrice, formatVivino, typeAccent } from "@/lib/wines";
 
 type Props = {
   wines: Wine[];
   cellars?: CellarUnit[];
+  history?: CellarLogEntry[];
   onSelectWine?: (wine: Wine) => void;
 };
 
-export function StatsDashboard({ wines, cellars = [], onSelectWine }: Props) {
+export function StatsDashboard({
+  wines,
+  cellars = [],
+  history = [],
+  onSelectWine,
+}: Props) {
   const insights = useMemo(
-    () => buildInsights(wines, cellars),
-    [wines, cellars]
+    () => buildInsights(wines, cellars, history),
+    [wines, cellars, history]
   );
   const maxCountry = Math.max(...insights.byCountry.map((c) => c.count), 1);
   const maxVintage = Math.max(...insights.vintages.map((v) => v.count), 1);
@@ -57,7 +63,7 @@ export function StatsDashboard({ wines, cellars = [], onSelectWine }: Props) {
       </div>
 
       {/* KPIs */}
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi
           label="Botellas"
           value={String(insights.bottles)}
@@ -77,23 +83,27 @@ export function StatsDashboard({ wines, cellars = [], onSelectWine }: Props) {
           value={formatVivino(insights.avgVivino)}
           hint={`${insights.regions} regiones`}
         />
-        <Kpi
-          label="Ocupación"
-          value={`${Math.round(insights.occupancy * 100)}%`}
-          hint={`${insights.emptySlots} huecos libres`}
-        />
         <div className="panel col-span-2 flex items-center gap-4 p-4 lg:col-span-1">
           <OccupancyRing value={insights.occupancy} />
           <div>
             <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-              Rejilla 12×6
+              Ocupación
             </p>
-            <p className="mt-1 text-sm text-ink">
+            <p className="display mt-1 text-2xl leading-none text-ink">
+              {Math.round(insights.occupancy * 100)}%
+            </p>
+            <p className="mt-1.5 text-xs text-ink-soft">
               {insights.totalSlots - insights.emptySlots} de {insights.totalSlots}
+              {" · "}
+              {insights.occupancyLabel}
             </p>
           </div>
         </div>
       </section>
+
+      {insights.toReplenish.length > 0 ? (
+        <ReplenishBlock items={insights.toReplenish} />
+      ) : null}
 
       <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
         {/* País */}
@@ -229,20 +239,6 @@ export function StatsDashboard({ wines, cellars = [], onSelectWine }: Props) {
           metric={(w) => formatPrice(w.price)}
           onSelect={onSelectWine}
         />
-        <RankList
-          title="Listos para regalar"
-          subtitle="Vivino alto y presencia de precio"
-          wines={insights.giftReady}
-          metric={(w) => `${formatVivino(w.vivino)} · ${formatPrice(w.price)}`}
-          onSelect={onSelectWine}
-        />
-        <RankList
-          title="Para abrir hoy"
-          subtitle="Buen rating sin gastar de más"
-          wines={insights.everyday}
-          metric={(w) => `${formatVivino(w.vivino)} · ${formatPrice(w.price)}`}
-          onSelect={onSelectWine}
-        />
       </div>
 
       {/* Regiones */}
@@ -303,6 +299,44 @@ function Header({ title, subtitle }: { title: string; subtitle: string }) {
       <h3 className="display text-2xl text-ink">{title}</h3>
       <p className="mt-0.5 text-sm text-ink-soft">{subtitle}</p>
     </div>
+  );
+}
+
+function stars(n: number): string {
+  return `${"★".repeat(n)}${"☆".repeat(5 - n)}`;
+}
+
+function ReplenishBlock({ items }: { items: ReplenishItem[] }) {
+  return (
+    <section className="panel p-4 sm:p-5">
+      <Header
+        title="Para reponer"
+        subtitle="Los que te gustaron (4–5★) y ya no tienes — o solo queda una"
+      />
+      <ul className="mt-4 space-y-2">
+        {items.map((item) => (
+          <li
+            key={`${item.name}|${item.winery}`}
+            className="grid grid-cols-[auto_1fr_auto] items-start gap-2 rounded-[10px] border border-transparent px-1 py-2"
+          >
+            <CountryFlag country={item.country} size="sm" />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-ink">{item.name}</p>
+              <p className="truncate text-xs text-ink-soft">
+                {item.winery || "Sin bodega"}
+                <span className="ml-2 text-[var(--wine)]">{stars(item.myRating)}</span>
+              </p>
+              {item.note ? (
+                <p className="mt-0.5 line-clamp-2 text-xs text-ink">{item.note}</p>
+              ) : null}
+            </div>
+            <span className="shrink-0 text-right text-xs text-ink-soft">
+              {item.inStock === 0 ? "Agotado" : "Última"}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -418,33 +452,67 @@ function TypeDonut({
   const c = 2 * Math.PI * r;
   let cursor = 0;
   return (
-    <div className="relative shrink-0">
-      <svg width="140" height="140" viewBox="0 0 140 140" className="-rotate-90">
-        {items.map((item) => {
-          const len = c * item.share;
-          const dash = `${len} ${c - len}`;
-          const el = (
-            <circle
-              key={item.name}
-              cx="70"
-              cy="70"
-              r={r}
-              fill="none"
-              stroke={typeAccent(item.name)}
-              strokeWidth="16"
-              strokeDasharray={dash}
-              strokeDashoffset={-cursor}
-              className="transition-all duration-700"
-            />
-          );
-          cursor += len;
-          return el;
-        })}
+    <div className="shrink-0">
+      <svg
+        width="140"
+        height="140"
+        viewBox="0 0 140 140"
+        className="mx-auto block"
+        aria-hidden
+      >
+        <g transform="rotate(-90 70 70)">
+          {items.map((item) => {
+            const len = c * item.share;
+            const dash = `${len} ${c - len}`;
+            const el = (
+              <circle
+                key={item.name}
+                cx="70"
+                cy="70"
+                r={r}
+                fill="none"
+                stroke={typeAccent(item.name)}
+                strokeWidth="16"
+                strokeDasharray={dash}
+                strokeDashoffset={-cursor}
+                className="transition-all duration-700"
+              />
+            );
+            cursor += len;
+            return el;
+          })}
+        </g>
+        {/* SVG text stays unrotated; pair optically centered in the hole */}
+        <text
+          x="70"
+          y="64"
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill="var(--ink)"
+          style={{
+            fontFamily: "var(--font-cormorant), Georgia, serif",
+            fontSize: 32,
+            fontWeight: 500,
+          }}
+        >
+          {total}
+        </text>
+        <text
+          x="70"
+          y="82"
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill="var(--ink-soft)"
+          style={{
+            fontFamily: "var(--font-outfit), system-ui, sans-serif",
+            fontSize: 9,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+          }}
+        >
+          total
+        </text>
       </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="display text-3xl text-ink">{total}</span>
-        <span className="text-[10px] uppercase tracking-[0.14em] text-ink-soft">total</span>
-      </div>
       <ul className="mt-3 space-y-1">
         {items.map((item) => (
           <li key={item.name} className="flex items-center gap-2 text-xs text-ink-soft">

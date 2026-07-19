@@ -1,4 +1,4 @@
-import type { CellarUnit, Wine } from "@/lib/types";
+import type { CellarLogEntry, CellarUnit, Wine } from "@/lib/types";
 import { GRID_COLS, GRID_ROWS, getEmptySlots } from "@/lib/wines";
 
 export type NamedCount = {
@@ -14,6 +14,18 @@ export type BandCount = {
   share: number;
 };
 
+/** Wine you liked (≥4★) that is gone or nearly gone from the cellar. */
+export type ReplenishItem = {
+  name: string;
+  winery: string;
+  country: string;
+  myRating: number;
+  note: string | null;
+  /** Bottles still in inventory matching name+winery. */
+  inStock: number;
+  lastOpenedAt: string;
+};
+
 export type CellarInsights = {
   bottles: number;
   value: number;
@@ -24,6 +36,9 @@ export type CellarInsights = {
   occupancy: number;
   emptySlots: number;
   totalSlots: number;
+  /** e.g. "12×6" for one unit, or "2 muebles". */
+  occupancyLabel: string;
+  unitCount: number;
   byCountry: NamedCount[];
   byType: NamedCount[];
   byRegion: NamedCount[];
@@ -32,12 +47,44 @@ export type CellarInsights = {
   vintages: { year: number; count: number }[];
   topByVivino: Wine[];
   topByPrice: Wine[];
-  giftReady: Wine[];
-  everyday: Wine[];
+  toReplenish: ReplenishItem[];
 };
 
 function sum(nums: number[]) {
   return nums.reduce((a, b) => a + b, 0);
+}
+
+/** Collapse duplicate bottles (same name / winery / vintage). */
+export function wineIdentityKey(
+  w: Pick<Wine, "name" | "winery" | "vintage">
+): string {
+  return [w.name, w.winery, w.vintage ?? ""]
+    .map((s) => String(s).trim().toLowerCase())
+    .join("|");
+}
+
+/** Match catalog lines for replenishment (name + winery, any vintage). */
+function replenishKey(w: { name: string; winery: string }): string {
+  return [w.name, w.winery]
+    .map((s) => String(s).trim().toLowerCase())
+    .join("|");
+}
+
+function preferBottle(a: Wine, b: Wine): Wine {
+  const aV = a.vivino ?? 0;
+  const bV = b.vivino ?? 0;
+  if (aV !== bV) return aV > bV ? a : b;
+  return (a.price ?? 0) >= (b.price ?? 0) ? a : b;
+}
+
+function uniqueByIdentity(wines: Wine[]): Wine[] {
+  const map = new Map<string, Wine>();
+  for (const w of wines) {
+    const key = wineIdentityKey(w);
+    const prev = map.get(key);
+    map.set(key, prev ? preferBottle(prev, w) : w);
+  }
+  return [...map.values()];
 }
 
 function groupCount(
@@ -63,9 +110,67 @@ function groupCount(
     .sort((a, b) => b.count - a.count || b.value - a.value);
 }
 
+function buildReplenish(
+  wines: Wine[],
+  history: CellarLogEntry[]
+): ReplenishItem[] {
+  const stock = new Map<string, number>();
+  for (const w of wines) {
+    const key = replenishKey(w);
+    stock.set(key, (stock.get(key) ?? 0) + 1);
+  }
+
+  const best = new Map<
+    string,
+    {
+      name: string;
+      winery: string;
+      country: string;
+      myRating: number;
+      note: string | null;
+      lastOpenedAt: string;
+    }
+  >();
+
+  for (const e of history) {
+    if (e.action !== "opened" || (e.myRating ?? 0) < 4) continue;
+    const key = replenishKey(e.wine);
+    const prev = best.get(key);
+    if (
+      !prev ||
+      (e.myRating ?? 0) > prev.myRating ||
+      ((e.myRating ?? 0) === prev.myRating && e.at > prev.lastOpenedAt)
+    ) {
+      best.set(key, {
+        name: e.wine.name,
+        winery: e.wine.winery,
+        country: e.wine.country,
+        myRating: e.myRating ?? 4,
+        note: e.note,
+        lastOpenedAt: e.at,
+      });
+    }
+  }
+
+  return [...best.entries()]
+    .map(([key, meta]) => ({
+      ...meta,
+      inStock: stock.get(key) ?? 0,
+    }))
+    .filter((item) => item.inStock <= 1)
+    .sort(
+      (a, b) =>
+        a.inStock - b.inStock ||
+        b.myRating - a.myRating ||
+        b.lastOpenedAt.localeCompare(a.lastOpenedAt)
+    )
+    .slice(0, 5);
+}
+
 export function buildInsights(
   wines: Wine[],
-  cellars: CellarUnit[] = []
+  cellars: CellarUnit[] = [],
+  history: CellarLogEntry[] = []
 ): CellarInsights {
   const withPrice = wines.filter((w) => w.price != null);
   const withVivino = wines.filter((w) => w.vivino != null);
@@ -91,6 +196,11 @@ export function buildInsights(
     emptySlots += getEmptySlots(wines, unit.cols, unit.rows, unit.id).length;
   }
   const occupiedGrid = totalSlots - emptySlots;
+
+  const occupancyLabel =
+    units.length === 1
+      ? `${units[0].cols}×${units[0].rows.length}`
+      : `${units.length} muebles`;
 
   const vivinoDefs = [
     { label: "4.2+", test: (v: number) => v >= 4.2 },
@@ -131,32 +241,16 @@ export function buildInsights(
     .map(([year, count]) => ({ year, count }))
     .sort((a, b) => a.year - b.year);
 
-  const topByVivino = [...withVivino]
+  const topByVivino = uniqueByIdentity(withVivino)
     .sort(
       (a, b) =>
         (b.vivino ?? 0) - (a.vivino ?? 0) || (b.price ?? 0) - (a.price ?? 0)
     )
     .slice(0, 5);
 
-  const topByPrice = [...withPrice]
+  const topByPrice = uniqueByIdentity(withPrice)
     .sort((a, b) => (b.price ?? 0) - (a.price ?? 0))
     .slice(0, 5);
-
-  const giftReady = [...wines]
-    .filter((w) => (w.vivino ?? 0) >= 4.1 && (w.price ?? 0) >= 500)
-    .sort(
-      (a, b) =>
-        (b.vivino ?? 0) - (a.vivino ?? 0) || (b.price ?? 0) - (a.price ?? 0)
-    )
-    .slice(0, 4);
-
-  const everyday = [...wines]
-    .filter((w) => (w.vivino ?? 0) >= 3.9 && (w.price ?? 9999) <= 500)
-    .sort(
-      (a, b) =>
-        (b.vivino ?? 0) - (a.vivino ?? 0) || (a.price ?? 0) - (b.price ?? 0)
-    )
-    .slice(0, 4);
 
   return {
     bottles: wines.length,
@@ -170,6 +264,8 @@ export function buildInsights(
     occupancy: totalSlots ? occupiedGrid / totalSlots : 0,
     emptySlots,
     totalSlots,
+    occupancyLabel,
+    unitCount: units.length,
     byCountry: groupCount(wines, (w) => w.country),
     byType: groupCount(wines, (w) => w.type),
     byRegion: groupCount(wines, (w) => w.region).slice(0, 8),
@@ -178,7 +274,6 @@ export function buildInsights(
     vintages,
     topByVivino,
     topByPrice,
-    giftReady,
-    everyday,
+    toReplenish: buildReplenish(wines, history),
   };
 }

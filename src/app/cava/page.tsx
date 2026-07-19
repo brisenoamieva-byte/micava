@@ -287,6 +287,7 @@ export default function CavaPage() {
             <StatsDashboard
               wines={wines}
               cellars={cellars}
+              history={history}
               onSelectWine={(w) => selectWine(w, true)}
             />
           </div>

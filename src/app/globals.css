@@ -401,6 +401,22 @@ select {
   scrollbar-width: thin;
 }
 
+/* Cells handle their own gestures so taps/drags aren't stolen by map pan. */
+.map-cell {
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.map-is-dragging .map-scroll {
+  touch-action: none;
+  overflow: hidden;
+}
+
+.map-is-dragging .map-cell {
+  touch-action: none;
+}
+
 .desktop-only {
   display: none;
 }

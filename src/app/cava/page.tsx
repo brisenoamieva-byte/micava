@@ -518,7 +518,8 @@ export default function CavaPage() {
           } else {
             const created = addWine(draft);
             setSelectedId(created.id);
-            setMobilePanel("detalle");
+            // Adding into a map cell: stay on the map; otherwise open detail.
+            if (!formSlot) setMobilePanel("detalle");
           }
         }}
       />

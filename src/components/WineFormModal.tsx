@@ -155,12 +155,18 @@ export function WineFormModal({
   }
 
   function applyExisting(wine: Wine) {
-    const base = wineToDraft(wine);
-    setDraft({
-      ...base,
+    const next: WineDraft = {
+      ...wineToDraft(wine),
       cellarId: activeCellarId,
       location: initialSlot || "",
-    });
+    };
+    // From a map cell: picking an existing wine adds a bottle there immediately.
+    if (initialSlot) {
+      onSubmit(next);
+      onClose();
+      return;
+    }
+    setDraft(next);
     setFromExisting(true);
     setStep("form");
     setError("");
@@ -234,7 +240,9 @@ export function WineFormModal({
               {editing
                 ? "Actualiza datos o ubicación de la botella."
                 : showingPick
-                  ? "Elige uno que ya tengas, o agrega uno distinto."
+                  ? initialSlot
+                    ? `Casilla ${initialSlot} · elige un vino de tu cava o uno nuevo.`
+                    : "Elige uno que ya tengas, o agrega uno distinto."
                   : fromExisting
                     ? "Datos copiados · elige mueble y ubicación."
                     : "Completa los datos de un vino que aún no está en tu cava."}
@@ -260,24 +268,16 @@ export function WineFormModal({
                 value={catalogQuery}
                 onChange={(e) => setCatalogQuery(e.target.value)}
                 placeholder="Nombre, bodega, uva…"
-                autoFocus
                 enterKeyHint="search"
               />
             </label>
 
-            <button
-              type="button"
-              className="btn btn-primary flex min-h-[48px] w-full items-center justify-center"
-              onClick={startBlank}
-            >
-              Es un vino nuevo
-            </button>
-
             <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
               Ya en tu cava ({filteredCatalog.length})
+              {initialSlot ? ` · va a ${initialSlot}` : ""}
             </p>
 
-            <ul className="max-h-[50dvh] space-y-1.5 overflow-y-auto pr-0.5">
+            <ul className="max-h-[min(50dvh,22rem)] space-y-1.5 overflow-y-auto overscroll-contain pr-0.5">
               {filteredCatalog.length === 0 ? (
                 <li className="rounded-[10px] border border-dashed border-[var(--line)] px-3 py-4 text-sm text-ink-soft">
                   No hay coincidencias. Prueba otra búsqueda o agrega uno nuevo.
@@ -316,6 +316,14 @@ export function WineFormModal({
                 })
               )}
             </ul>
+
+            <button
+              type="button"
+              className="btn btn-ghost flex min-h-[48px] w-full items-center justify-center border border-[var(--line)]"
+              onClick={startBlank}
+            >
+              Es un vino nuevo
+            </button>
           </div>
         ) : (
           <form onSubmit={handleSubmit}>

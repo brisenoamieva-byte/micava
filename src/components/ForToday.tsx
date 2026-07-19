@@ -19,13 +19,13 @@ export function ForToday({ picks, onSelect }: Props) {
         <div>
           <h2 className="display text-2xl text-ink">Para hoy</h2>
           <p className="mt-0.5 text-sm text-ink-soft">
-            Tres opciones listas para abrir — sin pensarlo de más.
+            Tres caminos distintos — sin repetir el mismo vino.
           </p>
         </div>
       </div>
       <ul className="mt-4 grid gap-2 sm:grid-cols-3">
-        {picks.map((pick, i) => (
-          <li key={pick.wine.id}>
+        {picks.map((pick) => (
+          <li key={`${pick.label}-${pick.wine.id}`}>
             <button
               type="button"
               onClick={() => onSelect(pick.wine)}
@@ -33,7 +33,7 @@ export function ForToday({ picks, onSelect }: Props) {
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                  Opción {i + 1}
+                  {pick.label}
                 </span>
                 <CountryFlag country={pick.wine.country} size="sm" />
               </div>

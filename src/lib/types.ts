@@ -104,4 +104,13 @@ export type CellarLogEntry = {
     | "slot"
     | "grape"
   >;
+  /** Your taste after opening (1–5). Optional for gift/remove. */
+  myRating: number | null;
+  /** Short memory note — what you liked / would buy again. */
+  note: string | null;
+};
+
+export type DepartExtras = {
+  myRating?: number | null;
+  note?: string | null;
 };

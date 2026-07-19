@@ -346,15 +346,7 @@ export function WineDetail({
                 <button
                   type="button"
                   className="btn btn-primary min-h-[44px] flex-1"
-                  onClick={() => {
-                    if (
-                      confirm(
-                        `¿Marcaste “${wine.name}” como abierta?\nSaldrá del inventario.`
-                      )
-                    ) {
-                      onOpened(wine);
-                    }
-                  }}
+                  onClick={() => onOpened(wine)}
                 >
                   La abrí
                 </button>

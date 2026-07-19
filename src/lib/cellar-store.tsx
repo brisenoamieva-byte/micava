@@ -31,6 +31,7 @@ import type {
   CellarLogEntry,
   CellarUnit,
   DepartAction,
+  DepartExtras,
   Wine,
   WineDraft,
 } from "@/lib/types";
@@ -83,7 +84,11 @@ type CellarContextValue = {
     targetCellarId?: string | null
   ) => void;
   removeWine: (id: string) => void;
-  departWine: (id: string, action: DepartAction) => void;
+  departWine: (
+    id: string,
+    action: DepartAction,
+    extras?: DepartExtras
+  ) => void;
   resetCellar: () => void;
   loadDemoSeed: () => Promise<void>;
   importLocalCellar: () => Promise<void>;
@@ -176,7 +181,12 @@ function loadHistoryLocal(): CellarLogEntry[] {
     const raw = localStorage.getItem(HISTORY_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as CellarLogEntry[];
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((e) => ({
+      ...e,
+      myRating: e.myRating ?? null,
+      note: e.note ?? null,
+    }));
   } catch {
     return [];
   }
@@ -533,7 +543,7 @@ export function CellarProvider({ children }: { children: ReactNode }) {
   );
 
   const departWine = useCallback(
-    (id: string, action: DepartAction) => {
+    (id: string, action: DepartAction, extras?: DepartExtras) => {
       const uid = userIdRef.current;
       setWines((prev) => {
         const wine = prev.find((w) => w.id === id);
@@ -543,6 +553,8 @@ export function CellarProvider({ children }: { children: ReactNode }) {
           at: new Date().toISOString(),
           action,
           wine: snapshotWine(wine),
+          myRating: extras?.myRating ?? null,
+          note: extras?.note?.trim() ? extras.note.trim() : null,
         };
         setHistory((h) => [entry, ...h].slice(0, 100));
         if (uid) {

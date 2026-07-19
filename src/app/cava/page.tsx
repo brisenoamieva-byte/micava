@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CellarMap } from "@/components/CellarMap";
 import { CellarUnitsBar } from "@/components/CellarUnitsBar";
+import { DepartTasteModal } from "@/components/DepartTasteModal";
 import { FiltersBar } from "@/components/FiltersBar";
 import { ForToday } from "@/components/ForToday";
 import { RecentHistory } from "@/components/RecentHistory";
@@ -14,7 +15,7 @@ import { WineList } from "@/components/WineList";
 import { useCellar } from "@/lib/cellar-store";
 import { useAuth } from "@/lib/auth-store";
 import { picksForToday } from "@/lib/suggest-today";
-import type { Filters, MatchConfidence, RatingSource, Wine } from "@/lib/types";
+import type { DepartAction, DepartExtras, Filters, MatchConfidence, RatingSource, Wine } from "@/lib/types";
 import {
   cellarStats,
   filterWines,
@@ -68,6 +69,8 @@ export default function CavaPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [formSlot, setFormSlot] = useState("");
   const [editing, setEditing] = useState<Wine | null>(null);
+  const [departWineTarget, setDepartWineTarget] = useState<Wine | null>(null);
+  const [departAction, setDepartAction] = useState<DepartAction>("opened");
 
   useEffect(() => {
     if (!selectedId && wines[0]) setSelectedId(wines[0].id);
@@ -115,10 +118,20 @@ export default function CavaPage() {
     setMobilePanel("detalle");
   }
 
-  function handleDepart(wine: Wine, action: "opened" | "gifted" | "removed") {
-    departWine(wine.id, action);
+  function handleDepart(
+    wine: Wine,
+    action: DepartAction,
+    extras?: DepartExtras
+  ) {
+    departWine(wine.id, action, extras);
     setSelectedId((prev) => (prev === wine.id ? null : prev));
     setMobilePanel("lista");
+    setDepartWineTarget(null);
+  }
+
+  function openDepart(wine: Wine, action: DepartAction) {
+    setDepartWineTarget(wine);
+    setDepartAction(action);
   }
 
   function handleVerifyRating(
@@ -146,7 +159,7 @@ export default function CavaPage() {
     wine: selected,
     onEdit: openEdit,
     onRemove: (w: Wine) => handleDepart(w, "removed"),
-    onOpened: (w: Wine) => handleDepart(w, "opened"),
+    onOpened: (w: Wine) => openDepart(w, "opened"),
     onGifted: (w: Wine) => handleDepart(w, "gifted"),
     onVerifyRating: handleVerifyRating,
   };
@@ -498,6 +511,17 @@ export default function CavaPage() {
             setSelectedId(created.id);
             setMobilePanel("detalle");
           }
+        }}
+      />
+
+      <DepartTasteModal
+        open={Boolean(departWineTarget)}
+        wine={departWineTarget}
+        action={departAction}
+        onClose={() => setDepartWineTarget(null)}
+        onConfirm={(extras) => {
+          if (!departWineTarget) return;
+          handleDepart(departWineTarget, departAction, extras);
         }}
       />
     </main>

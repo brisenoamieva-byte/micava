@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { Wine, WineDraft } from "@/lib/types";
 import {
   countryFlagEmoji,
@@ -10,6 +10,12 @@ import {
   parseLocation,
 } from "@/lib/wines";
 import { wineToDraft } from "@/lib/cellar-store";
+import {
+  imageFileToDataUrl,
+  missingScanFieldLabels,
+  scanFieldsToDraftPatch,
+  type ScanLabelFields,
+} from "@/lib/scan-label";
 
 type Props = {
   open: boolean;
@@ -93,6 +99,9 @@ export function WineFormModal({
   const [step, setStep] = useState<"pick" | "form">("pick");
   const [catalogQuery, setCatalogQuery] = useState("");
   const [fromExisting, setFromExisting] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanHint, setScanHint] = useState("");
+  const scanInputRef = useRef<HTMLInputElement>(null);
 
   const catalog = useMemo(() => buildCatalog(wines), [wines]);
 
@@ -139,6 +148,8 @@ export function WineFormModal({
     setError("");
     setCatalogQuery("");
     setFromExisting(false);
+    setScanning(false);
+    setScanHint("");
     if (editing) {
       setStep("form");
       setDraft(wineToDraft(editing));
@@ -177,6 +188,61 @@ export function WineFormModal({
     setFromExisting(false);
     setStep("form");
     setError("");
+    setScanHint("");
+  }
+
+  async function handleScanFile(file: File | undefined) {
+    if (!file || scanning) return;
+    setScanning(true);
+    setError("");
+    setScanHint("");
+    try {
+      const { dataUrl } = await imageFileToDataUrl(file);
+      const res = await fetch("/api/scan-label", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageDataUrl: dataUrl }),
+      });
+      const payload = (await res.json()) as {
+        error?: string;
+        fields?: ScanLabelFields;
+      };
+      if (!res.ok || !payload.fields) {
+        throw new Error(payload.error || "No se pudo leer la etiqueta.");
+      }
+      const patch = scanFieldsToDraftPatch(payload.fields);
+      setDraft((prev) => ({
+        ...prev,
+        ...patch,
+        cellarId: prev.cellarId ?? activeCellarId,
+        location: prev.location || initialSlot || "",
+      }));
+      setFromExisting(false);
+      setStep("form");
+      const conf =
+        payload.fields.confidence === "high"
+          ? "Alta confianza"
+          : payload.fields.confidence === "medium"
+            ? "Revisa los datos"
+            : "Baja confianza — corrige a mano";
+      const missing = missingScanFieldLabels(payload.fields);
+      setScanHint(
+        [
+          conf,
+          missing.length
+            ? `Falta completar: ${missing.join(", ")}`
+            : "Ficha completa (revisa igual)",
+          payload.fields.notes || null,
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al escanear.");
+    } finally {
+      setScanning(false);
+      if (scanInputRef.current) scanInputRef.current.value = "";
+    }
   }
 
   function handleSubmit(e: FormEvent) {
@@ -225,6 +291,15 @@ export function WineFormModal({
         className="panel max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[18px] p-4 sm:rounded-[14px] sm:p-5"
         onClick={(e) => e.stopPropagation()}
       >
+        <input
+          ref={scanInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="sr-only"
+          tabIndex={-1}
+          onChange={(e) => void handleScanFile(e.target.files?.[0])}
+        />
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <h2 id="wine-form-title" className="display text-2xl text-ink">
@@ -317,13 +392,27 @@ export function WineFormModal({
               )}
             </ul>
 
-            <button
-              type="button"
-              className="btn btn-ghost flex min-h-[48px] w-full items-center justify-center border border-[var(--line)]"
-              onClick={startBlank}
-            >
-              Es un vino nuevo
-            </button>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                className="btn btn-primary flex min-h-[48px] w-full items-center justify-center disabled:opacity-60"
+                disabled={scanning}
+                onClick={() => scanInputRef.current?.click()}
+              >
+                {scanning ? "Leyendo etiqueta…" : "Escanear etiqueta"}
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost flex min-h-[48px] w-full items-center justify-center border border-[var(--line)]"
+                disabled={scanning}
+                onClick={startBlank}
+              >
+                Escribir a mano
+              </button>
+            </div>
+            {error && showingPick ? (
+              <p className="text-sm text-[var(--wine)]">{error}</p>
+            ) : null}
           </div>
         ) : (
           <form onSubmit={handleSubmit}>
@@ -334,11 +423,30 @@ export function WineFormModal({
                 onClick={() => {
                   setStep("pick");
                   setCatalogQuery("");
+                  setScanHint("");
                 }}
               >
                 ← Elegir de mi cava
               </button>
             ) : null}
+
+            <div className="mb-3 flex flex-col gap-2">
+              <button
+                type="button"
+                className="btn btn-ghost flex min-h-[44px] w-full items-center justify-center border border-[var(--line)] disabled:opacity-60"
+                disabled={scanning}
+                onClick={() => scanInputRef.current?.click()}
+              >
+                {scanning
+                  ? "Leyendo etiqueta…"
+                  : editing
+                    ? "Rellenar desde foto"
+                    : "Escanear etiqueta"}
+              </button>
+              {scanHint ? (
+                <p className="text-xs text-ink-soft">{scanHint}</p>
+              ) : null}
+            </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="sm:col-span-2">

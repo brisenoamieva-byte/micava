@@ -20,31 +20,68 @@ export const emptyVerification: RatingVerification = {
   matchConfidence: null,
 };
 
-export function searchQueryForWine(wine: Wine): string {
+export function wineTitleParts(wine: Pick<Wine, "name" | "winery">): {
+  winery: string;
+  name: string;
+} {
   const winery = wine.winery.trim();
-  const name = wine.name.trim();
-  const vintage = wine.vintage != null ? String(wine.vintage) : "";
+  let name = wine.name.trim();
+  if (!winery || !name) return { winery, name };
 
-  let title = name || winery;
-  if (winery && name) {
-    const wineryNorm = winery.toLowerCase();
-    const nameNorm = name.toLowerCase();
-    if (nameNorm === wineryNorm || nameNorm.startsWith(wineryNorm + " ")) {
-      title = name;
-    } else if (wineryNorm.startsWith(nameNorm)) {
-      title = winery;
-    } else {
-      title = `${winery} ${name}`;
-    }
+  const wineryNorm = winery.toLowerCase();
+  const nameNorm = name.toLowerCase();
+
+  // "LAN" + "LAN A MANO" → name "A MANO" (avoid redundant / confusing tokens)
+  if (nameNorm === wineryNorm) {
+    name = "";
+  } else if (nameNorm.startsWith(wineryNorm + " ")) {
+    name = name.slice(winery.length).trim();
   }
 
+  return { winery, name };
+}
+
+export function searchQueryForWine(wine: Wine): string {
+  const { winery, name } = wineTitleParts(wine);
+  const vintage = wine.vintage != null ? String(wine.vintage) : "";
+  const title = [winery, name].filter(Boolean).join(" ") || wine.name.trim();
   return [title, vintage].filter(Boolean).join(" ").trim();
 }
 
-/** Opens Vivino search — no API; user copies the score back.
- * Omit vintage: Vivino search often fails when the year is included. */
+/** Title Case — Vivino typeahead ranks "Lan A Mano" better than "LAN A MANO". */
+export function toSearchCase(text: string): string {
+  return text
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => {
+      if (/^[A-Z]{2,4}$/.test(w) && w.length <= 3) {
+        // Keep short all-caps brands like "LAN" readable as "Lan"
+        return w.charAt(0) + w.slice(1).toLowerCase();
+      }
+      return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+    })
+    .join(" ");
+}
+
+/**
+ * Query as you'd type it in Vivino's box (short, title case).
+ * Full dump into ?q= uses a worse ranker than the live typeahead.
+ */
+export function vivinoTypeQuery(wine: Wine): string {
+  const { winery, name } = wineTitleParts(wine);
+  const core = [winery, name].filter(Boolean).join(" ") || wine.name.trim();
+  return toSearchCase(core);
+}
+
+/** Empty Vivino search page — paste/type there so typeahead kicks in. */
+export function vivinoSearchHomeUrl(): string {
+  return "https://www.vivino.com/search/wines";
+}
+
+/** Legacy direct ?q= URL (often worse matches than typing). */
 export function vivinoSearchUrl(wine: Wine): string {
-  const q = searchQueryForWine({ ...wine, vintage: null });
+  const q = vivinoTypeQuery(wine);
   return `https://www.vivino.com/search/wines?q=${encodeURIComponent(q)}`;
 }
 

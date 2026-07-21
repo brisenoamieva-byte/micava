@@ -26,6 +26,15 @@ export type Wine = {
   /** ISO timestamp of last verification. */
   lastCheckedAt: string | null;
   matchConfidence: MatchConfidence | null;
+  /** Kimi estimate of Vivino-style score (1–5). */
+  kimiVivino: number | null;
+  /** Kimi estimate of typical retail price in MXN. */
+  kimiPrice: number | null;
+  /** Short research note from Kimi. */
+  kimiSummary: string | null;
+  /** ISO timestamp of last Kimi research. */
+  kimiCheckedAt: string | null;
+  kimiConfidence: MatchConfidence | null;
 };
 
 /** One physical furniture unit / grid belonging to a user. */

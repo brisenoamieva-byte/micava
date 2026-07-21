@@ -4,12 +4,15 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { MatchConfidence, RatingSource, Wine } from "@/lib/types";
 import { CountryFlag } from "@/components/CountryFlag";
 import { parseGrapes } from "@/lib/grapes";
+import type { KimiResearch } from "@/lib/kimi-research";
+import { pairingsForWine } from "@/lib/pairings";
 import {
   confidenceLabel,
   formatCheckedAt,
   ratingDelta,
   sourceLabel,
-  vivinoSearchUrl,
+  vivinoSearchHomeUrl,
+  vivinoTypeQuery,
   wineSearcherUrl,
 } from "@/lib/rating-verify";
 import { formatPrice, formatVivino, typeAccent } from "@/lib/wines";
@@ -41,6 +44,11 @@ type Props = {
       syncVivino: boolean;
     }
   ) => void;
+  onSaveKimiResearch?: (wine: Wine, research: KimiResearch) => void;
+  onApplyKimiResearch?: (
+    wine: Wine,
+    fields: { vivino?: boolean; price?: boolean }
+  ) => void;
 };
 
 export function WineDetail({
@@ -52,6 +60,8 @@ export function WineDetail({
   onOpened,
   onGifted,
   onVerifyRating,
+  onSaveKimiResearch,
+  onApplyKimiResearch,
 }: Props) {
   const [verifyOpen, setVerifyOpen] = useState(false);
   const [ratingInput, setRatingInput] = useState("");
@@ -59,6 +69,10 @@ export function WineDetail({
   const [confidence, setConfidence] = useState<MatchConfidence>("confirmed");
   const [syncVivino, setSyncVivino] = useState(false);
   const [shareHint, setShareHint] = useState<string | null>(null);
+  const [kimiLoading, setKimiLoading] = useState(false);
+  const [kimiError, setKimiError] = useState("");
+  const [vivinoHint, setVivinoHint] = useState<string | null>(null);
+  const [applyHint, setApplyHint] = useState<string | null>(null);
 
   useEffect(() => {
     setVerifyOpen(false);
@@ -69,6 +83,10 @@ export function WineDetail({
     setConfidence(wine?.matchConfidence ?? "confirmed");
     setSyncVivino(false);
     setShareHint(null);
+    setKimiLoading(false);
+    setKimiError("");
+    setVivinoHint(null);
+    setApplyHint(null);
   }, [wine?.id]);
 
   if (!wine) {
@@ -92,6 +110,7 @@ export function WineDetail({
 
   const classified = parseGrapes(wine.grape);
   const delta = ratingDelta(wine.vivino, wine.externalRating);
+  const pairing = pairingsForWine(wine);
 
   const facts: { label: string; value: ReactNode }[] = [
     {
@@ -104,21 +123,20 @@ export function WineDetail({
     {
       label: "Uva",
       value: wine.grape ? (
-        <span>
-          <span className="block">{wine.grape}</span>
-          {classified.length > 0 ? (
-            <span className="mt-1.5 flex flex-wrap gap-1.5">
-              {classified.map((g) => (
-                <span
-                  key={g}
-                  className="rounded-[6px] border border-[var(--line)] bg-[rgba(255,252,247,0.7)] px-2 py-0.5 text-[11px] text-ink"
-                >
-                  {g}
-                </span>
-              ))}
-            </span>
-          ) : null}
-        </span>
+        classified.length > 0 ? (
+          <span className="flex flex-wrap gap-1.5">
+            {classified.map((g) => (
+              <span
+                key={g}
+                className="rounded-[6px] border border-[var(--line)] bg-[rgba(255,252,247,0.7)] px-2 py-0.5 text-[11px] text-ink"
+              >
+                {g}
+              </span>
+            ))}
+          </span>
+        ) : (
+          wine.grape
+        )
       ) : (
         "—"
       ),
@@ -151,6 +169,47 @@ export function WineDetail({
     setVerifyOpen(false);
   }
 
+  function applyKimiToFicha(fields: { vivino?: boolean; price?: boolean }) {
+    if (!wine || !onApplyKimiResearch) return;
+
+    const parts: string[] = [];
+    if (fields.vivino && wine.kimiVivino != null) {
+      parts.push(
+        wine.vivino === wine.kimiVivino
+          ? `Vivino ya era ${formatVivino(wine.kimiVivino)}`
+          : `Vivino actualizado a ${formatVivino(wine.kimiVivino)}`
+      );
+    }
+    if (fields.price && wine.kimiPrice != null) {
+      parts.push(
+        wine.price === wine.kimiPrice
+          ? `Precio ya era ${formatPrice(wine.kimiPrice)}`
+          : `Precio actualizado a ${formatPrice(wine.kimiPrice)}`
+      );
+    }
+    if (!parts.length) {
+      setApplyHint("No hay valores de Kimi para aplicar.");
+      return;
+    }
+
+    onApplyKimiResearch(wine, fields);
+    setApplyHint(`Guardado en tu ficha · ${parts.join(" · ")}`);
+    window.setTimeout(() => setApplyHint(null), 5000);
+  }
+
+  async function openVivinoTypeahead() {
+    if (!wine) return;
+    const q = vivinoTypeQuery(wine);
+    try {
+      await navigator.clipboard.writeText(q);
+      setVivinoHint(`Texto copiado: “${q}”. Pégalo en el buscador de Vivino.`);
+    } catch {
+      setVivinoHint(`Escribe en Vivino: “${q}”`);
+    }
+    window.open(vivinoSearchHomeUrl(), "_blank", "noopener,noreferrer");
+    window.setTimeout(() => setVivinoHint(null), 8000);
+  }
+
   async function handleShare() {
     if (!wine) return;
     const text = shareText(wine);
@@ -166,6 +225,49 @@ export function WineDetail({
       // user cancelled share — ignore
     }
   }
+
+  async function handleKimiResearch() {
+    if (!wine || !onSaveKimiResearch || kimiLoading) return;
+    setKimiLoading(true);
+    setKimiError("");
+    try {
+      const res = await fetch("/api/research-wine", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: wine.name,
+          winery: wine.winery,
+          country: wine.country,
+          region: wine.region,
+          type: wine.type,
+          grape: wine.grape,
+          aging: wine.aging,
+          vintage: wine.vintage,
+          vivino: wine.vivino,
+          price: wine.price,
+        }),
+      });
+      const payload = (await res.json()) as {
+        error?: string;
+        research?: KimiResearch;
+      };
+      if (!res.ok || !payload.research) {
+        throw new Error(payload.error || "No se pudo investigar este vino.");
+      }
+      onSaveKimiResearch(wine, payload.research);
+    } catch (e) {
+      setKimiError(e instanceof Error ? e.message : "Error al consultar Kimi.");
+    } finally {
+      setKimiLoading(false);
+    }
+  }
+
+  const kimiDeltaVivino = ratingDelta(wine.vivino, wine.kimiVivino);
+  const hasKimi =
+    wine.kimiCheckedAt != null ||
+    wine.kimiVivino != null ||
+    wine.kimiPrice != null ||
+    Boolean(wine.kimiSummary);
 
   return (
     <div className="min-w-0 overflow-hidden">
@@ -233,6 +335,143 @@ export function WineDetail({
         ))}
       </dl>
 
+      <div className="mt-5 border-t border-[var(--line)] pt-4">
+        <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+          Maridaje sugerido
+        </p>
+        <p className="mt-1 text-xs text-ink-soft">{pairing.note}</p>
+        <ul className="mt-3 flex flex-wrap gap-1.5">
+          {pairing.dishes.map((dish) => (
+            <li
+              key={dish}
+              className="rounded-[8px] border border-[var(--line)] bg-[rgba(255,252,247,0.7)] px-2.5 py-1.5 text-xs text-ink"
+            >
+              {dish}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {onSaveKimiResearch ? (
+        <div className="mt-5 border-t border-[var(--line)] pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                Investigación Kimi
+              </p>
+              <p className="mt-0.5 text-xs text-ink-soft">
+                Última consulta: {formatCheckedAt(wine.kimiCheckedAt)}
+                {wine.kimiConfidence
+                  ? ` · ${confidenceLabel[wine.kimiConfidence]}`
+                  : ""}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn btn-ghost min-h-[40px] px-3 text-sm disabled:opacity-60"
+              disabled={kimiLoading}
+              onClick={() => void handleKimiResearch()}
+            >
+              {kimiLoading
+                ? "Consultando…"
+                : hasKimi
+                  ? "Actualizar"
+                  : "Consultar"}
+            </button>
+          </div>
+
+          <p className="mt-2 text-xs leading-relaxed text-ink-soft">
+            Estimación por conocimiento de la IA (no es Vivino en vivo). Úsala
+            para contrastar tu calificación y precio guardados.
+          </p>
+
+          {kimiError ? (
+            <p className="mt-2 text-sm text-[var(--wine)]">{kimiError}</p>
+          ) : null}
+
+          {hasKimi ? (
+            <div className="mt-3 space-y-3 rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.55)] p-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                    Vivino estimado
+                  </p>
+                  <p className="mt-1 text-sm text-ink">
+                    {formatVivino(wine.kimiVivino)}
+                    <span className="text-ink-soft">
+                      {" "}
+                      · tuyo {formatVivino(wine.vivino)}
+                    </span>
+                    {kimiDeltaVivino != null && kimiDeltaVivino !== 0 ? (
+                      <span className="text-ink-soft">
+                        {" "}
+                        ({kimiDeltaVivino > 0 ? "+" : ""}
+                        {kimiDeltaVivino.toFixed(1)})
+                      </span>
+                    ) : null}
+                  </p>
+                  {onApplyKimiResearch && wine.kimiVivino != null ? (
+                    <button
+                      type="button"
+                      className="mt-2 text-xs text-ink-soft underline-offset-2 hover:text-ink hover:underline"
+                      onClick={() => applyKimiToFicha({ vivino: true })}
+                    >
+                      Usar este Vivino
+                    </button>
+                  ) : null}
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                    Precio estimado
+                  </p>
+                  <p className="mt-1 text-sm text-ink">
+                    {formatPrice(wine.kimiPrice)}
+                    <span className="text-ink-soft">
+                      {" "}
+                      · tuyo {formatPrice(wine.price)}
+                    </span>
+                  </p>
+                  {onApplyKimiResearch && wine.kimiPrice != null ? (
+                    <button
+                      type="button"
+                      className="mt-2 text-xs text-ink-soft underline-offset-2 hover:text-ink hover:underline"
+                      onClick={() => applyKimiToFicha({ price: true })}
+                    >
+                      Usar este precio
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+              {wine.kimiSummary ? (
+                <p className="text-sm leading-relaxed text-ink">
+                  {wine.kimiSummary}
+                </p>
+              ) : null}
+              {onApplyKimiResearch &&
+              (wine.kimiVivino != null || wine.kimiPrice != null) ? (
+                <button
+                  type="button"
+                  className="btn btn-primary min-h-[44px] w-full text-sm"
+                  onClick={() =>
+                    applyKimiToFicha({
+                      vivino: wine.kimiVivino != null,
+                      price: wine.kimiPrice != null,
+                    })
+                  }
+                >
+                  Aplicar Vivino y precio a mi ficha
+                </button>
+              ) : null}
+              {applyHint ? (
+                <p className="text-sm text-[var(--wine-deep)]" role="status">
+                  {applyHint}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       {onVerifyRating ? (
         <div className="mt-5 border-t border-[var(--line)] pt-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -263,18 +502,18 @@ export function WineDetail({
           {verifyOpen ? (
             <div className="mt-3 space-y-3 rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.55)] p-3">
               <p className="text-xs leading-relaxed text-ink-soft">
-                Abre la búsqueda, confirma que es el mismo vino y anota el score.
-                Sin API de pago por ahora.
+                Vivino acierta más si escribes/pegas en su buscador (typeahead)
+                que si abres una URL con toda la consulta de golpe. Te abrimos
+                Vivino y copiamos el texto.
               </p>
               <div className="flex flex-wrap gap-2">
-                <a
-                  href={vivinoSearchUrl(wine)}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  type="button"
                   className="btn btn-ghost min-h-[40px] px-3 text-sm"
+                  onClick={() => void openVivinoTypeahead()}
                 >
                   Buscar en Vivino ↗
-                </a>
+                </button>
                 <a
                   href={wineSearcherUrl(wine)}
                   target="_blank"
@@ -284,6 +523,9 @@ export function WineDetail({
                   Wine-Searcher ↗
                 </a>
               </div>
+              {vivinoHint ? (
+                <p className="text-xs text-ink">{vivinoHint}</p>
+              ) : null}
 
               <label className="block">
                 <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
@@ -435,8 +677,8 @@ export function WineDetail({
       )}
 
       <p className="mt-6 text-xs leading-relaxed text-ink-soft sm:mt-8">
-        Precio y calificación son referencia. La verificación externa es manual
-        por ahora; más adelante se puede enchufar una API oficial.
+        Precio y calificación son referencia. Kimi estima; la verificación
+        manual con Vivino / Wine-Searcher sigue disponible abajo.
       </p>
     </div>
   );

@@ -57,6 +57,8 @@ export default function CavaPage() {
     addWine,
     updateWine,
     verifyWineRating,
+    saveKimiResearch,
+    applyKimiResearch,
     moveWine,
     departWine,
     resetCellar,
@@ -180,6 +182,12 @@ export default function CavaPage() {
     onOpened: (w: Wine) => openDepart(w, "opened"),
     onGifted: (w: Wine) => handleDepart(w, "gifted"),
     onVerifyRating: handleVerifyRating,
+    onSaveKimiResearch: (w: Wine, research: Parameters<typeof saveKimiResearch>[1]) =>
+      saveKimiResearch(w.id, research),
+    onApplyKimiResearch: (
+      w: Wine,
+      fields: { vivino?: boolean; price?: boolean }
+    ) => applyKimiResearch(w.id, fields),
   };
 
   return (

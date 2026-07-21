@@ -11,8 +11,16 @@ import {
   type ReactNode,
 } from "react";
 import { useAuth } from "@/lib/auth-store";
-import type { RatingVerification } from "@/lib/rating-verify";
-import { emptyVerification, withVerificationDefaults } from "@/lib/rating-verify";
+import {
+  emptyKimiResearch,
+  withKimiDefaults,
+  type KimiResearch,
+} from "@/lib/kimi-research";
+import {
+  emptyVerification,
+  withVerificationDefaults,
+  type RatingVerification,
+} from "@/lib/rating-verify";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import {
   cellarFromRow,
@@ -78,6 +86,11 @@ type CellarContextValue = {
     verification: RatingVerification,
     options?: { syncVivino?: boolean }
   ) => void;
+  saveKimiResearch: (id: string, research: KimiResearch) => void;
+  applyKimiResearch: (
+    id: string,
+    fields: { vivino?: boolean; price?: boolean }
+  ) => void;
   moveWine: (
     wineId: string,
     targetLocation: string,
@@ -141,11 +154,16 @@ function draftToWine(draft: WineDraft, id: string, existing?: Wine): Wine {
     ratingSource: existing?.ratingSource ?? null,
     lastCheckedAt: existing?.lastCheckedAt ?? null,
     matchConfidence: existing?.matchConfidence ?? null,
+    kimiVivino: existing?.kimiVivino ?? null,
+    kimiPrice: existing?.kimiPrice ?? null,
+    kimiSummary: existing?.kimiSummary ?? null,
+    kimiCheckedAt: existing?.kimiCheckedAt ?? null,
+    kimiConfidence: existing?.kimiConfidence ?? null,
   };
 }
 
 function normalizeWine(raw: Wine): Wine {
-  return withVerificationDefaults({ ...raw });
+  return withKimiDefaults(withVerificationDefaults({ ...raw }));
 }
 
 function snapshotWine(w: Wine): CellarLogEntry["wine"] {
@@ -197,6 +215,7 @@ function seedWithDefaults(cellarId: string | null): Wine[] {
     normalizeWine({
       ...w,
       ...emptyVerification,
+      ...emptyKimiResearch,
       cellarId: w.slot && w.slot !== "abajo" ? cellarId : null,
     })
   );
@@ -230,6 +249,8 @@ export function CellarProvider({ children }: { children: ReactNode }) {
   const userIdRef = useRef<string | null>(null);
   /** False until `cellars` + `wines.cellar_id` exist in Supabase. */
   const multiCellarRef = useRef(false);
+  /** False if kimi_* columns are missing in Supabase. */
+  const kimiColumnsRef = useRef(true);
 
   const activeCellar = useMemo(
     () => cellars.find((c) => c.id === activeCellarId) ?? cellars[0] ?? null,
@@ -239,10 +260,23 @@ export function CellarProvider({ children }: { children: ReactNode }) {
   const upsertWineRemote = useCallback(async (wine: Wine, userId: string) => {
     if (!isSupabaseConfigured()) return;
     const supabase = createClient();
-    const row = wineToRow(wine, userId, {
-      includeCellarId: multiCellarRef.current,
-    });
-    await supabase.from("wines").upsert(row, { onConflict: "user_id,id" });
+    const tryUpsert = async (includeKimi: boolean) => {
+      const row = wineToRow(wine, userId, {
+        includeCellarId: multiCellarRef.current,
+        includeKimi,
+      });
+      return supabase.from("wines").upsert(row, { onConflict: "user_id,id" });
+    };
+    let { error } = await tryUpsert(kimiColumnsRef.current);
+    if (
+      error &&
+      kimiColumnsRef.current &&
+      /kimi_|column|schema|could not find/i.test(error.message ?? "")
+    ) {
+      kimiColumnsRef.current = false;
+      ({ error } = await tryUpsert(false));
+    }
+    if (error) console.warn("upsert wine failed", error.message);
   }, []);
 
   const deleteWineRemote = useCallback(async (id: string, userId: string) => {
@@ -266,7 +300,10 @@ export function CellarProvider({ children }: { children: ReactNode }) {
     if (!isSupabaseConfigured()) return;
     const supabase = createClient();
     const rows = list.map((w) =>
-      wineToRow(w, userId, { includeCellarId: multiCellarRef.current })
+      wineToRow(w, userId, {
+        includeCellarId: multiCellarRef.current,
+        includeKimi: kimiColumnsRef.current,
+      })
     );
     const { data: existing } = await supabase
       .from("wines")
@@ -457,6 +494,50 @@ export function CellarProvider({ children }: { children: ReactNode }) {
               options?.syncVivino && verification.externalRating != null
                 ? verification.externalRating
                 : w.vivino,
+          };
+          return nextWine;
+        })
+      );
+      const uid = userIdRef.current;
+      if (uid && nextWine) void upsertWineRemote(nextWine, uid);
+    },
+    [upsertWineRemote]
+  );
+
+  const saveKimiResearch = useCallback(
+    (id: string, research: KimiResearch) => {
+      let nextWine: Wine | null = null;
+      setWines((prev) =>
+        prev.map((w) => {
+          if (w.id !== id) return w;
+          nextWine = {
+            ...w,
+            kimiVivino: research.kimiVivino,
+            kimiPrice: research.kimiPrice,
+            kimiSummary: research.kimiSummary,
+            kimiCheckedAt: research.kimiCheckedAt,
+            kimiConfidence: research.kimiConfidence,
+          };
+          return nextWine;
+        })
+      );
+      const uid = userIdRef.current;
+      if (uid && nextWine) void upsertWineRemote(nextWine, uid);
+    },
+    [upsertWineRemote]
+  );
+
+  const applyKimiResearch = useCallback(
+    (id: string, fields: { vivino?: boolean; price?: boolean }) => {
+      let nextWine: Wine | null = null;
+      setWines((prev) =>
+        prev.map((w) => {
+          if (w.id !== id) return w;
+          nextWine = {
+            ...w,
+            vivino:
+              fields.vivino && w.kimiVivino != null ? w.kimiVivino : w.vivino,
+            price: fields.price && w.kimiPrice != null ? w.kimiPrice : w.price,
           };
           return nextWine;
         })
@@ -751,6 +832,8 @@ export function CellarProvider({ children }: { children: ReactNode }) {
       addWine,
       updateWine,
       verifyWineRating,
+      saveKimiResearch,
+      applyKimiResearch,
       moveWine,
       removeWine,
       departWine,
@@ -773,6 +856,8 @@ export function CellarProvider({ children }: { children: ReactNode }) {
       addWine,
       updateWine,
       verifyWineRating,
+      saveKimiResearch,
+      applyKimiResearch,
       moveWine,
       removeWine,
       departWine,

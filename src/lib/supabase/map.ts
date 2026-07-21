@@ -1,4 +1,5 @@
 import type { CellarLogEntry, CellarUnit, DepartAction, Wine } from "@/lib/types";
+import { withKimiDefaults } from "@/lib/kimi-research";
 import { withVerificationDefaults } from "@/lib/rating-verify";
 
 export type WineRow = {
@@ -22,6 +23,11 @@ export type WineRow = {
   rating_source: string | null;
   last_checked_at: string | null;
   match_confidence: string | null;
+  kimi_vivino: number | null;
+  kimi_price: number | null;
+  kimi_summary: string | null;
+  kimi_checked_at: string | null;
+  kimi_confidence: string | null;
 };
 
 export type HistoryRow = {
@@ -46,35 +52,43 @@ export type CellarRow = {
 };
 
 export function wineFromRow(row: WineRow): Wine {
-  return withVerificationDefaults({
-    id: row.id,
-    cellarId: row.cellar_id ?? null,
-    slot: row.slot,
-    col: row.col,
-    row: row.row,
-    country: row.country ?? "",
-    region: row.region ?? "",
-    type: row.type ?? "Tinto",
-    winery: row.winery ?? "",
-    name: row.name ?? "",
-    aging: row.aging ?? "",
-    grape: row.grape ?? "",
-    vintage: row.vintage,
-    vivino: row.vivino,
-    price: row.price,
-    externalRating: row.external_rating,
-    ratingSource: row.rating_source as Wine["ratingSource"],
-    lastCheckedAt: row.last_checked_at,
-    matchConfidence: row.match_confidence as Wine["matchConfidence"],
-  });
+  return withKimiDefaults(
+    withVerificationDefaults({
+      id: row.id,
+      cellarId: row.cellar_id ?? null,
+      slot: row.slot,
+      col: row.col,
+      row: row.row,
+      country: row.country ?? "",
+      region: row.region ?? "",
+      type: row.type ?? "Tinto",
+      winery: row.winery ?? "",
+      name: row.name ?? "",
+      aging: row.aging ?? "",
+      grape: row.grape ?? "",
+      vintage: row.vintage,
+      vivino: row.vivino,
+      price: row.price,
+      externalRating: row.external_rating,
+      ratingSource: row.rating_source as Wine["ratingSource"],
+      lastCheckedAt: row.last_checked_at,
+      matchConfidence: row.match_confidence as Wine["matchConfidence"],
+      kimiVivino: row.kimi_vivino ?? null,
+      kimiPrice: row.kimi_price ?? null,
+      kimiSummary: row.kimi_summary ?? null,
+      kimiCheckedAt: row.kimi_checked_at ?? null,
+      kimiConfidence: row.kimi_confidence as Wine["kimiConfidence"],
+    })
+  );
 }
 
 export function wineToRow(
   wine: Wine,
   userId: string,
-  opts?: { includeCellarId?: boolean }
-): WineRow | Omit<WineRow, "cellar_id"> {
-  const base = {
+  opts?: { includeCellarId?: boolean; includeKimi?: boolean }
+): Record<string, unknown> {
+  const includeKimi = opts?.includeKimi !== false;
+  const base: Record<string, unknown> = {
     id: wine.id,
     user_id: userId,
     slot: wine.slot,
@@ -95,6 +109,13 @@ export function wineToRow(
     last_checked_at: wine.lastCheckedAt,
     match_confidence: wine.matchConfidence,
   };
+  if (includeKimi) {
+    base.kimi_vivino = wine.kimiVivino;
+    base.kimi_price = wine.kimiPrice;
+    base.kimi_summary = wine.kimiSummary;
+    base.kimi_checked_at = wine.kimiCheckedAt;
+    base.kimi_confidence = wine.kimiConfidence;
+  }
   if (opts?.includeCellarId === false) return base;
   return { ...base, cellar_id: wine.cellarId };
 }

@@ -118,6 +118,11 @@ create table if not exists public.wines (
   rating_source text,
   last_checked_at timestamptz,
   match_confidence text,
+  kimi_vivino double precision,
+  kimi_price double precision,
+  kimi_summary text,
+  kimi_checked_at timestamptz,
+  kimi_confidence text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   primary key (user_id, id)
@@ -150,6 +155,13 @@ create policy "wines_delete_own"
 
 alter table public.wines
   add column if not exists cellar_id uuid references public.cellars (id) on delete set null;
+
+alter table public.wines
+  add column if not exists kimi_vivino double precision,
+  add column if not exists kimi_price double precision,
+  add column if not exists kimi_summary text,
+  add column if not exists kimi_checked_at timestamptz,
+  add column if not exists kimi_confidence text;
 
 create index if not exists wines_cellar_id_idx on public.wines (cellar_id);
 

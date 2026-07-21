@@ -1,11 +1,12 @@
 import data from "@/data/wines.json";
 import type { CellarData, Filters, SortOption, Wine } from "@/lib/types";
 import { wineHasGrape } from "@/lib/grapes";
+import { withKimiDefaults } from "@/lib/kimi-research";
 import { withVerificationDefaults } from "@/lib/rating-verify";
 
 export const cellar = data as unknown as CellarData;
 export const seedWines: Wine[] = cellar.wines.map((w) =>
-  withVerificationDefaults({ ...w })
+  withKimiDefaults(withVerificationDefaults({ ...w }))
 );
 /** @deprecated use seedWines or cellar store */
 export const wines: Wine[] = seedWines;

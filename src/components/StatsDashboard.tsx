@@ -27,6 +27,7 @@ export function StatsDashboard({
   const maxVintage = Math.max(...insights.vintages.map((v) => v.count), 1);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+  const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
 
   const vintageWines = useMemo(() => {
     if (selectedYear == null) return [];
@@ -49,6 +50,17 @@ export function StatsDashboard({
           a.name.localeCompare(b.name, "es")
       );
   }, [wines, selectedRegion]);
+
+  const countryWines = useMemo(() => {
+    if (selectedCountry == null) return [];
+    return wines
+      .filter((w) => (w.country || "") === selectedCountry)
+      .sort(
+        (a, b) =>
+          (b.vivino ?? 0) - (a.vivino ?? 0) ||
+          a.name.localeCompare(b.name, "es")
+      );
+  }, [wines, selectedCountry]);
 
   return (
     <div className="space-y-5">
@@ -108,39 +120,77 @@ export function StatsDashboard({
       <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
         {/* País */}
         <section className="panel p-4 sm:p-5">
-          <Header title="Por país" subtitle="Cantidad y peso en el inventario" />
-          <div className="mt-4 space-y-3">
-            {insights.byCountry.map((c, i) => (
-              <div key={c.name} className="grid grid-cols-[auto_1fr_auto] items-center gap-3">
-                <CountryFlag country={c.name} size="sm" />
-                <div className="min-w-0">
-                  <div className="mb-1 flex items-baseline justify-between gap-2">
-                    <span className="truncate text-sm font-medium text-ink">{c.name}</span>
-                    <span className="shrink-0 text-xs text-ink-soft">
-                      {c.count} · {Math.round(c.share * 100)}%
-                    </span>
+          <Header
+            title="Por país"
+            subtitle="Cantidad y peso en el inventario · toca un país"
+          />
+          <div className="mt-4 space-y-1.5">
+            {insights.byCountry.map((c, i) => {
+              const active = selectedCountry === c.name;
+              return (
+                <button
+                  key={c.name}
+                  type="button"
+                  onClick={() =>
+                    setSelectedCountry((prev) =>
+                      prev === c.name ? null : c.name
+                    )
+                  }
+                  aria-pressed={active}
+                  className={[
+                    "grid w-full grid-cols-[auto_1fr_auto] items-center gap-3 rounded-[10px] px-2 py-2 text-left transition",
+                    active
+                      ? "bg-[rgba(110,31,44,0.1)]"
+                      : "hover:bg-[rgba(26,23,20,0.04)]",
+                  ].join(" ")}
+                >
+                  <CountryFlag country={c.name} size="sm" />
+                  <div className="min-w-0">
+                    <div className="mb-1 flex items-baseline justify-between gap-2">
+                      <span className="truncate text-sm font-medium text-ink">
+                        {c.name}
+                      </span>
+                      <span className="shrink-0 text-xs text-ink-soft">
+                        {c.count} · {Math.round(c.share * 100)}%
+                      </span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-[rgba(26,23,20,0.08)]">
+                      <div
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{
+                          width: `${(c.count / maxCountry) * 100}%`,
+                          background:
+                            i === 0
+                              ? "var(--wine)"
+                              : i === 1
+                                ? "var(--wine-soft)"
+                                : "var(--oak)",
+                        }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-[rgba(26,23,20,0.08)]">
-                    <div
-                      className="h-full rounded-full transition-all duration-700"
-                      style={{
-                        width: `${(c.count / maxCountry) * 100}%`,
-                        background:
-                          i === 0
-                            ? "var(--wine)"
-                            : i === 1
-                              ? "var(--wine-soft)"
-                              : "var(--oak)",
-                      }}
-                    />
-                  </div>
-                </div>
-                <span className="hidden text-right text-xs text-ink-soft sm:block">
-                  {formatPrice(c.value)}
-                </span>
-              </div>
-            ))}
+                  <span className="hidden text-right text-xs text-ink-soft sm:block">
+                    {formatPrice(c.value)}
+                  </span>
+                </button>
+              );
+            })}
           </div>
+          {selectedCountry != null ? (
+            <DrilldownList
+              title={
+                <>
+                  País <strong>{selectedCountry}</strong>
+                </>
+              }
+              wines={countryWines}
+              onClose={() => setSelectedCountry(null)}
+              onSelectWine={onSelectWine}
+              subtitle={(w) =>
+                `${w.winery || w.region}${w.vintage ? ` · ${w.vintage}` : ""}${w.slot ? ` · ${w.slot}` : ""}`
+              }
+            />
+          ) : null}
         </section>
 
         {/* Tipo donut + bands */}

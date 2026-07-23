@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Cormorant_Garamond, Outfit } from "next/font/google";
+import { Cormorant_Garamond, Italianno, Outfit } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-store";
 import { CellarProvider } from "@/lib/cellar-store";
 import { PasswordRecoveryRedirect } from "@/components/PasswordRecoveryRedirect";
@@ -16,6 +16,14 @@ const cormorant = Cormorant_Garamond({
   variable: "--font-cormorant",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
+
+/** Script half of the wordmark — fluid, human “Tale”. */
+const italianno = Italianno({
+  variable: "--font-italianno",
+  subsets: ["latin"],
+  weight: "400",
   display: "swap",
 });
 
@@ -58,7 +66,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${outfit.variable} ${cormorant.variable} h-full`}>
+    <html
+      lang="es"
+      className={`${outfit.variable} ${cormorant.variable} ${italianno.variable} h-full`}
+    >
       <body className="min-h-full antialiased">
         <AuthProvider>
           <CellarProvider>

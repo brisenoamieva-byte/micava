@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { BrandMark } from "@/components/BrandMark";
+import { BrandWordmark } from "@/components/BrandWordmark";
 import { useAuth } from "@/lib/auth-store";
 import { useCellar } from "@/lib/cellar-store";
 import { cellarStats, formatPrice } from "@/lib/wines";
@@ -44,8 +45,8 @@ export default function HomePage() {
           </div>
 
           <div className="relative max-w-xl">
-            <h1 className="display fade-up text-[clamp(3rem,14vw,7rem)] leading-[0.9] text-[#141210]">
-              Cavatale
+            <h1 className="fade-up leading-none text-[#141210]">
+              <BrandWordmark size="hero" />
             </h1>
             <p className="fade-up-delay mt-5 max-w-md text-base leading-relaxed text-[#4f4a43] sm:mt-6 sm:text-lg md:text-xl">
               Tu cava en la nube — con historias que abren conversación al

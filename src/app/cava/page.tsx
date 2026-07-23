@@ -7,7 +7,6 @@ import { CellarUnitsBar } from "@/components/CellarUnitsBar";
 import { DepartTasteModal } from "@/components/DepartTasteModal";
 import { DisplayNameEditor } from "@/components/DisplayNameEditor";
 import { FiltersBar } from "@/components/FiltersBar";
-import { ForToday } from "@/components/ForToday";
 import { InstallAppHint } from "@/components/InstallAppHint";
 import { RecentHistory } from "@/components/RecentHistory";
 import { ResizableDesktopPanels } from "@/components/ResizableDesktopPanels";
@@ -18,7 +17,6 @@ import { WineList } from "@/components/WineList";
 import { useCellar } from "@/lib/cellar-store";
 import { useAuth } from "@/lib/auth-store";
 import { uploadLabelImage } from "@/lib/label-image";
-import { picksForToday } from "@/lib/suggest-today";
 import type { DepartAction, DepartExtras, Filters, MatchConfidence, RatingSource, Wine } from "@/lib/types";
 import {
   cellarStats,
@@ -89,7 +87,6 @@ export default function CavaPage() {
   }, [wines, selectedId]);
 
   const visible = useMemo(() => filterWines(wines, filters), [wines, filters]);
-  const todayPicks = useMemo(() => picksForToday(wines, 3), [wines]);
   const selected =
     visible.find((w) => w.id === selectedId) ??
     wines.find((w) => w.id === selectedId) ??
@@ -330,10 +327,6 @@ export default function CavaPage() {
             onAdd={addCellarUnit}
             onUpdate={updateCellarUnit}
             onDelete={deleteCellarUnit}
-          />
-          <ForToday
-            picks={todayPicks}
-            onSelect={(w) => selectWine(w, true, mobilePanel === "mapa" ? "mapa" : "lista")}
           />
           <FiltersBar
             filters={filters}

@@ -35,6 +35,73 @@
   --font-display: var(--font-cormorant);
 }
 
+/* Dual wordmark: structured cellar + spoken story */
+.brand-wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  color: var(--ink);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.brand-cava {
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  font-style: normal;
+}
+
+.brand-tale {
+  font-family: var(--font-italianno), "Segoe Script", "Apple Chancery", cursive;
+  font-weight: 400;
+  font-style: normal;
+  color: var(--wine);
+  letter-spacing: 0.01em;
+  /* Scripts read small next to display serifs — optical match */
+  font-size: 1.38em;
+  line-height: 0.85;
+  margin-left: 0.02em;
+  transform: translateY(0.06em);
+}
+
+.brand-wordmark--sm {
+  font-size: 1.25rem;
+}
+
+.brand-wordmark--sm .brand-tale {
+  font-size: 1.48em;
+}
+
+.brand-wordmark--md {
+  font-size: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .brand-wordmark--md {
+    font-size: 1.875rem;
+  }
+}
+
+.brand-wordmark--lg {
+  font-size: 1.875rem;
+}
+
+@media (min-width: 768px) {
+  .brand-wordmark--lg {
+    font-size: 2.25rem;
+  }
+}
+
+.brand-wordmark--hero {
+  font-size: clamp(3rem, 14vw, 7rem);
+}
+
+.brand-wordmark--hero .brand-tale {
+  font-size: 1.28em;
+  margin-left: 0.01em;
+  transform: translateY(0.04em);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -276,6 +343,7 @@ select {
   appearance: none;
   width: 20px;
   height: 20px;
+  margin-top: -7px; /* center on 6px track */
   border-radius: 50%;
   background: var(--surface-solid);
   border: 2px solid var(--wine);
@@ -315,7 +383,9 @@ select {
   position: absolute;
   left: 0;
   right: 0;
+  top: 50%;
   height: 6px;
+  margin-top: -3px;
   border-radius: 999px;
   background: linear-gradient(
     to right,
@@ -334,6 +404,7 @@ select {
   appearance: none;
   position: absolute;
   left: 0;
+  top: 0;
   width: 100%;
   height: 20px;
   margin: 0;
@@ -347,6 +418,7 @@ select {
   appearance: none;
   width: 20px;
   height: 20px;
+  margin-top: -7px; /* center on 6px track: (20 - 6) / 2 */
   border-radius: 50%;
   background: var(--surface-solid);
   border: 2px solid var(--wine);
@@ -370,9 +442,9 @@ select {
 .dual-range-input::-moz-range-thumb {
   width: 20px;
   height: 20px;
+  border: 2px solid var(--wine);
   border-radius: 50%;
   background: var(--surface-solid);
-  border: 2px solid var(--wine);
   box-shadow: 0 2px 8px var(--glow);
   cursor: grab;
   pointer-events: auto;

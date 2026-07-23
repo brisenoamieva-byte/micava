@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { BrandWordmark } from "@/components/BrandWordmark";
 
 type Props = {
   href?: string;
@@ -9,9 +10,9 @@ type Props = {
 };
 
 const sizes = {
-  sm: { px: 28, text: "text-xl" },
-  md: { px: 36, text: "text-2xl md:text-3xl" },
-  lg: { px: 44, text: "text-3xl md:text-4xl" },
+  sm: { px: 28 },
+  md: { px: 36 },
+  lg: { px: 44 },
 };
 
 export function BrandMark({
@@ -31,11 +32,7 @@ export function BrandMark({
         className="shrink-0 rounded-[8px]"
         priority
       />
-      {showWordmark ? (
-        <span className={`display tracking-tight text-ink ${s.text}`}>
-          Cavatale
-        </span>
-      ) : null}
+      {showWordmark ? <BrandWordmark size={size} /> : null}
     </span>
   );
 

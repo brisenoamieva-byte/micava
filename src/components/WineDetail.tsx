@@ -50,6 +50,7 @@ type Props = {
     wine: Wine,
     fields: { vivino?: boolean; price?: boolean }
   ) => void;
+  onMove?: (wine: Wine) => void;
 };
 
 export function WineDetail({
@@ -63,6 +64,7 @@ export function WineDetail({
   onVerifyRating,
   onSaveKimiResearch,
   onApplyKimiResearch,
+  onMove,
 }: Props) {
   const [verifyOpen, setVerifyOpen] = useState(false);
   const [ratingInput, setRatingInput] = useState("");
@@ -714,7 +716,7 @@ export function WineDetail({
         </div>
       ) : null}
 
-      {(onOpened || onGifted || onEdit || onRemove) && (
+      {(onOpened || onGifted || onEdit || onRemove || onMove) && (
         <div className="mt-6 min-w-0 space-y-2 border-t border-[var(--line)] pt-4">
           {(onOpened || onGifted) && (
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -738,8 +740,17 @@ export function WineDetail({
               ) : null}
             </div>
           )}
-          {(onEdit || onRemove) && (
+          {(onEdit || onRemove || onMove) && (
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {onMove ? (
+                <button
+                  type="button"
+                  className="btn btn-ghost min-h-[44px] min-w-0 w-full px-3"
+                  onClick={() => onMove(wine)}
+                >
+                  Mover de mueble
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="btn btn-ghost min-h-[44px] min-w-0 w-full px-3"

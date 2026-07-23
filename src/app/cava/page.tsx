@@ -8,6 +8,7 @@ import { DepartTasteModal } from "@/components/DepartTasteModal";
 import { DisplayNameEditor } from "@/components/DisplayNameEditor";
 import { FiltersBar } from "@/components/FiltersBar";
 import { InstallAppHint } from "@/components/InstallAppHint";
+import { MoveWineSheet } from "@/components/MoveWineSheet";
 import { RecentHistory } from "@/components/RecentHistory";
 import { ResizableDesktopPanels } from "@/components/ResizableDesktopPanels";
 import { StatsDashboard } from "@/components/StatsDashboard";
@@ -78,6 +79,8 @@ export default function CavaPage() {
   const [editing, setEditing] = useState<Wine | null>(null);
   const [departWineTarget, setDepartWineTarget] = useState<Wine | null>(null);
   const [departAction, setDepartAction] = useState<DepartAction>("opened");
+  const [movingWineId, setMovingWineId] = useState<string | null>(null);
+  const [moveSheetWine, setMoveSheetWine] = useState<Wine | null>(null);
 
   useEffect(() => {
     if (!selectedId && wines[0]) setSelectedId(wines[0].id);
@@ -126,6 +129,25 @@ export default function CavaPage() {
 
   function handleMoveWine(wineId: string, targetLocation: string) {
     moveWine(wineId, targetLocation, activeCellarId);
+  }
+
+  function handlePlaceMovingWine(slot: string) {
+    if (!movingWineId) return;
+    const destCellar = slot === "abajo" || !slot ? null : activeCellarId;
+    moveWine(movingWineId, slot, destCellar);
+    setMovingWineId(null);
+  }
+
+  function handleMoveSheetConfirm(
+    targetLocation: string,
+    targetCellarId: string | null
+  ) {
+    if (!moveSheetWine) return;
+    moveWine(moveSheetWine.id, targetLocation, targetCellarId);
+    if (targetCellarId) setActiveCellarId(targetCellarId);
+    setSelectedId(moveSheetWine.id);
+    setMoveSheetWine(null);
+    setMovingWineId(null);
   }
 
   function openEdit(wine: Wine) {
@@ -187,6 +209,7 @@ export default function CavaPage() {
       w: Wine,
       fields: { vivino?: boolean; price?: boolean }
     ) => applyKimiResearch(w.id, fields),
+    onMove: (w: Wine) => setMoveSheetWine(w),
   };
 
   return (
@@ -328,6 +351,24 @@ export default function CavaPage() {
             onUpdate={updateCellarUnit}
             onDelete={deleteCellarUnit}
           />
+          {movingWineId ? (
+            <div className="rounded-[10px] border border-[rgba(110,31,44,0.35)] bg-[rgba(250,249,245,0.96)] px-3 py-2.5">
+              <p className="text-sm font-medium text-ink">
+                Moviendo ·{" "}
+                {wines.find((w) => w.id === movingWineId)?.name ?? "botella"}
+              </p>
+              <p className="text-xs text-ink-soft">
+                Elige otro mueble arriba y toca un hueco en el mapa.
+              </p>
+              <button
+                type="button"
+                className="mt-1.5 text-xs font-medium text-[var(--wine)] underline-offset-2 hover:underline"
+                onClick={() => setMovingWineId(null)}
+              >
+                Cancelar
+              </button>
+            </div>
+          ) : null}
           <FiltersBar
             filters={filters}
             onChange={setFilters}
@@ -355,9 +396,17 @@ export default function CavaPage() {
                   cellarId={activeCellar.id}
                   highlightedIds={new Set(visible.map((w) => w.id))}
                   selectedId={selected?.id ?? null}
+                  movingWineId={movingWineId}
                   onSelect={(w) => selectWine(w)}
                   onEmptySlot={(slot) => openAdd(slot)}
                   onMoveWine={handleMoveWine}
+                  onPickForMove={(w) => {
+                    setMovingWineId(w.id);
+                    setSelectedId(w.id);
+                    setMobilePanel("mapa");
+                  }}
+                  onCancelMove={() => setMovingWineId(null)}
+                  onPlaceAt={handlePlaceMovingWine}
                 />
               ) : (
                 <p className="text-sm text-ink-soft">
@@ -405,9 +454,16 @@ export default function CavaPage() {
                   cellarId={activeCellar.id}
                   highlightedIds={new Set(visible.map((w) => w.id))}
                   selectedId={selected?.id ?? null}
+                  movingWineId={movingWineId}
                   onSelect={(w) => selectWine(w, true, "mapa")}
                   onEmptySlot={(slot) => openAdd(slot)}
                   onMoveWine={handleMoveWine}
+                  onPickForMove={(w) => {
+                    setMovingWineId(w.id);
+                    setSelectedId(w.id);
+                  }}
+                  onCancelMove={() => setMovingWineId(null)}
+                  onPlaceAt={handlePlaceMovingWine}
                 />
               ) : (
                 <p className="text-sm text-ink-soft">
@@ -562,6 +618,16 @@ export default function CavaPage() {
           handleDepart(departWineTarget, departAction, extras);
         }}
       />
+
+      {moveSheetWine ? (
+        <MoveWineSheet
+          wine={moveSheetWine}
+          cellars={cellars}
+          wines={wines}
+          onClose={() => setMoveSheetWine(null)}
+          onConfirm={handleMoveSheetConfirm}
+        />
+      ) : null}
     </main>
   );
 }

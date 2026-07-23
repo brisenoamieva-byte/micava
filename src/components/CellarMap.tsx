@@ -23,15 +23,21 @@ type Props = {
   cellarId: string | null;
   highlightedIds: Set<string>;
   selectedId: string | null;
+  /** Wine currently being relocated (pick-and-place; survives mueble switch). */
+  movingWineId?: string | null;
   onSelect: (wine: Wine) => void;
   onEmptySlot?: (slot: string) => void;
+  /** Desktop HTML5 drag within the active mueble. */
   onMoveWine?: (wineId: string, targetLocation: string) => void;
+  onPickForMove?: (wine: Wine) => void;
+  onCancelMove?: () => void;
+  onPlaceAt?: (slot: string) => void;
 };
 
 const DRAG_MIME = "application/x-micava-wine";
 const MOVE_THRESHOLD_PX = 12;
-/** Brief hold before drag starts — avoids fighting map scroll. */
-const LONG_PRESS_MS = 180;
+/** Hold to enter pick-and-place (scroll stays free). */
+const LONG_PRESS_MS = 280;
 
 function cellLabel(wine: Wine): string {
   const name = wine.name.trim();
@@ -78,13 +84,6 @@ function useTouchMoveUi() {
   return touchUi;
 }
 
-function slotFromPoint(x: number, y: number): string | null {
-  const el = document.elementFromPoint(x, y);
-  if (!(el instanceof Element)) return null;
-  const host = el.closest("[data-slot]");
-  return host?.getAttribute("data-slot") ?? null;
-}
-
 export function CellarMap({
   wines,
   cols,
@@ -92,9 +91,13 @@ export function CellarMap({
   cellarId,
   highlightedIds,
   selectedId,
+  movingWineId = null,
   onSelect,
   onEmptySlot,
   onMoveWine,
+  onPickForMove,
+  onCancelMove,
+  onPlaceAt,
 }: Props) {
   const touchUi = useTouchMoveUi();
   const abajo = wines.filter((w) => !w.slot || w.slot === "abajo");
@@ -106,129 +109,115 @@ export function CellarMap({
     x: number;
     y: number;
   } | null>(null);
-  const pointerDrag = useRef<{
+  const pressRef = useRef<{
     wineId: string;
     startX: number;
     startY: number;
-    active: boolean;
     pointerId: number;
-    target: HTMLButtonElement | null;
     timer: ReturnType<typeof setTimeout> | null;
   } | null>(null);
 
-  const draggingWine = dragId
-    ? wines.find((w) => w.id === dragId) ?? null
+  const activeMoveId = movingWineId || dragId;
+  const movingWine = activeMoveId
+    ? wines.find((w) => w.id === activeMoveId) ?? null
     : null;
+  const pickMode = Boolean(movingWineId);
 
-  function clearDrag() {
+  function clearDesktopDrag() {
     setDragId(null);
     setOverTarget(null);
-    if (pointerDrag.current?.timer) clearTimeout(pointerDrag.current.timer);
-    pointerDrag.current = null;
   }
 
-  function handleMove(wineId: string, target: string) {
+  function handleDesktopMove(wineId: string, target: string) {
     if (!onMoveWine) return;
     const wine = wines.find((w) => w.id === wineId);
     const current =
       wine?.slot && wine.slot !== "abajo" ? wine.slot : "abajo";
-    if (current === target) {
-      clearDrag();
+    if (current === target && wine?.cellarId === cellarId) {
+      clearDesktopDrag();
       return;
     }
     onMoveWine(wineId, target);
-    clearDrag();
+    clearDesktopDrag();
   }
 
-  function armPointerDrag(wineId: string) {
-    const state = pointerDrag.current;
-    if (!state || state.wineId !== wineId || state.active) return;
-    state.active = true;
-    didDrag.current = true;
-    setDragId(wineId);
-    if (state.target) {
-      try {
-        state.target.setPointerCapture(state.pointerId);
-      } catch {
-        /* ignore */
-      }
-    }
-  }
-
-  function beginPointerDrag(
-    wine: Wine,
-    e: ReactPointerEvent<HTMLButtonElement>
-  ) {
-    if (!onMoveWine || !touchUi) return;
+  function beginPress(wine: Wine, e: ReactPointerEvent<HTMLButtonElement>) {
+    if (!onPickForMove || !touchUi) return;
     if (e.button !== 0 && e.pointerType === "mouse") return;
+    if (pressRef.current?.timer) clearTimeout(pressRef.current.timer);
 
-    if (pointerDrag.current?.timer) clearTimeout(pointerDrag.current.timer);
-
-    const target = e.currentTarget;
-    pointerDrag.current = {
+    pressRef.current = {
       wineId: wine.id,
       startX: e.clientX,
       startY: e.clientY,
-      active: false,
       pointerId: e.pointerId,
-      target,
-      timer: setTimeout(() => armPointerDrag(wine.id), LONG_PRESS_MS),
+      timer: setTimeout(() => {
+        onPickForMove(wine);
+        didDrag.current = true;
+        pressRef.current = null;
+      }, LONG_PRESS_MS),
     };
-    didDrag.current = false;
   }
 
-  function updatePointerDrag(e: ReactPointerEvent<HTMLButtonElement>) {
-    const state = pointerDrag.current;
+  function updatePress(e: ReactPointerEvent<HTMLButtonElement>) {
+    const state = pressRef.current;
     if (!state || state.pointerId !== e.pointerId) return;
-
     const dx = e.clientX - state.startX;
     const dy = e.clientY - state.startY;
-
-    // Moved before long-press → scroll the map, cancel drag
-    if (!state.active) {
-      if (Math.hypot(dx, dy) >= MOVE_THRESHOLD_PX) {
-        if (state.timer) clearTimeout(state.timer);
-        pointerDrag.current = null;
-      }
-      return;
+    if (Math.hypot(dx, dy) >= MOVE_THRESHOLD_PX) {
+      if (state.timer) clearTimeout(state.timer);
+      pressRef.current = null;
     }
-
-    e.preventDefault();
-    setOverTarget(slotFromPoint(e.clientX, e.clientY));
   }
 
-  function endPointerDrag(e: ReactPointerEvent<HTMLButtonElement>) {
-    const state = pointerDrag.current;
+  function endPress(e: ReactPointerEvent<HTMLButtonElement>) {
+    const state = pressRef.current;
     if (!state || state.pointerId !== e.pointerId) return;
-
     if (state.timer) clearTimeout(state.timer);
+    pressRef.current = null;
+  }
 
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch {
-      /* ignore */
-    }
-
-    if (state.active) {
-      const slot = slotFromPoint(e.clientX, e.clientY);
-      if (slot) handleMove(state.wineId, slot);
-      else clearDrag();
-      didDrag.current = true;
-      window.setTimeout(() => {
-        didDrag.current = false;
-      }, 350);
+  function interactSlot(slot: string, wineThere: Wine | null) {
+    if (pickMode && onPlaceAt) {
+      if (wineThere && wineThere.id === movingWineId) {
+        onCancelMove?.();
+        return;
+      }
+      onPlaceAt(slot);
       return;
     }
-
-    pointerDrag.current = null;
+    if (wineThere) {
+      onSelect(wineThere);
+      return;
+    }
+    onEmptySlot?.(slot);
   }
 
   return (
     <div className={["space-y-4", dragId ? "map-is-dragging" : ""].join(" ")}>
-      {draggingWine ? (
+      {movingWine && pickMode ? (
+        <div className="rounded-[10px] border border-[rgba(110,31,44,0.35)] bg-[rgba(250,249,245,0.96)] px-3 py-2">
+          <p className="text-sm font-medium text-ink">
+            Moviendo · {movingWine.name}
+          </p>
+          <p className="text-xs text-ink-soft">
+            Cambia de mueble arriba y toca un hueco (o otra botella para
+            intercambiar).
+          </p>
+          {onCancelMove ? (
+            <button
+              type="button"
+              className="mt-2 text-xs font-medium text-[var(--wine)] underline-offset-2 hover:underline"
+              onClick={onCancelMove}
+            >
+              Cancelar
+            </button>
+          ) : null}
+        </div>
+      ) : movingWine && dragId ? (
         <div className="sticky top-0 z-10 rounded-[10px] border border-[rgba(110,31,44,0.35)] bg-[rgba(250,249,245,0.96)] px-3 py-2 shadow-sm backdrop-blur-sm">
           <p className="text-sm font-medium text-ink">
-            Soltando · {draggingWine.name}
+            Soltando · {movingWine.name}
           </p>
           <p className="text-xs text-ink-soft">
             Suelta sobre un hueco u otra botella.
@@ -237,8 +226,8 @@ export function CellarMap({
       ) : (
         <p className="text-xs text-ink-soft">
           {touchUi
-            ? "Toca para seleccionar · mantén y arrastra para mover · + para agregar"
-            : "Arrastra para mover · clic para seleccionar · + para agregar"}
+            ? "Toca para ver · mantén para mover (luego cambia de mueble si hace falta) · + para agregar"
+            : "Arrastra para mover en este mueble · clic para ver · + para agregar"}
         </p>
       )}
 
@@ -268,20 +257,20 @@ export function CellarMap({
               wines={wines}
               highlightedIds={highlightedIds}
               selectedId={selectedId}
-              dragId={dragId}
+              activeMoveId={activeMoveId}
               overTarget={overTarget}
               didDrag={didDrag}
               emptyTapRef={emptyTapRef}
               touchUi={touchUi}
-              onSelect={onSelect}
-              onEmptySlot={onEmptySlot}
-              onMoveWine={handleMove}
+              pickMode={pickMode}
+              onInteractSlot={interactSlot}
+              onMoveWine={handleDesktopMove}
               setDragId={setDragId}
               setOverTarget={setOverTarget}
-              clearDrag={clearDrag}
-              beginPointerDrag={beginPointerDrag}
-              updatePointerDrag={updatePointerDrag}
-              endPointerDrag={endPointerDrag}
+              clearDesktopDrag={clearDesktopDrag}
+              beginPress={beginPress}
+              updatePress={updatePress}
+              endPress={endPress}
             />
           ))}
         </div>
@@ -295,29 +284,33 @@ export function CellarMap({
           <p className="text-xs text-ink-soft">{abajo.length} botellas</p>
         </div>
         <p className="mb-2 text-xs text-ink-soft">
-          Zona temporal — no es un mueble. Arrastra una botella aquí o desde
-          aquí a un hueco del mueble.
+          Zona temporal compartida. Desde aquí puedes llevar una botella a
+          cualquier mueble.
         </p>
 
         <div
           data-slot="abajo"
           onDragOver={(e) => {
-            if (!onMoveWine || touchUi) return;
+            if (!onMoveWine || touchUi || pickMode) return;
             e.preventDefault();
             e.dataTransfer.dropEffect = "move";
             setOverTarget("abajo");
           }}
           onDragLeave={() => setOverTarget(null)}
           onDrop={(e) => {
-            if (touchUi) return;
+            if (touchUi || pickMode) return;
             e.preventDefault();
             const id = e.dataTransfer.getData(DRAG_MIME) || dragId;
-            if (id) handleMove(id, "abajo");
-            else clearDrag();
+            if (id) handleDesktopMove(id, "abajo");
+            else clearDesktopDrag();
+          }}
+          onClick={() => {
+            if (pickMode && onPlaceAt) onPlaceAt("abajo");
           }}
           className={[
             "min-h-[56px] rounded-[10px] border border-dashed p-2 transition",
-            overTarget === "abajo"
+            pickMode ? "cursor-pointer" : "",
+            overTarget === "abajo" || (pickMode && movingWineId)
               ? "border-[var(--wine)] bg-[rgba(122,36,48,0.08)]"
               : "border-[var(--line)] bg-[rgba(255,252,247,0.35)]",
           ].join(" ")}
@@ -325,28 +318,30 @@ export function CellarMap({
           <div className="flex flex-wrap gap-2">
             {abajo.length === 0 ? (
               <p className="px-1 py-2 text-sm text-ink-soft">
-                {overTarget === "abajo"
-                  ? "Suelta para mandar abajo / fuera"
-                  : "Sin botellas fuera de la rejilla."}
+                {pickMode
+                  ? "Toca para soltar abajo / fuera"
+                  : overTarget === "abajo"
+                    ? "Suelta para mandar abajo / fuera"
+                    : "Sin botellas fuera de la rejilla."}
               </p>
             ) : (
               abajo.map((wine) => {
                 const active = wine.id === selectedId;
                 const dimmed =
                   highlightedIds.size > 0 && !highlightedIds.has(wine.id);
-                const isMoving = dragId === wine.id;
+                const isMoving = activeMoveId === wine.id;
                 return (
                   <button
                     key={wine.id}
                     type="button"
                     data-slot="abajo"
-                    draggable={!touchUi && Boolean(onMoveWine)}
-                    onPointerDown={(e) => beginPointerDrag(wine, e)}
-                    onPointerMove={updatePointerDrag}
-                    onPointerUp={endPointerDrag}
-                    onPointerCancel={endPointerDrag}
+                    draggable={!touchUi && !pickMode && Boolean(onMoveWine)}
+                    onPointerDown={(e) => beginPress(wine, e)}
+                    onPointerMove={updatePress}
+                    onPointerUp={endPress}
+                    onPointerCancel={endPress}
                     onDragStart={(e) => {
-                      if (touchUi) return;
+                      if (touchUi || pickMode) return;
                       didDrag.current = false;
                       setDragId(wine.id);
                       e.dataTransfer.setData(DRAG_MIME, wine.id);
@@ -355,13 +350,13 @@ export function CellarMap({
                         didDrag.current = true;
                       });
                     }}
-                    onDragEnd={clearDrag}
+                    onDragEnd={clearDesktopDrag}
                     onClick={() => {
                       if (didDrag.current) {
                         didDrag.current = false;
                         return;
                       }
-                      onSelect(wine);
+                      interactSlot("abajo", wine);
                     }}
                     className={[
                       "map-cell inline-flex min-h-[44px] max-w-full cursor-grab items-center gap-2 rounded-[10px] border px-2.5 py-2 text-left text-sm transition active:cursor-grabbing",
@@ -399,20 +394,20 @@ function Row({
   wines,
   highlightedIds,
   selectedId,
-  dragId,
+  activeMoveId,
   overTarget,
   didDrag,
   emptyTapRef,
   touchUi,
-  onSelect,
-  onEmptySlot,
+  pickMode,
+  onInteractSlot,
   onMoveWine,
   setDragId,
   setOverTarget,
-  clearDrag,
-  beginPointerDrag,
-  updatePointerDrag,
-  endPointerDrag,
+  clearDesktopDrag,
+  beginPress,
+  updatePress,
+  endPress,
 }: {
   row: string;
   cols: number;
@@ -420,7 +415,7 @@ function Row({
   wines: Wine[];
   highlightedIds: Set<string>;
   selectedId: string | null;
-  dragId: string | null;
+  activeMoveId: string | null;
   overTarget: string | null;
   didDrag: MutableRefObject<boolean>;
   emptyTapRef: MutableRefObject<{
@@ -429,18 +424,15 @@ function Row({
     y: number;
   } | null>;
   touchUi: boolean;
-  onSelect: (wine: Wine) => void;
-  onEmptySlot?: (slot: string) => void;
+  pickMode: boolean;
+  onInteractSlot: (slot: string, wine: Wine | null) => void;
   onMoveWine: (wineId: string, target: string) => void;
   setDragId: (id: string | null) => void;
   setOverTarget: (slot: string | null) => void;
-  clearDrag: () => void;
-  beginPointerDrag: (
-    wine: Wine,
-    e: ReactPointerEvent<HTMLButtonElement>
-  ) => void;
-  updatePointerDrag: (e: ReactPointerEvent<HTMLButtonElement>) => void;
-  endPointerDrag: (e: ReactPointerEvent<HTMLButtonElement>) => void;
+  clearDesktopDrag: () => void;
+  beginPress: (wine: Wine, e: ReactPointerEvent<HTMLButtonElement>) => void;
+  updatePress: (e: ReactPointerEvent<HTMLButtonElement>) => void;
+  endPress: (e: ReactPointerEvent<HTMLButtonElement>) => void;
 }) {
   return (
     <>
@@ -452,29 +444,30 @@ function Row({
         const slot = `${col}${row}`;
         const wine = getWineBySlot(wines, slot, cellarId);
         const active = wine?.id === selectedId;
-        const isOver = overTarget === slot;
+        const isOver = overTarget === slot || (pickMode && !wine);
         const dimmed =
           wine != null &&
           highlightedIds.size > 0 &&
           !highlightedIds.has(wine.id);
-        const isMoving = wine != null && dragId === wine.id;
+        const isMoving = wine != null && activeMoveId === wine.id;
 
-        const dropHandlers = touchUi
-          ? {}
-          : {
-              onDragOver: (e: DragEvent) => {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = "move";
-                setOverTarget(slot);
-              },
-              onDragLeave: () => setOverTarget(null),
-              onDrop: (e: DragEvent) => {
-                e.preventDefault();
-                const id = e.dataTransfer.getData(DRAG_MIME);
-                if (id) onMoveWine(id, slot);
-                else clearDrag();
-              },
-            };
+        const dropHandlers =
+          touchUi || pickMode
+            ? {}
+            : {
+                onDragOver: (e: DragEvent) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                  setOverTarget(slot);
+                },
+                onDragLeave: () => setOverTarget(null),
+                onDrop: (e: DragEvent) => {
+                  e.preventDefault();
+                  const id = e.dataTransfer.getData(DRAG_MIME);
+                  if (id) onMoveWine(id, slot);
+                  else clearDesktopDrag();
+                },
+              };
 
         if (!wine) {
           return (
@@ -483,10 +476,12 @@ function Row({
               type="button"
               data-slot={slot}
               aria-label={
-                dragId ? `Soltar en ${slot}` : `Agregar vino en ${slot}`
+                pickMode || activeMoveId
+                  ? `Soltar en ${slot}`
+                  : `Agregar vino en ${slot}`
               }
               title={
-                dragId
+                pickMode || activeMoveId
                   ? `Soltar aquí (${slot})`
                   : `${slot} vacío — tocar para agregar`
               }
@@ -499,30 +494,32 @@ function Row({
                 };
               }}
               onPointerUp={(e) => {
-                if (dragId) return;
                 const tap = emptyTapRef.current;
                 emptyTapRef.current = null;
                 if (!tap || tap.slot !== slot) return;
                 if (Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > 12) {
                   return;
                 }
+                if (pickMode) {
+                  onInteractSlot(slot, null);
+                  return;
+                }
                 if (e.pointerType === "touch" || e.pointerType === "pen") {
-                  onEmptySlot?.(slot);
+                  onInteractSlot(slot, null);
                 }
               }}
               onClick={() => {
-                if (dragId) return;
-                if (touchUi) return;
-                onEmptySlot?.(slot);
+                if (touchUi && !pickMode) return;
+                onInteractSlot(slot, null);
               }}
               className={[
                 "map-cell flex min-h-[52px] items-center justify-center rounded-[6px] border border-dashed text-[11px] transition sm:min-h-[58px] sm:rounded-[8px]",
-                isOver
+                isOver || pickMode
                   ? "border-[var(--wine)] bg-[rgba(122,36,48,0.14)] text-[var(--wine)] ring-2 ring-[var(--wine)]"
                   : "border-[rgba(26,23,20,0.18)] bg-[rgba(255,252,247,0.25)] text-ink-soft hover:border-[var(--wine)] hover:bg-[rgba(122,36,48,0.06)]",
               ].join(" ")}
             >
-              {isOver ? "↓" : "+"}
+              {pickMode || isOver ? "↓" : "+"}
             </button>
           );
         }
@@ -547,14 +544,14 @@ function Row({
             type="button"
             data-slot={slot}
             title={tip}
-            draggable={!touchUi}
+            draggable={!touchUi && !pickMode}
             {...dropHandlers}
-            onPointerDown={(e) => beginPointerDrag(wine, e)}
-            onPointerMove={updatePointerDrag}
-            onPointerUp={endPointerDrag}
-            onPointerCancel={endPointerDrag}
+            onPointerDown={(e) => beginPress(wine, e)}
+            onPointerMove={updatePress}
+            onPointerUp={endPress}
+            onPointerCancel={endPress}
             onDragStart={(e) => {
-              if (touchUi) return;
+              if (touchUi || pickMode) return;
               didDrag.current = false;
               setDragId(wine.id);
               e.dataTransfer.setData(DRAG_MIME, wine.id);
@@ -563,13 +560,13 @@ function Row({
                 didDrag.current = true;
               });
             }}
-            onDragEnd={clearDrag}
+            onDragEnd={clearDesktopDrag}
             onClick={() => {
               if (didDrag.current) {
                 didDrag.current = false;
                 return;
               }
-              onSelect(wine);
+              onInteractSlot(slot, wine);
             }}
             className={[
               "map-cell flex min-h-[52px] cursor-grab flex-col items-stretch justify-center gap-0.5 rounded-[6px] border px-0.5 py-1 text-left transition active:cursor-grabbing sm:min-h-[58px] sm:rounded-[8px] sm:px-1",
@@ -579,6 +576,7 @@ function Row({
               isOver ? "ring-2 ring-[rgba(110,31,44,0.35)]" : "",
               dimmed ? "opacity-30" : "hover:border-[var(--wine)]",
               isMoving ? "ring-2 ring-[var(--wine)] opacity-95" : "",
+              pickMode && !isMoving ? "opacity-80" : "",
             ].join(" ")}
             style={{
               borderLeftColor: typeAccent(wine.type),

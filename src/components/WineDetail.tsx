@@ -365,77 +365,30 @@ export function WineDetail({
         ) : null}
       </div>
 
-      {labelSrc ? (
-        <div className="mt-5 overflow-hidden rounded-[12px]">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={labelSrc}
-            alt={`Etiqueta de ${wine.name}`}
-            className="max-h-72 w-full object-contain bg-[rgba(20,18,16,0.04)]"
-          />
-        </div>
-      ) : null}
-
-      <dl className="mt-5 space-y-3 border-t border-[var(--line)] pt-4 sm:mt-6 sm:pt-5">
-        {facts.map((f) => (
-          <div
-            key={f.label}
-            className="grid grid-cols-[88px_1fr] gap-2 text-sm sm:grid-cols-[110px_1fr] sm:gap-3"
-          >
-            <dt className="text-ink-soft">{f.label}</dt>
-            <dd className="break-words text-ink">{f.value}</dd>
-          </div>
-        ))}
-      </dl>
-
-      <div className="mt-5 border-t border-[var(--line)] pt-4">
-        <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-          Maridaje sugerido
-        </p>
-        <p className="mt-1 text-xs text-ink-soft">
-          {pairing.source === "ia"
-            ? `IA · ${pairing.note}`
-            : pairing.note}
-        </p>
-        {pairing.source === "reglas" && onSaveKimiResearch ? (
-          <p className="mt-1 text-xs text-ink-soft">
-            Genérico por uva/estilo. Al contar la historia, la IA lo afina
-            para esta botella.
-          </p>
-        ) : null}
-        <ul className="mt-3 flex flex-wrap gap-1.5">
-          {pairing.dishes.map((dish) => (
-            <li
-              key={dish}
-              className="rounded-[8px] border border-[var(--line)] bg-[rgba(255,252,247,0.7)] px-2.5 py-1.5 text-xs text-ink"
-            >
-              {dish}
-            </li>
-          ))}
-        </ul>
-      </div>
-
       {onSaveKimiResearch ? (
-        <div className="mt-5 border-t border-[var(--line)] pt-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+        <div className="discovery-stage mt-5 sm:mt-6">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--wine)]">
                 Descubrimiento
               </p>
-              <p className="mt-0.5 text-xs text-ink-soft">
-                {hasKimi
-                  ? `Última consulta: ${formatCheckedAt(wine.kimiCheckedAt)}${
-                      wine.kimiConfidence
-                        ? ` · ${confidenceLabel[wine.kimiConfidence]}`
-                        : ""
-                    }`
-                  : "Historia, dato curioso y algo para conversar"}
-              </p>
+              {hasDiscoveryStory ? (
+                <p className="mt-1 text-xs text-ink-soft">
+                  Última consulta: {formatCheckedAt(wine.kimiCheckedAt)}
+                  {wine.kimiConfidence
+                    ? ` · ${confidenceLabel[wine.kimiConfidence]}`
+                    : ""}
+                </p>
+              ) : (
+                <h3 className="display mt-1.5 text-[1.65rem] leading-tight text-ink sm:text-2xl">
+                  ¿Qué cuenta esta botella?
+                </h3>
+              )}
             </div>
             {hasKimi ? (
               <button
                 type="button"
-                className="btn btn-ghost min-h-[40px] px-3 text-sm disabled:opacity-60"
+                className="btn btn-ghost min-h-[40px] shrink-0 px-3 text-sm disabled:opacity-60"
                 disabled={kimiLoading}
                 onClick={() => void handleKimiResearch()}
               >
@@ -450,31 +403,31 @@ export function WineDetail({
 
           {!hasKimi ? (
             <div className="mt-3">
-              <p className="text-sm leading-relaxed text-ink-soft">
-                Descubre por qué esta botella importa — y un gancho para
-                abrir conversación en la mesa.
+              <p className="max-w-md text-sm leading-relaxed text-ink-soft">
+                Historia, dato curioso y un gancho para la mesa — lo que hace
+                distinta a Cavatale.
               </p>
               <button
                 type="button"
-                className="btn btn-primary mt-3 min-h-[44px] w-full text-sm disabled:opacity-60"
+                className="btn btn-primary mt-4 min-h-[48px] w-full text-base disabled:opacity-60"
                 disabled={kimiLoading}
                 onClick={() => void handleKimiResearch()}
               >
                 {kimiLoading
-                  ? "Contando…"
+                  ? "Contando la historia…"
                   : "Contar la historia de este vino"}
               </button>
             </div>
           ) : null}
 
           {hasDiscoveryStory ? (
-            <div className="mt-3 space-y-4">
+            <div className="mt-4 space-y-4">
               {wine.kimiSummary ? (
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
                     Historia
                   </p>
-                  <p className="mt-1.5 text-sm leading-relaxed text-ink">
+                  <p className="mt-1.5 text-[15px] leading-relaxed text-ink sm:text-base">
                     {wine.kimiSummary}
                   </p>
                 </div>
@@ -490,7 +443,7 @@ export function WineDetail({
                 </div>
               ) : null}
               {wine.kimiTalkHook ? (
-                <div>
+                <div className="rounded-[10px] border border-[rgba(110,31,44,0.2)] bg-[rgba(255,252,247,0.65)] px-3 py-3">
                   <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
                     Para conversar
                   </p>
@@ -504,7 +457,7 @@ export function WineDetail({
 
           {hasKimi &&
           (wine.kimiVivino != null || wine.kimiPrice != null) ? (
-            <div className="mt-4 space-y-3 rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.55)] p-3">
+            <div className="mt-4 space-y-3 border-t border-[rgba(110,31,44,0.14)] pt-4">
               <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
                 Estimaciones
               </p>
@@ -563,7 +516,7 @@ export function WineDetail({
               (wine.kimiVivino != null || wine.kimiPrice != null) ? (
                 <button
                   type="button"
-                  className="btn btn-primary min-h-[44px] w-full text-sm"
+                  className="btn btn-ghost min-h-[44px] w-full text-sm"
                   onClick={() =>
                     applyKimiToFicha({
                       vivino: wine.kimiVivino != null,
@@ -583,6 +536,56 @@ export function WineDetail({
           ) : null}
         </div>
       ) : null}
+
+      {labelSrc ? (
+        <div className="mt-5 overflow-hidden rounded-[12px]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={labelSrc}
+            alt={`Etiqueta de ${wine.name}`}
+            className="max-h-72 w-full object-contain bg-[rgba(20,18,16,0.04)]"
+          />
+        </div>
+      ) : null}
+
+      <dl className="mt-5 space-y-3 border-t border-[var(--line)] pt-4 sm:mt-6 sm:pt-5">
+        {facts.map((f) => (
+          <div
+            key={f.label}
+            className="grid grid-cols-[88px_1fr] gap-2 text-sm sm:grid-cols-[110px_1fr] sm:gap-3"
+          >
+            <dt className="text-ink-soft">{f.label}</dt>
+            <dd className="break-words text-ink">{f.value}</dd>
+          </div>
+        ))}
+      </dl>
+
+      <div className="mt-5 border-t border-[var(--line)] pt-4">
+        <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+          Maridaje sugerido
+        </p>
+        <p className="mt-1 text-xs text-ink-soft">
+          {pairing.source === "ia"
+            ? `IA · ${pairing.note}`
+            : pairing.note}
+        </p>
+        {pairing.source === "reglas" && onSaveKimiResearch && !hasKimi ? (
+          <p className="mt-1 text-xs text-ink-soft">
+            Genérico por uva/estilo. Al contar la historia, la IA lo afina
+            para esta botella.
+          </p>
+        ) : null}
+        <ul className="mt-3 flex flex-wrap gap-1.5">
+          {pairing.dishes.map((dish) => (
+            <li
+              key={dish}
+              className="rounded-[8px] border border-[var(--line)] bg-[rgba(255,252,247,0.7)] px-2.5 py-1.5 text-xs text-ink"
+            >
+              {dish}
+            </li>
+          ))}
+        </ul>
+      </div>
 
       {onVerifyRating ? (
         <div className="mt-5 border-t border-[var(--line)] pt-4">

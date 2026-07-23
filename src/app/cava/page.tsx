@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { BrandMark } from "@/components/BrandMark";
 import { CellarMap } from "@/components/CellarMap";
 import { CellarUnitsBar } from "@/components/CellarUnitsBar";
 import { DepartTasteModal } from "@/components/DepartTasteModal";
@@ -197,12 +197,7 @@ export default function CavaPage() {
       <div className="relative z-10 mx-auto max-w-[1400px] px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))] md:px-8 xl:pb-10">
         <header className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
           <div className="min-w-0">
-            <Link
-              href="/"
-              className="display text-[1.85rem] leading-none tracking-tight text-ink sm:text-3xl md:text-4xl"
-            >
-              Mi Cava
-            </Link>
+            <BrandMark size="lg" />
             <DisplayNameEditor />
             <div className="mt-3 inline-flex rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.55)] p-1">
               <button

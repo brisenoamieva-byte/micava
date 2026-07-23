@@ -58,7 +58,7 @@ export function RecoverPasswordForm() {
           spam.
         </p>
         <p className="text-sm text-ink-soft">
-          El enlace te trae de vuelta a Mi Cava para definirla.
+          El enlace te trae de vuelta a Cavatale para definirla.
         </p>
         <Link
           href="/login"

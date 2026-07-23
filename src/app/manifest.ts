@@ -2,10 +2,10 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Mi Cava",
-    short_name: "Mi Cava",
+    name: "Cavatale",
+    short_name: "Cavatale",
     description:
-      "Tu inventario y mapa de vinos — en la nube, solo tuyos.",
+      "Tu cava de vinos con historias que abren conversación.",
     start_url: "/cava",
     scope: "/",
     display: "standalone",

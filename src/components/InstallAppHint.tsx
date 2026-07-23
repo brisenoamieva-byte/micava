@@ -75,7 +75,7 @@ export function InstallAppHint() {
     <div className="mt-4 rounded-[12px] border border-[rgba(110,31,44,0.22)] bg-[rgba(110,31,44,0.06)] p-3 sm:p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-ink">Llevar Mi Cava al inicio</p>
+          <p className="text-sm font-medium text-ink">Llevar Cavatale al inicio</p>
           {deferred ? (
             <p className="mt-0.5 text-xs text-ink-soft sm:text-sm">
               Instálala como app: acceso directo, pantalla completa.

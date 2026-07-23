@@ -126,7 +126,7 @@ export function wineIdentityForResearch(wine: Pick<
     `Uva: ${wine.grape || "—"}`,
     `Añejamiento: ${wine.aging || "—"}`,
     `Año: ${wine.vintage ?? "—"}`,
-    `Vivino guardado en Mi Cava: ${wine.vivino ?? "sin dato"}`,
-    `Precio guardado en Mi Cava (MXN): ${wine.price ?? "sin dato"}`,
+    `Vivino guardado en Cavatale: ${wine.vivino ?? "sin dato"}`,
+    `Precio guardado en Cavatale (MXN): ${wine.price ?? "sin dato"}`,
   ].join("\n");
 }

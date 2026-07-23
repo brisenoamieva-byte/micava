@@ -20,13 +20,13 @@ const cormorant = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: "Mi Cava — Tu cava, en orden",
+  title: "Cavatale — Tu cava, con historias",
   description:
-    "Administra tu cava de vinos con claridad: inventario, mapa, filtros y recomendaciones para tomar o regalar.",
-  applicationName: "Mi Cava",
+    "Tu cava de vinos en la nube: inventario, mapa e historias que abren conversación al descorchar.",
+  applicationName: "Cavatale",
   appleWebApp: {
     capable: true,
-    title: "Mi Cava",
+    title: "Cavatale",
     statusBarStyle: "default",
   },
   formatDetection: {
@@ -34,6 +34,9 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
+      { url: "/favicon.ico", sizes: "32x32", type: "image/x-icon" },
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-16.png", sizes: "16x16", type: "image/png" },
       { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
     ],

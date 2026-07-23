@@ -12,7 +12,7 @@ const KIMI_BASE = "https://api.moonshot.ai/v1";
 const MODEL = process.env.KIMI_MODEL?.trim() || "kimi-k2.6";
 const MAX_BYTES = 6 * 1024 * 1024; // ~6MB decoded image budget via data URL length
 
-const SYSTEM = `Eres un experto en vinos. Analizas fotos de etiquetas (frente y/o contraetiqueta) para rellenar la ficha completa de Mi Cava.
+const SYSTEM = `Eres un experto en vinos. Analizas fotos de etiquetas (frente y/o contraetiqueta) para rellenar la ficha completa de Cavatale.
 
 Responde SOLO con un objeto JSON válido (sin markdown) con EXACTAMENTE estas claves:
 name, winery, country, region, type, grape, aging, vintage, vivino, price, confidence, notes.

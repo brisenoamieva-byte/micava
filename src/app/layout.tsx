@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Cormorant_Garamond, Instrument_Serif, Outfit } from "next/font/google";
+import { Cormorant_Garamond, Outfit } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-store";
 import { CellarProvider } from "@/lib/cellar-store";
 import { PasswordRecoveryRedirect } from "@/components/PasswordRecoveryRedirect";
@@ -16,15 +16,7 @@ const cormorant = Cormorant_Garamond({
   variable: "--font-cormorant",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
-  display: "swap",
-});
-
-/** Editorial italic for “Tale” — organic without wedding-script weight. */
-const instrumentSerif = Instrument_Serif({
-  variable: "--font-tale",
-  subsets: ["latin"],
-  weight: "400",
-  style: ["italic"],
+  style: ["normal", "italic"],
   display: "swap",
 });
 
@@ -69,7 +61,7 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${outfit.variable} ${cormorant.variable} ${instrumentSerif.variable} h-full`}
+      className={`${outfit.variable} ${cormorant.variable} h-full`}
     >
       <body className="min-h-full antialiased">
         <AuthProvider>

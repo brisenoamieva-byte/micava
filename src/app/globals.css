@@ -475,6 +475,10 @@ select {
   user-select: none;
 }
 
+.map-cell--draggable[draggable="true"] {
+  -webkit-user-drag: element;
+}
+
 .map-is-dragging .map-scroll {
   touch-action: none;
   overflow: hidden;

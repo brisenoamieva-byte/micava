@@ -62,17 +62,13 @@ function useTouchMoveUi() {
     if (typeof window === "undefined") return true;
     return (
       window.matchMedia("(pointer: coarse)").matches ||
-      window.matchMedia("(hover: none)").matches ||
-      navigator.maxTouchPoints > 0
+      window.matchMedia("(hover: none)").matches
     );
   });
   useEffect(() => {
     const coarse = window.matchMedia("(pointer: coarse)");
     const noHover = window.matchMedia("(hover: none)");
-    const sync = () =>
-      setTouchUi(
-        coarse.matches || noHover.matches || navigator.maxTouchPoints > 0
-      );
+    const sync = () => setTouchUi(coarse.matches || noHover.matches);
     sync();
     coarse.addEventListener("change", sync);
     noHover.addEventListener("change", sync);
@@ -141,9 +137,11 @@ export function CellarMap({
     clearDesktopDrag();
   }
 
-  function beginPress(wine: Wine, e: ReactPointerEvent<HTMLButtonElement>) {
-    if (!onPickForMove || !touchUi) return;
-    if (e.button !== 0 && e.pointerType === "mouse") return;
+  function beginPress(wine: Wine, e: ReactPointerEvent<HTMLElement>) {
+    if (!onPickForMove) return;
+    if (e.button !== 0) return;
+    // Don't arm pick while starting an HTML5 drag on fine pointers
+    if (!touchUi && e.pointerType === "mouse") return;
     if (pressRef.current?.timer) clearTimeout(pressRef.current.timer);
 
     pressRef.current = {
@@ -159,7 +157,7 @@ export function CellarMap({
     };
   }
 
-  function updatePress(e: ReactPointerEvent<HTMLButtonElement>) {
+  function updatePress(e: ReactPointerEvent<HTMLElement>) {
     const state = pressRef.current;
     if (!state || state.pointerId !== e.pointerId) return;
     const dx = e.clientX - state.startX;
@@ -170,7 +168,7 @@ export function CellarMap({
     }
   }
 
-  function endPress(e: ReactPointerEvent<HTMLButtonElement>) {
+  function endPress(e: ReactPointerEvent<HTMLElement>) {
     const state = pressRef.current;
     if (!state || state.pointerId !== e.pointerId) return;
     if (state.timer) clearTimeout(state.timer);
@@ -193,6 +191,16 @@ export function CellarMap({
     onEmptySlot?.(slot);
   }
 
+  const selectedWine = selectedId
+    ? wines.find((w) => w.id === selectedId) ?? null
+    : null;
+  const canSendAbajo =
+    Boolean(onMoveWine) &&
+    selectedWine &&
+    !pickMode &&
+    selectedWine.slot &&
+    selectedWine.slot !== "abajo";
+
   return (
     <div className={["space-y-4", dragId ? "map-is-dragging" : ""].join(" ")}>
       {movingWine && pickMode ? (
@@ -201,8 +209,7 @@ export function CellarMap({
             Moviendo · {movingWine.name}
           </p>
           <p className="text-xs text-ink-soft">
-            Cambia de mueble arriba y toca un hueco (o otra botella para
-            intercambiar).
+            Cambia de mueble arriba y toca un hueco (o Abajo / fuera).
           </p>
           {onCancelMove ? (
             <button
@@ -220,15 +227,35 @@ export function CellarMap({
             Soltando · {movingWine.name}
           </p>
           <p className="text-xs text-ink-soft">
-            Suelta sobre un hueco u otra botella.
+            Suelta sobre un hueco, otra botella o Abajo / fuera.
           </p>
         </div>
       ) : (
-        <p className="text-xs text-ink-soft">
-          {touchUi
-            ? "Toca para ver · mantén para mover (luego cambia de mueble si hace falta) · + para agregar"
-            : "Arrastra para mover en este mueble · clic para ver · + para agregar"}
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-ink-soft">
+            {touchUi
+              ? "Toca para ver · mantén para mover · + para agregar"
+              : "Arrastra al hueco o a Abajo · clic para ver · + para agregar"}
+          </p>
+          {canSendAbajo && selectedWine ? (
+            <button
+              type="button"
+              className="btn btn-ghost min-h-[36px] px-3 text-xs"
+              onClick={() => onMoveWine?.(selectedWine.id, "abajo")}
+            >
+              Enviar abajo / fuera
+            </button>
+          ) : null}
+          {!pickMode && selectedWine && onPickForMove ? (
+            <button
+              type="button"
+              className="btn btn-ghost min-h-[36px] px-3 text-xs"
+              onClick={() => onPickForMove(selectedWine)}
+            >
+              Mover…
+            </button>
+          ) : null}
+        </div>
       )}
 
       <div className="map-scroll pb-1">
@@ -331,9 +358,10 @@ export function CellarMap({
                   highlightedIds.size > 0 && !highlightedIds.has(wine.id);
                 const isMoving = activeMoveId === wine.id;
                 return (
-                  <button
+                  <div
                     key={wine.id}
-                    type="button"
+                    role="button"
+                    tabIndex={0}
                     data-slot="abajo"
                     draggable={!touchUi && !pickMode && Boolean(onMoveWine)}
                     onPointerDown={(e) => beginPress(wine, e)}
@@ -341,7 +369,10 @@ export function CellarMap({
                     onPointerUp={endPress}
                     onPointerCancel={endPress}
                     onDragStart={(e) => {
-                      if (touchUi || pickMode) return;
+                      if (touchUi || pickMode) {
+                        e.preventDefault();
+                        return;
+                      }
                       didDrag.current = false;
                       setDragId(wine.id);
                       e.dataTransfer.setData(DRAG_MIME, wine.id);
@@ -351,6 +382,12 @@ export function CellarMap({
                       });
                     }}
                     onDragEnd={clearDesktopDrag}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        interactSlot("abajo", wine);
+                      }
+                    }}
                     onClick={() => {
                       if (didDrag.current) {
                         didDrag.current = false;
@@ -359,7 +396,7 @@ export function CellarMap({
                       interactSlot("abajo", wine);
                     }}
                     className={[
-                      "map-cell inline-flex min-h-[44px] max-w-full cursor-grab items-center gap-2 rounded-[10px] border px-2.5 py-2 text-left text-sm transition active:cursor-grabbing",
+                      "map-cell map-cell--draggable inline-flex min-h-[44px] max-w-full cursor-grab items-center gap-2 rounded-[10px] border px-2.5 py-2 text-left text-sm transition active:cursor-grabbing",
                       active || isMoving
                         ? "border-[var(--wine)] bg-[rgba(122,36,48,0.08)] text-ink slot-active"
                         : "border-[var(--line)] bg-[rgba(255,252,247,0.55)] text-ink hover:border-[rgba(122,36,48,0.35)]",
@@ -376,7 +413,7 @@ export function CellarMap({
                         {wine.country}
                       </span>
                     </span>
-                  </button>
+                  </div>
                 );
               })
             )}
@@ -430,9 +467,9 @@ function Row({
   setDragId: (id: string | null) => void;
   setOverTarget: (slot: string | null) => void;
   clearDesktopDrag: () => void;
-  beginPress: (wine: Wine, e: ReactPointerEvent<HTMLButtonElement>) => void;
-  updatePress: (e: ReactPointerEvent<HTMLButtonElement>) => void;
-  endPress: (e: ReactPointerEvent<HTMLButtonElement>) => void;
+  beginPress: (wine: Wine, e: ReactPointerEvent<HTMLElement>) => void;
+  updatePress: (e: ReactPointerEvent<HTMLElement>) => void;
+  endPress: (e: ReactPointerEvent<HTMLElement>) => void;
 }) {
   return (
     <>
@@ -539,9 +576,10 @@ function Row({
           .join(" · ");
 
         return (
-          <button
+          <div
             key={slot}
-            type="button"
+            role="button"
+            tabIndex={0}
             data-slot={slot}
             title={tip}
             draggable={!touchUi && !pickMode}
@@ -551,7 +589,10 @@ function Row({
             onPointerUp={endPress}
             onPointerCancel={endPress}
             onDragStart={(e) => {
-              if (touchUi || pickMode) return;
+              if (touchUi || pickMode) {
+                e.preventDefault();
+                return;
+              }
               didDrag.current = false;
               setDragId(wine.id);
               e.dataTransfer.setData(DRAG_MIME, wine.id);
@@ -561,6 +602,12 @@ function Row({
               });
             }}
             onDragEnd={clearDesktopDrag}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onInteractSlot(slot, wine);
+              }
+            }}
             onClick={() => {
               if (didDrag.current) {
                 didDrag.current = false;
@@ -569,7 +616,7 @@ function Row({
               onInteractSlot(slot, wine);
             }}
             className={[
-              "map-cell flex min-h-[52px] cursor-grab flex-col items-stretch justify-center gap-0.5 rounded-[6px] border px-0.5 py-1 text-left transition active:cursor-grabbing sm:min-h-[58px] sm:rounded-[8px] sm:px-1",
+              "map-cell map-cell--draggable flex min-h-[52px] cursor-grab flex-col items-stretch justify-center gap-0.5 rounded-[6px] border px-0.5 py-1 text-left transition active:cursor-grabbing sm:min-h-[58px] sm:rounded-[8px] sm:px-1",
               active || isMoving
                 ? "border-[var(--wine)] bg-[rgba(122,36,48,0.12)] slot-active"
                 : "border-[rgba(122,36,48,0.18)] bg-[linear-gradient(160deg,rgba(122,36,48,0.14),rgba(255,252,247,0.55))]",
@@ -594,7 +641,7 @@ function Row({
                 {meta}
               </span>
             ) : null}
-          </button>
+          </div>
         );
       })}
     </>

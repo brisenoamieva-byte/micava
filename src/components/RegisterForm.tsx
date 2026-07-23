@@ -3,6 +3,7 @@
 import { type FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { PasswordInput } from "@/components/PasswordInput";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 export function RegisterForm() {
@@ -91,20 +92,14 @@ export function RegisterForm() {
             className="w-full min-h-[44px] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.9)] px-3 py-2 outline-none focus:border-[rgba(122,36,48,0.45)]"
           />
         </label>
-        <label className="block">
-          <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-            Contraseña
-          </span>
-          <input
-            type="password"
-            required
-            autoComplete="new-password"
-            minLength={6}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full min-h-[44px] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.9)] px-3 py-2 outline-none focus:border-[rgba(122,36,48,0.45)]"
-          />
-        </label>
+        <PasswordInput
+          label="Contraseña"
+          required
+          autoComplete="new-password"
+          minLength={6}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
 
         <label className="flex items-start gap-2 text-sm text-ink">
           <input

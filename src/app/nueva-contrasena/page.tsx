@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { NewPasswordForm } from "@/components/NewPasswordForm";
 
@@ -14,7 +15,11 @@ export default function NuevaContrasenaPage() {
             Elige una contraseña nueva para tu cava.
           </p>
           <div className="mt-8">
-            <NewPasswordForm />
+            <Suspense
+              fallback={<p className="text-sm text-ink-soft">Cargando…</p>}
+            >
+              <NewPasswordForm />
+            </Suspense>
           </div>
         </div>
       </div>

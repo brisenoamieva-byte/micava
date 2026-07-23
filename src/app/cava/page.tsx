@@ -17,6 +17,7 @@ import { WineFormModal } from "@/components/WineFormModal";
 import { WineList } from "@/components/WineList";
 import { useCellar } from "@/lib/cellar-store";
 import { useAuth } from "@/lib/auth-store";
+import { uploadLabelImage } from "@/lib/label-image";
 import { picksForToday } from "@/lib/suggest-today";
 import type { DepartAction, DepartExtras, Filters, MatchConfidence, RatingSource, Wine } from "@/lib/types";
 import {
@@ -58,6 +59,7 @@ export default function CavaPage() {
     updateWine,
     verifyWineRating,
     saveKimiResearch,
+    setLabelImageUrl,
     applyKimiResearch,
     moveWine,
     departWine,
@@ -180,7 +182,7 @@ export default function CavaPage() {
     onEdit: openEdit,
     onRemove: (w: Wine) => handleDepart(w, "removed"),
     onOpened: (w: Wine) => openDepart(w, "opened"),
-    onGifted: (w: Wine) => handleDepart(w, "gifted"),
+    onGifted: (w: Wine) => openDepart(w, "gifted"),
     onVerifyRating: handleVerifyRating,
     onSaveKimiResearch: (w: Wine, research: Parameters<typeof saveKimiResearch>[1]) =>
       saveKimiResearch(w.id, research),
@@ -534,16 +536,30 @@ export default function CavaPage() {
           setEditing(null);
           setFormSlot("");
         }}
-        onSubmit={(draft) => {
-          if (editing) {
-            updateWine(editing.id, draft);
-            setSelectedId(editing.id);
-          } else {
-            const created = addWine(draft);
-            setSelectedId(created.id);
-            // Adding into a map cell: stay on the map; otherwise open detail.
-            if (!formSlot) setMobilePanel("detalle");
-          }
+        onSubmit={(draft, extras) => {
+          void (async () => {
+            let wineId: string;
+            if (editing) {
+              updateWine(editing.id, draft);
+              wineId = editing.id;
+              setSelectedId(editing.id);
+            } else {
+              const created = addWine(draft);
+              wineId = created.id;
+              setSelectedId(created.id);
+              if (!formSlot) setMobilePanel("detalle");
+            }
+
+            const dataUrl = extras?.labelImageDataUrl;
+            if (dataUrl && user?.id) {
+              try {
+                const path = await uploadLabelImage(user.id, wineId, dataUrl);
+                setLabelImageUrl(wineId, path);
+              } catch {
+                // Wine is saved; label upload can fail if storage isn't migrated yet.
+              }
+            }
+          })();
         }}
       />
 
@@ -552,6 +568,7 @@ export default function CavaPage() {
         wine={departWineTarget}
         action={departAction}
         onClose={() => setDepartWineTarget(null)}
+        onSaveDiscovery={(w, research) => saveKimiResearch(w.id, research)}
         onConfirm={(extras) => {
           if (!departWineTarget) return;
           handleDepart(departWineTarget, departAction, extras);

@@ -5,6 +5,7 @@ import type { MatchConfidence, RatingSource, Wine } from "@/lib/types";
 import { CountryFlag } from "@/components/CountryFlag";
 import { parseGrapes } from "@/lib/grapes";
 import type { KimiResearch } from "@/lib/kimi-research";
+import { resolveLabelImageUrl } from "@/lib/label-image";
 import { pairingsForWine } from "@/lib/pairings";
 import {
   confidenceLabel,
@@ -73,6 +74,7 @@ export function WineDetail({
   const [kimiError, setKimiError] = useState("");
   const [vivinoHint, setVivinoHint] = useState<string | null>(null);
   const [applyHint, setApplyHint] = useState<string | null>(null);
+  const [labelSrc, setLabelSrc] = useState<string | null>(null);
 
   useEffect(() => {
     setVerifyOpen(false);
@@ -87,7 +89,23 @@ export function WineDetail({
     setKimiError("");
     setVivinoHint(null);
     setApplyHint(null);
+    setLabelSrc(null);
   }, [wine?.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const path = wine?.labelImageUrl;
+    if (!path) {
+      setLabelSrc(null);
+      return;
+    }
+    void resolveLabelImageUrl(path).then((url) => {
+      if (!cancelled) setLabelSrc(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [wine?.labelImageUrl]);
 
   if (!wine) {
     return (
@@ -267,7 +285,13 @@ export function WineDetail({
     wine.kimiCheckedAt != null ||
     wine.kimiVivino != null ||
     wine.kimiPrice != null ||
-    Boolean(wine.kimiSummary);
+    Boolean(wine.kimiSummary) ||
+    Boolean(wine.kimiCuriosity) ||
+    Boolean(wine.kimiTalkHook);
+  const hasDiscoveryStory =
+    Boolean(wine.kimiSummary) ||
+    Boolean(wine.kimiCuriosity) ||
+    Boolean(wine.kimiTalkHook);
 
   return (
     <div className="min-w-0 overflow-hidden">
@@ -323,6 +347,17 @@ export function WineDetail({
         ) : null}
       </div>
 
+      {labelSrc ? (
+        <div className="mt-5 overflow-hidden rounded-[12px]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={labelSrc}
+            alt={`Etiqueta de ${wine.name}`}
+            className="max-h-72 w-full object-contain bg-[rgba(20,18,16,0.04)]"
+          />
+        </div>
+      ) : null}
+
       <dl className="mt-5 space-y-3 border-t border-[var(--line)] pt-4 sm:mt-6 sm:pt-5">
         {facts.map((f) => (
           <div
@@ -357,13 +392,16 @@ export function WineDetail({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                Investigación IA
+                Descubrimiento
               </p>
               <p className="mt-0.5 text-xs text-ink-soft">
-                Última consulta: {formatCheckedAt(wine.kimiCheckedAt)}
-                {wine.kimiConfidence
-                  ? ` · ${confidenceLabel[wine.kimiConfidence]}`
-                  : ""}
+                {hasKimi
+                  ? `Última consulta: ${formatCheckedAt(wine.kimiCheckedAt)}${
+                      wine.kimiConfidence
+                        ? ` · ${confidenceLabel[wine.kimiConfidence]}`
+                        : ""
+                    }`
+                  : "Historia, dato curioso y algo para conversar"}
               </p>
             </div>
             <button
@@ -373,24 +411,75 @@ export function WineDetail({
               onClick={() => void handleKimiResearch()}
             >
               {kimiLoading
-                ? "Consultando…"
+                ? "Contando…"
                 : hasKimi
                   ? "Actualizar"
-                  : "Consultar"}
+                  : "Contar historia"}
             </button>
           </div>
-
-          <p className="mt-2 text-xs leading-relaxed text-ink-soft">
-            Estimación por conocimiento de la IA (no es Vivino en vivo). Úsala
-            para contrastar tu calificación y precio guardados.
-          </p>
 
           {kimiError ? (
             <p className="mt-2 text-sm text-[var(--wine)]">{kimiError}</p>
           ) : null}
 
-          {hasKimi ? (
-            <div className="mt-3 space-y-3 rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.55)] p-3">
+          {!hasKimi && !kimiLoading ? (
+            <div className="mt-3">
+              <p className="text-sm leading-relaxed text-ink-soft">
+                Descubre por qué esta botella importa — y un gancho para
+                abrir conversación en la mesa.
+              </p>
+              <button
+                type="button"
+                className="btn btn-primary mt-3 min-h-[44px] w-full text-sm disabled:opacity-60"
+                disabled={kimiLoading}
+                onClick={() => void handleKimiResearch()}
+              >
+                Contar la historia de este vino
+              </button>
+            </div>
+          ) : null}
+
+          {hasDiscoveryStory ? (
+            <div className="mt-3 space-y-4">
+              {wine.kimiSummary ? (
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                    Historia
+                  </p>
+                  <p className="mt-1.5 text-sm leading-relaxed text-ink">
+                    {wine.kimiSummary}
+                  </p>
+                </div>
+              ) : null}
+              {wine.kimiCuriosity ? (
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                    Dato curioso
+                  </p>
+                  <p className="mt-1.5 text-sm leading-relaxed text-ink">
+                    {wine.kimiCuriosity}
+                  </p>
+                </div>
+              ) : null}
+              {wine.kimiTalkHook ? (
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                    Para conversar
+                  </p>
+                  <p className="mt-1.5 text-sm leading-relaxed text-ink italic">
+                    {wine.kimiTalkHook}
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {hasKimi &&
+          (wine.kimiVivino != null || wine.kimiPrice != null) ? (
+            <div className="mt-4 space-y-3 rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.55)] p-3">
+              <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                Estimaciones
+              </p>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
@@ -442,11 +531,6 @@ export function WineDetail({
                   ) : null}
                 </div>
               </div>
-              {wine.kimiSummary ? (
-                <p className="text-sm leading-relaxed text-ink">
-                  {wine.kimiSummary}
-                </p>
-              ) : null}
               {onApplyKimiResearch &&
               (wine.kimiVivino != null || wine.kimiPrice != null) ? (
                 <button
@@ -621,15 +705,7 @@ export function WineDetail({
                 <button
                   type="button"
                   className="btn btn-ghost min-h-[44px] min-w-0 w-full px-3"
-                  onClick={() => {
-                    if (
-                      confirm(
-                        `¿Regalaste “${wine.name}”?\nSaldrá del inventario.`
-                      )
-                    ) {
-                      onGifted(wine);
-                    }
-                  }}
+                  onClick={() => onGifted(wine)}
                 >
                   La regalé
                 </button>

@@ -25,7 +25,10 @@ type Props = {
   initialSlot?: string;
   editing?: Wine | null;
   onClose: () => void;
-  onSubmit: (draft: WineDraft) => void;
+  onSubmit: (
+    draft: WineDraft,
+    extras?: { labelImageDataUrl?: string }
+  ) => void;
 };
 
 const fieldClass =
@@ -101,6 +104,9 @@ export function WineFormModal({
   const [fromExisting, setFromExisting] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanHint, setScanHint] = useState("");
+  const [labelImageDataUrl, setLabelImageDataUrl] = useState<string | null>(
+    null
+  );
   const scanInputRef = useRef<HTMLInputElement>(null);
 
   const catalog = useMemo(() => buildCatalog(wines), [wines]);
@@ -150,6 +156,7 @@ export function WineFormModal({
     setFromExisting(false);
     setScanning(false);
     setScanHint("");
+    setLabelImageDataUrl(null);
     if (editing) {
       setStep("form");
       setDraft(wineToDraft(editing));
@@ -189,6 +196,7 @@ export function WineFormModal({
     setStep("form");
     setError("");
     setScanHint("");
+    setLabelImageDataUrl(null);
   }
 
   async function handleScanFile(file: File | undefined) {
@@ -217,6 +225,7 @@ export function WineFormModal({
         cellarId: prev.cellarId ?? activeCellarId,
         location: prev.location || initialSlot || "",
       }));
+      setLabelImageDataUrl(dataUrl);
       setFromExisting(false);
       setStep("form");
       const conf =
@@ -266,14 +275,19 @@ export function WineFormModal({
       }
     }
 
-    onSubmit({
-      ...draft,
-      cellarId:
-        loc.slot === "abajo" || !loc.slot
-          ? null
-          : draft.cellarId ?? activeCellarId,
-      location: loc.slot ?? "",
-    });
+    onSubmit(
+      {
+        ...draft,
+        cellarId:
+          loc.slot === "abajo" || !loc.slot
+            ? null
+            : draft.cellarId ?? activeCellarId,
+        location: loc.slot ?? "",
+      },
+      labelImageDataUrl
+        ? { labelImageDataUrl }
+        : undefined
+    );
     onClose();
   }
 
@@ -445,6 +459,19 @@ export function WineFormModal({
               </button>
               {scanHint ? (
                 <p className="text-xs text-ink-soft">{scanHint}</p>
+              ) : null}
+              {labelImageDataUrl ? (
+                <div className="flex items-center gap-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={labelImageDataUrl}
+                    alt="Etiqueta escaneada"
+                    className="h-16 w-12 rounded-[8px] object-cover"
+                  />
+                  <p className="text-xs text-ink-soft">
+                    Esta foto se guardará con el vino.
+                  </p>
+                </div>
               ) : null}
             </div>
 

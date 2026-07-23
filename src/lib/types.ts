@@ -26,12 +26,18 @@ export type Wine = {
   /** ISO timestamp of last verification. */
   lastCheckedAt: string | null;
   matchConfidence: MatchConfidence | null;
+  /** Storage path for the user's scanned label photo ({userId}/{wineId}.jpg). */
+  labelImageUrl: string | null;
   /** Kimi estimate of Vivino-style score (1–5). */
   kimiVivino: number | null;
   /** Kimi estimate of typical retail price in MXN. */
   kimiPrice: number | null;
-  /** Short research note from Kimi. */
+  /** Short story / discovery note from research IA. */
   kimiSummary: string | null;
+  /** One memorable curiosity about the wine. */
+  kimiCuriosity: string | null;
+  /** Conversation hook / question to spark talk. */
+  kimiTalkHook: string | null;
   /** ISO timestamp of last Kimi research. */
   kimiCheckedAt: string | null;
   kimiConfidence: MatchConfidence | null;

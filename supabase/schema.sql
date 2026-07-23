@@ -161,9 +161,53 @@ alter table public.wines
   add column if not exists kimi_price double precision,
   add column if not exists kimi_summary text,
   add column if not exists kimi_checked_at timestamptz,
-  add column if not exists kimi_confidence text;
+  add column if not exists kimi_confidence text,
+  add column if not exists label_image_url text,
+  add column if not exists kimi_curiosity text,
+  add column if not exists kimi_talk_hook text;
 
 create index if not exists wines_cellar_id_idx on public.wines (cellar_id);
+
+-- Private bucket for scanned labels (path: {user_id}/{wine_id}.jpg)
+insert into storage.buckets (id, name, public)
+values ('wine-labels', 'wine-labels', false)
+on conflict (id) do nothing;
+
+drop policy if exists "wine_labels_select_own" on storage.objects;
+create policy "wine_labels_select_own"
+  on storage.objects for select
+  using (
+    bucket_id = 'wine-labels'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+drop policy if exists "wine_labels_insert_own" on storage.objects;
+create policy "wine_labels_insert_own"
+  on storage.objects for insert
+  with check (
+    bucket_id = 'wine-labels'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+drop policy if exists "wine_labels_update_own" on storage.objects;
+create policy "wine_labels_update_own"
+  on storage.objects for update
+  using (
+    bucket_id = 'wine-labels'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  )
+  with check (
+    bucket_id = 'wine-labels'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+drop policy if exists "wine_labels_delete_own" on storage.objects;
+create policy "wine_labels_delete_own"
+  on storage.objects for delete
+  using (
+    bucket_id = 'wine-labels'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  );
 
 -- History
 create table if not exists public.cellar_history (

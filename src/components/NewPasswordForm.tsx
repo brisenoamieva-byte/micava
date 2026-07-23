@@ -2,11 +2,13 @@
 
 import { type FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { PasswordInput } from "@/components/PasswordInput";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 export function NewPasswordForm() {
   const router = useRouter();
+  const search = useSearchParams();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -19,12 +21,56 @@ export function NewPasswordForm() {
       setReady(true);
       return;
     }
+
     const supabase = createClient();
-    void supabase.auth.getSession().then(({ data }) => {
-      setHasSession(Boolean(data.session));
-      setReady(true);
+    let cancelled = false;
+
+    async function ensureSession() {
+      // PKCE: code may land directly on this page if redirect URL is /nueva-contrasena
+      const code = search.get("code");
+      if (code) {
+        const { error: exchangeError } =
+          await supabase.auth.exchangeCodeForSession(code);
+        if (exchangeError && !cancelled) {
+          setError(exchangeError.message);
+        }
+      }
+
+      const tokenHash = search.get("token_hash");
+      const type = search.get("type");
+      if (tokenHash && type === "recovery") {
+        const { error: otpError } = await supabase.auth.verifyOtp({
+          type: "recovery",
+          token_hash: tokenHash,
+        });
+        if (otpError && !cancelled) {
+          setError(otpError.message);
+        }
+      }
+
+      const { data } = await supabase.auth.getSession();
+      if (!cancelled) {
+        setHasSession(Boolean(data.session));
+        setReady(true);
+      }
+    }
+
+    void ensureSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
+        setHasSession(Boolean(session));
+        setReady(true);
+      }
     });
-  }, []);
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
+  }, [search]);
 
   if (!isSupabaseConfigured()) {
     return <p className="text-sm text-ink-soft">Falta configurar Supabase.</p>;
@@ -41,6 +87,9 @@ export function NewPasswordForm() {
           Este enlace expiró o aún no pediste recuperación. Solicita uno nuevo
           desde tu email.
         </p>
+        {error ? (
+          <p className="text-sm text-[var(--wine-deep)]">{error}</p>
+        ) : null}
         <Link href="/recuperar" className="btn btn-primary min-h-[48px] w-full">
           Pedir enlace
         </Link>
@@ -80,34 +129,27 @@ export function NewPasswordForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <label className="block">
-        <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-          Nueva contraseña
-        </span>
-        <input
-          type="password"
-          required
-          autoComplete="new-password"
-          minLength={6}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full min-h-[44px] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.9)] px-3 py-2 outline-none focus:border-[rgba(122,36,48,0.45)]"
-        />
-      </label>
-      <label className="block">
-        <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-          Confirmar
-        </span>
-        <input
-          type="password"
-          required
-          autoComplete="new-password"
-          minLength={6}
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
-          className="w-full min-h-[44px] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.9)] px-3 py-2 outline-none focus:border-[rgba(122,36,48,0.45)]"
-        />
-      </label>
+      <p className="text-sm text-ink-soft">
+        Elige una contraseña nueva para tu cuenta.
+      </p>
+      <PasswordInput
+        label="Nueva contraseña"
+        name="new-password"
+        required
+        autoComplete="new-password"
+        minLength={6}
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+      />
+      <PasswordInput
+        label="Confirmar"
+        name="confirm-password"
+        required
+        autoComplete="new-password"
+        minLength={6}
+        value={confirm}
+        onChange={(e) => setConfirm(e.target.value)}
+      />
       {error ? <p className="text-sm text-[var(--wine-deep)]">{error}</p> : null}
       <button
         type="submit"

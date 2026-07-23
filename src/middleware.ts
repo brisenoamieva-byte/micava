@@ -13,5 +13,6 @@ export const config = {
     "/recuperar",
     "/nueva-contrasena",
     "/auth/callback",
+    "/auth/reset",
   ],
 };

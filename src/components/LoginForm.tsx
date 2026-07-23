@@ -3,6 +3,7 @@
 import { type FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { PasswordInput } from "@/components/PasswordInput";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 export function LoginForm() {
@@ -67,26 +68,24 @@ export function LoginForm() {
             className="w-full min-h-[44px] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.9)] px-3 py-2 outline-none focus:border-[rgba(122,36,48,0.45)]"
           />
         </label>
-        <label className="block">
-          <span className="mb-1 flex items-center justify-between gap-2 text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-            <span>Contraseña</span>
-            <Link
-              href="/recuperar"
-              className="normal-case tracking-normal text-ink underline-offset-2 hover:underline"
-            >
-              ¿Olvidaste?
-            </Link>
-          </span>
-          <input
-            type="password"
-            required
-            autoComplete="current-password"
-            minLength={6}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full min-h-[44px] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.9)] px-3 py-2 outline-none focus:border-[rgba(122,36,48,0.45)]"
-          />
-        </label>
+        <PasswordInput
+          label={
+            <>
+              <span>Contraseña</span>
+              <Link
+                href="/recuperar"
+                className="normal-case tracking-normal text-ink underline-offset-2 hover:underline"
+              >
+                ¿Olvidaste?
+              </Link>
+            </>
+          }
+          required
+          autoComplete="current-password"
+          minLength={6}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
         {error ? <p className="text-sm text-[var(--wine-deep)]">{error}</p> : null}
         <button
           type="submit"

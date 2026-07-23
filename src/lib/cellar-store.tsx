@@ -87,6 +87,7 @@ type CellarContextValue = {
     options?: { syncVivino?: boolean }
   ) => void;
   saveKimiResearch: (id: string, research: KimiResearch) => void;
+  setLabelImageUrl: (id: string, labelImageUrl: string | null) => void;
   applyKimiResearch: (
     id: string,
     fields: { vivino?: boolean; price?: boolean }
@@ -157,8 +158,11 @@ function draftToWine(draft: WineDraft, id: string, existing?: Wine): Wine {
     kimiVivino: existing?.kimiVivino ?? null,
     kimiPrice: existing?.kimiPrice ?? null,
     kimiSummary: existing?.kimiSummary ?? null,
+    kimiCuriosity: existing?.kimiCuriosity ?? null,
+    kimiTalkHook: existing?.kimiTalkHook ?? null,
     kimiCheckedAt: existing?.kimiCheckedAt ?? null,
     kimiConfidence: existing?.kimiConfidence ?? null,
+    labelImageUrl: existing?.labelImageUrl ?? null,
   };
 }
 
@@ -515,9 +519,27 @@ export function CellarProvider({ children }: { children: ReactNode }) {
             kimiVivino: research.kimiVivino,
             kimiPrice: research.kimiPrice,
             kimiSummary: research.kimiSummary,
+            kimiCuriosity: research.kimiCuriosity,
+            kimiTalkHook: research.kimiTalkHook,
             kimiCheckedAt: research.kimiCheckedAt,
             kimiConfidence: research.kimiConfidence,
           };
+          return nextWine;
+        })
+      );
+      const uid = userIdRef.current;
+      if (uid && nextWine) void upsertWineRemote(nextWine, uid);
+    },
+    [upsertWineRemote]
+  );
+
+  const setLabelImageUrl = useCallback(
+    (id: string, labelImageUrl: string | null) => {
+      let nextWine: Wine | null = null;
+      setWines((prev) =>
+        prev.map((w) => {
+          if (w.id !== id) return w;
+          nextWine = { ...w, labelImageUrl };
           return nextWine;
         })
       );
@@ -833,6 +855,7 @@ export function CellarProvider({ children }: { children: ReactNode }) {
       updateWine,
       verifyWineRating,
       saveKimiResearch,
+      setLabelImageUrl,
       applyKimiResearch,
       moveWine,
       removeWine,
@@ -857,6 +880,7 @@ export function CellarProvider({ children }: { children: ReactNode }) {
       updateWine,
       verifyWineRating,
       saveKimiResearch,
+      setLabelImageUrl,
       applyKimiResearch,
       moveWine,
       removeWine,

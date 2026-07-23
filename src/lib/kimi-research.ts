@@ -5,6 +5,8 @@ export type KimiResearch = {
   kimiVivino: number | null;
   kimiPrice: number | null;
   kimiSummary: string | null;
+  kimiCuriosity: string | null;
+  kimiTalkHook: string | null;
   kimiCheckedAt: string | null;
   kimiConfidence: MatchConfidence | null;
 };
@@ -13,18 +15,23 @@ export const emptyKimiResearch: KimiResearch = {
   kimiVivino: null,
   kimiPrice: null,
   kimiSummary: null,
+  kimiCuriosity: null,
+  kimiTalkHook: null,
   kimiCheckedAt: null,
   kimiConfidence: null,
 };
 
 export function withKimiDefaults<T extends Partial<Wine>>(
   wine: T
-): T & KimiResearch {
+): T & KimiResearch & { labelImageUrl: string | null } {
   return {
     ...wine,
+    labelImageUrl: wine.labelImageUrl ?? null,
     kimiVivino: wine.kimiVivino ?? null,
     kimiPrice: wine.kimiPrice ?? null,
     kimiSummary: wine.kimiSummary ?? null,
+    kimiCuriosity: wine.kimiCuriosity ?? null,
+    kimiTalkHook: wine.kimiTalkHook ?? null,
     kimiCheckedAt: wine.kimiCheckedAt ?? null,
     kimiConfidence: wine.kimiConfidence ?? null,
   };
@@ -80,6 +87,12 @@ export function parseKimiResearchPayload(raw: unknown): Omit<
     kimiVivino,
     kimiPrice,
     kimiSummary: asString(o.summary ?? o.notes ?? o.kimiSummary) || null,
+    kimiCuriosity:
+      asString(o.curiosity ?? o.kimiCuriosity ?? o.dato_curioso) || null,
+    kimiTalkHook:
+      asString(
+        o.talkHook ?? o.talk_hook ?? o.kimiTalkHook ?? o.conversation
+      ) || null,
     kimiConfidence: mapped,
   };
 }

@@ -26,8 +26,11 @@ export type WineRow = {
   kimi_vivino: number | null;
   kimi_price: number | null;
   kimi_summary: string | null;
+  kimi_curiosity: string | null;
+  kimi_talk_hook: string | null;
   kimi_checked_at: string | null;
   kimi_confidence: string | null;
+  label_image_url: string | null;
 };
 
 export type HistoryRow = {
@@ -76,8 +79,11 @@ export function wineFromRow(row: WineRow): Wine {
       kimiVivino: row.kimi_vivino ?? null,
       kimiPrice: row.kimi_price ?? null,
       kimiSummary: row.kimi_summary ?? null,
+      kimiCuriosity: row.kimi_curiosity ?? null,
+      kimiTalkHook: row.kimi_talk_hook ?? null,
       kimiCheckedAt: row.kimi_checked_at ?? null,
       kimiConfidence: row.kimi_confidence as Wine["kimiConfidence"],
+      labelImageUrl: row.label_image_url ?? null,
     })
   );
 }
@@ -113,9 +119,12 @@ export function wineToRow(
     base.kimi_vivino = wine.kimiVivino;
     base.kimi_price = wine.kimiPrice;
     base.kimi_summary = wine.kimiSummary;
+    base.kimi_curiosity = wine.kimiCuriosity;
+    base.kimi_talk_hook = wine.kimiTalkHook;
     base.kimi_checked_at = wine.kimiCheckedAt;
     base.kimi_confidence = wine.kimiConfidence;
   }
+  base.label_image_url = wine.labelImageUrl;
   if (opts?.includeCellarId === false) return base;
   return { ...base, cellar_id: wine.cellarId };
 }

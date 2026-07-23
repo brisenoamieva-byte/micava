@@ -10,19 +10,21 @@ export const maxDuration = 60;
 const KIMI_BASE = "https://api.moonshot.ai/v1";
 const MODEL = process.env.KIMI_MODEL?.trim() || "kimi-k2.6";
 
-const SYSTEM = `Eres un experto en el mercado de vinos (Vivino, precios en México/LATAM y Europa).
-Te dan la ficha de un vino de una cava personal. Estimas calificación y precio de referencia.
+const SYSTEM = `Eres un experto en vinos y un gran contador de historias. Te dan la ficha de un vino de una cava personal.
 
 Responde SOLO con JSON válido (sin markdown) con estas claves:
-vivino, price, confidence, summary.
+vivino, price, confidence, summary, curiosity, talkHook.
 
 Reglas:
 - vivino (number|null): calificación típica estilo Vivino 1–5 para ese vino (y cosecha si aplica). Si no lo conoces con suficiente certeza, null. No inventes scores redondos al azar.
 - price (number|null): precio de referencia al menudeo en MXN (entero). Usa conocimiento de precios típicos en México cuando puedas; si no, null.
 - confidence: "high" | "medium" | "low" según certeza de la identificación y de las cifras.
-- summary (string): 1–3 frases en español. Compara con los valores guardados si los hay (¿parecen altos/bajos/razonables?). Menciona fuentes de conocimiento (p. ej. "suele rondar 4.1 en Vivino") sin inventar URLs.
+- summary (string): historia del vino en español, 2–4 frases. Origen, bodega, estilo o por qué importa esa botella. Tono de sommelier amigo, no ficha técnica fría. Si no conoces el vino concreto, habla con honestidad de la región/uva/estilo.
+- curiosity (string): UN solo dato curioso, memorable, en 1–2 frases (historia de la uva, anécdota de la bodega, tradición local, etc.).
+- talkHook (string): UNA pregunta o provocación corta para generar conversación al abrir la botella (ej. "¿notas más fruta o más tierra?").
 
-No digas que consultaste Vivino en vivo: es una estimación por conocimiento.`;
+No digas que consultaste Vivino en vivo: las cifras son estimación por conocimiento.
+No inventes URLs.`;
 
 type Body = {
   name?: string;
@@ -92,7 +94,7 @@ export async function POST(request: Request) {
           { role: "system", content: SYSTEM },
           {
             role: "user",
-            content: `Investiga/estima calificación y precio para este vino:\n\n${identity}`,
+            content: `Cuenta la historia de este vino y estima calificación/precio:\n\n${identity}`,
           },
         ],
       }),

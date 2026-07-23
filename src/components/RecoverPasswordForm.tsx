@@ -3,6 +3,7 @@
 import { type FormEvent, useState } from "react";
 import Link from "next/link";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { PASSWORD_RECOVERY_FLAG } from "@/components/PasswordRecoveryRedirect";
 
 export function RecoverPasswordForm() {
   const [email, setEmail] = useState("");
@@ -24,17 +25,22 @@ export function RecoverPasswordForm() {
     setLoading(true);
     try {
       const supabase = createClient();
-      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent("/nueva-contrasena")}`;
+      // Flag so if Supabase sends the user to Site URL (/?code=...) we still
+      // route them into the new-password flow.
+      sessionStorage.setItem(PASSWORD_RECOVERY_FLAG, "1");
+      const redirectTo = `${window.location.origin}/auth/reset`;
       const { error: err } = await supabase.auth.resetPasswordForEmail(
         email.trim(),
         { redirectTo }
       );
       if (err) {
+        sessionStorage.removeItem(PASSWORD_RECOVERY_FLAG);
         setError(err.message);
         return;
       }
       setSent(true);
     } catch (err) {
+      sessionStorage.removeItem(PASSWORD_RECOVERY_FLAG);
       setError(
         err instanceof Error ? err.message : "No se pudo enviar el correo"
       );

@@ -1,5 +1,5 @@
+import Image from "next/image";
 import Link from "next/link";
-import { BrandMarkIcon } from "@/components/BrandMarkIcon";
 import { BrandWordmark } from "@/components/BrandWordmark";
 
 type Props = {
@@ -11,8 +11,8 @@ type Props = {
 
 const sizes = {
   sm: { px: 28 },
-  md: { px: 34 },
-  lg: { px: 40 },
+  md: { px: 36 },
+  lg: { px: 44 },
 };
 
 export function BrandMark({
@@ -23,11 +23,16 @@ export function BrandMark({
 }: Props) {
   const s = sizes[size];
   const inner = (
-    <span className={`inline-flex items-center gap-2.5 text-[var(--wine)] ${className}`}>
-      <BrandMarkIcon size={s.px} className="shrink-0" />
-      {showWordmark ? (
-        <BrandWordmark size={size} className="text-ink" />
-      ) : null}
+    <span className={`inline-flex items-center gap-2.5 ${className}`}>
+      <Image
+        src="/brand/cavatale-mark.png"
+        alt=""
+        width={s.px}
+        height={s.px}
+        className="shrink-0 rounded-[8px]"
+        priority
+      />
+      {showWordmark ? <BrandWordmark size={size} /> : null}
     </span>
   );
 

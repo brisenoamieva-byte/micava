@@ -101,8 +101,9 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         model: MODEL,
-        temperature: 1,
+        thinking: { type: "disabled" },
         response_format: { type: "json_object" },
+        max_tokens: 2048,
         messages: [
           { role: "system", content: SYSTEM },
           {

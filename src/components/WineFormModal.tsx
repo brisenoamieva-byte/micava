@@ -211,10 +211,20 @@ export function WineFormModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imageDataUrl: dataUrl }),
       });
-      const payload = (await res.json()) as {
-        error?: string;
-        fields?: ScanLabelFields;
-      };
+      const raw = await res.text();
+      let payload: { error?: string; fields?: ScanLabelFields } = {};
+      try {
+        payload = JSON.parse(raw) as {
+          error?: string;
+          fields?: ScanLabelFields;
+        };
+      } catch {
+        throw new Error(
+          res.ok
+            ? "La IA respondió en un formato inesperado."
+            : "El servidor tardó demasiado o falló. Intenta de nuevo."
+        );
+      }
       if (!res.ok || !payload.fields) {
         throw new Error(payload.error || "No se pudo leer la etiqueta.");
       }

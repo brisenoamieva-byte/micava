@@ -96,10 +96,20 @@ export function DepartTasteModal({
             price: wineSnapshot.price,
           }),
         });
-        const payload = (await res.json()) as {
-          error?: string;
-          research?: KimiResearch;
-        };
+        const raw = await res.text();
+        let payload: { error?: string; research?: KimiResearch } = {};
+        try {
+          payload = JSON.parse(raw) as {
+            error?: string;
+            research?: KimiResearch;
+          };
+        } catch {
+          throw new Error(
+            res.ok
+              ? "La IA respondió en un formato inesperado."
+              : "El servidor tardó demasiado o falló. Intenta de nuevo."
+          );
+        }
         if (!res.ok || !payload.research) {
           throw new Error(payload.error || "No se pudo contar la historia.");
         }

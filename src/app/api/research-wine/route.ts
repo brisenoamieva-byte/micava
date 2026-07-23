@@ -88,8 +88,10 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         model: MODEL,
-        temperature: 1,
+        // Instant mode: thinking defaults ON and often exceeds mobile/proxy timeouts.
+        thinking: { type: "disabled" },
         response_format: { type: "json_object" },
+        max_tokens: 2048,
         messages: [
           { role: "system", content: SYSTEM },
           {
@@ -112,7 +114,10 @@ export async function POST(request: Request) {
     payload = JSON.parse(rawText) as KimiChatResponse;
   } catch {
     return NextResponse.json(
-      { error: "Respuesta inválida de Kimi." },
+      {
+        error: "Respuesta inválida de Kimi.",
+        detail: rawText.slice(0, 200),
+      },
       { status: 502 }
     );
   }

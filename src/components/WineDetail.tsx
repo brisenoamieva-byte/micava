@@ -265,16 +265,32 @@ export function WineDetail({
           price: wine.price,
         }),
       });
-      const payload = (await res.json()) as {
-        error?: string;
-        research?: KimiResearch;
-      };
+      const raw = await res.text();
+      let payload: { error?: string; research?: KimiResearch } = {};
+      try {
+        payload = JSON.parse(raw) as {
+          error?: string;
+          research?: KimiResearch;
+        };
+      } catch {
+        throw new Error(
+          res.ok
+            ? "La IA respondió en un formato inesperado."
+            : "El servidor tardó demasiado o falló. Intenta de nuevo."
+        );
+      }
       if (!res.ok || !payload.research) {
         throw new Error(payload.error || "No se pudo investigar este vino.");
       }
       onSaveKimiResearch(wine, payload.research);
     } catch (e) {
-      setKimiError(e instanceof Error ? e.message : "Error al consultar la IA.");
+      const msg =
+        e instanceof Error ? e.message : "Error al consultar la IA.";
+      setKimiError(
+        msg === "Failed to fetch"
+          ? "No hubo respuesta a tiempo. Revisa la conexión e intenta de nuevo."
+          : msg
+      );
     } finally {
       setKimiLoading(false);
     }

@@ -420,25 +420,23 @@ export function WineDetail({
                   : "Historia, dato curioso y algo para conversar"}
               </p>
             </div>
-            <button
-              type="button"
-              className="btn btn-ghost min-h-[40px] px-3 text-sm disabled:opacity-60"
-              disabled={kimiLoading}
-              onClick={() => void handleKimiResearch()}
-            >
-              {kimiLoading
-                ? "Contando…"
-                : hasKimi
-                  ? "Actualizar"
-                  : "Contar historia"}
-            </button>
+            {hasKimi ? (
+              <button
+                type="button"
+                className="btn btn-ghost min-h-[40px] px-3 text-sm disabled:opacity-60"
+                disabled={kimiLoading}
+                onClick={() => void handleKimiResearch()}
+              >
+                {kimiLoading ? "Contando…" : "Actualizar"}
+              </button>
+            ) : null}
           </div>
 
           {kimiError ? (
             <p className="mt-2 text-sm text-[var(--wine)]">{kimiError}</p>
           ) : null}
 
-          {!hasKimi && !kimiLoading ? (
+          {!hasKimi ? (
             <div className="mt-3">
               <p className="text-sm leading-relaxed text-ink-soft">
                 Descubre por qué esta botella importa — y un gancho para
@@ -450,7 +448,9 @@ export function WineDetail({
                 disabled={kimiLoading}
                 onClick={() => void handleKimiResearch()}
               >
-                Contar la historia de este vino
+                {kimiLoading
+                  ? "Contando…"
+                  : "Contar la historia de este vino"}
               </button>
             </div>
           ) : null}

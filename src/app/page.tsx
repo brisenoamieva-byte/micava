@@ -75,8 +75,8 @@ export default function HomePage() {
             </div>
 
             <p className="fade-up-delay-2 mt-8 max-w-sm text-sm leading-relaxed text-[#4f4a43]">
-              Sin suscripciones. Si un día te gusta de verdad, tráeme una
-              botella — trato entre amigos del vino.
+              Sin suscripciones. Si un día te gusta, regálame una botella —
+              trato entre amigos del vino.
             </p>
           </div>
         </section>

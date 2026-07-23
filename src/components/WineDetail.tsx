@@ -188,7 +188,7 @@ export function WineDetail({
       );
     }
     if (!parts.length) {
-      setApplyHint("No hay valores de Kimi para aplicar.");
+      setApplyHint("No hay valores de la IA para aplicar.");
       return;
     }
 
@@ -256,7 +256,7 @@ export function WineDetail({
       }
       onSaveKimiResearch(wine, payload.research);
     } catch (e) {
-      setKimiError(e instanceof Error ? e.message : "Error al consultar Kimi.");
+      setKimiError(e instanceof Error ? e.message : "Error al consultar la IA.");
     } finally {
       setKimiLoading(false);
     }
@@ -357,7 +357,7 @@ export function WineDetail({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                Investigación Kimi
+                Investigación IA
               </p>
               <p className="mt-0.5 text-xs text-ink-soft">
                 Última consulta: {formatCheckedAt(wine.kimiCheckedAt)}
@@ -677,7 +677,7 @@ export function WineDetail({
       )}
 
       <p className="mt-6 text-xs leading-relaxed text-ink-soft sm:mt-8">
-        Precio y calificación son referencia. Kimi estima; la verificación
+        Precio y calificación son referencia. La IA estima; la verificación
         manual con Vivino / Wine-Searcher sigue disponible abajo.
       </p>
     </div>

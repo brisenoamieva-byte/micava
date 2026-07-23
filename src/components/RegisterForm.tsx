@@ -114,9 +114,9 @@ export function RegisterForm() {
             onChange={(e) => setBottlePledge(e.target.checked)}
           />
           <span>
-            Si un día te gusta de verdad, me traes una botella.
+            Si un día te gusta, me regalas una botella.
             <span className="block text-xs text-ink-soft">
-              Gratis siempre. Sin cobros — solo un trato entre amigos del vino.
+              Gratis — solo un trato entre amigos del vino.
             </span>
           </span>
         </label>

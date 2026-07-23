@@ -38,6 +38,10 @@ export type Wine = {
   kimiCuriosity: string | null;
   /** Conversation hook / question to spark talk. */
   kimiTalkHook: string | null;
+  /** AI food pairings for this bottle (overrides rule-based when set). */
+  kimiPairings: string[] | null;
+  /** Short note explaining the AI pairing thread. */
+  kimiPairingNote: string | null;
   /** ISO timestamp of last Kimi research. */
   kimiCheckedAt: string | null;
   kimiConfidence: MatchConfidence | null;

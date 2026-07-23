@@ -6,7 +6,7 @@ import { CountryFlag } from "@/components/CountryFlag";
 import { parseGrapes } from "@/lib/grapes";
 import type { KimiResearch } from "@/lib/kimi-research";
 import { resolveLabelImageUrl } from "@/lib/label-image";
-import { pairingsForWine } from "@/lib/pairings";
+import { resolvePairingsForWine } from "@/lib/pairings";
 import {
   confidenceLabel,
   formatCheckedAt,
@@ -128,7 +128,7 @@ export function WineDetail({
 
   const classified = parseGrapes(wine.grape);
   const delta = ratingDelta(wine.vivino, wine.externalRating);
-  const pairing = pairingsForWine(wine);
+  const pairing = resolvePairingsForWine(wine);
 
   const facts: { label: string; value: ReactNode }[] = [
     {
@@ -390,7 +390,17 @@ export function WineDetail({
         <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
           Maridaje sugerido
         </p>
-        <p className="mt-1 text-xs text-ink-soft">{pairing.note}</p>
+        <p className="mt-1 text-xs text-ink-soft">
+          {pairing.source === "ia"
+            ? `IA · ${pairing.note}`
+            : pairing.note}
+        </p>
+        {pairing.source === "reglas" && onSaveKimiResearch ? (
+          <p className="mt-1 text-xs text-ink-soft">
+            Genérico por uva/estilo. Al contar la historia, la IA lo afina
+            para esta botella.
+          </p>
+        ) : null}
         <ul className="mt-3 flex flex-wrap gap-1.5">
           {pairing.dishes.map((dish) => (
             <li

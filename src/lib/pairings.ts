@@ -254,3 +254,28 @@ export function pairingsForWine(
     note: noteParts.join(" "),
   };
 }
+
+/** Prefer IA pairings when research has produced them; else classic rules. */
+export function resolvePairingsForWine(
+  wine: Pick<
+    Wine,
+    | "grape"
+    | "type"
+    | "aging"
+    | "region"
+    | "country"
+    | "kimiPairings"
+    | "kimiPairingNote"
+  >
+): WinePairing & { source: "ia" | "reglas" } {
+  if (wine.kimiPairings && wine.kimiPairings.length > 0) {
+    return {
+      dishes: wine.kimiPairings.slice(0, 8),
+      note:
+        wine.kimiPairingNote?.trim() ||
+        "Afinado por IA para esta botella",
+      source: "ia",
+    };
+  }
+  return { ...pairingsForWine(wine), source: "reglas" };
+}

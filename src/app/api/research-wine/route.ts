@@ -15,7 +15,7 @@ const SYSTEM = `Eres el narrador de Cavatale: conviertes una botella de una cava
 El clic "Contar historia" debe valer la pena. No escribas una ficha de tienda ni un párrafo de Wikipedia sobre la denominación. Escribe como quien acaba de descubrir un secreto y lo comparte en la mesa, con calidez, precisión y un toque de teatro.
 
 Responde SOLO con JSON válido (sin markdown) con estas claves:
-vivino, price, confidence, summary, curiosity, talkHook.
+vivino, price, confidence, summary, curiosity, talkHook, pairings, pairingNote.
 
 ## Qué debe lograr cada campo
 
@@ -24,6 +24,10 @@ vivino, price, confidence, summary, curiosity, talkHook.
 - curiosity (string): EL DATO QUE SE REPITE — 1–2 frases. Un solo hecho sorprendente, específico y verificable en espíritu (anécdota real de bodega, reglamento raro, origen del nombre, cosecha legendaria, uva olvidada, rivalidad, cifra inesperada). Debe hacer que alguien diga "¿en serio?". Prohibido lo obvio ("la Garnacha es una uva tinta", "Francia hace buen vino").
 
 - talkHook (string): EL GANCHO DE MESA — 1 frase (máx. 2). Una pregunta, apuesta o provocación concreta a ESTE vino que abra conversación entre quienes lo beben. Evita preguntas genéricas de cata ("¿notas fruta o madera?", "¿te gusta?"). Mejor: un contraste, un mito a discutir, un "fíjate si…", un "la gente suele… pero…".
+
+- pairings (string[]): 4–6 platillos o momentos de comida CONCRETOS para ESTA botella (México/LatAm cuando encaje). No listas genéricas de uva ("quesos curados" suelto). Mejor: plato con detalle ("cabrito al pastor con salsa de chile seco", "tacos de rib eye y cebolla asada"). Mezcla salado y, si aplica, un postre o quesos.
+
+- pairingNote (string): 1 frase que explique el hilo del maridaje (acidez, cuerpo, especias, tradición local).
 
 ## Estimaciones (secundarias; no son el valor del clic)
 
@@ -34,7 +38,7 @@ vivino, price, confidence, summary, curiosity, talkHook.
 ## Reglas de oro
 
 1. Específico > general. Si solo conoces la región, cuenta lo más memorable de ESA región/uva/estilo — no relleno genérico.
-2. Los tres textos (summary, curiosity, talkHook) NO deben repetir la misma idea.
+2. summary, curiosity, talkHook y pairings NO deben repetir la misma idea.
 3. No inventes bodegas, personas, premios ni URLs que no conozcas. Si faltan datos, sé honesto y brillante con lo que sí hay.
 4. No digas que consultaste Vivino/internet en vivo.
 5. Español natural (México/LatAm). Sin emojis. Sin markdown dentro de los strings.`;
@@ -109,7 +113,7 @@ export async function POST(request: Request) {
           { role: "system", content: SYSTEM },
           {
             role: "user",
-            content: `Esta botella está a punto de abrirse (o regalarse). Dame el descubrimiento que hace que valga la pena: historia con gancho, un dato que la mesa va a repetir, y una provocación para conversar. Las cifras solo si las conoces bien.
+            content: `Esta botella está a punto de abrirse (o regalarse). Dame el descubrimiento que hace que valga la pena: historia con gancho, un dato que la mesa va a repetir, una provocación para conversar, y un maridaje concreto (pairings + pairingNote). Las cifras solo si las conoces bien.
 
 Ficha:\n\n${identity}`,
           },

@@ -1,5 +1,9 @@
 import type { CellarLogEntry, CellarUnit, DepartAction, Wine } from "@/lib/types";
-import { withKimiDefaults } from "@/lib/kimi-research";
+import {
+  parseKimiPairingsBlob,
+  serializeKimiPairings,
+  withKimiDefaults,
+} from "@/lib/kimi-research";
 import { withVerificationDefaults } from "@/lib/rating-verify";
 
 export type WineRow = {
@@ -28,6 +32,7 @@ export type WineRow = {
   kimi_summary: string | null;
   kimi_curiosity: string | null;
   kimi_talk_hook: string | null;
+  kimi_pairings: string | null;
   kimi_checked_at: string | null;
   kimi_confidence: string | null;
   label_image_url: string | null;
@@ -55,6 +60,7 @@ export type CellarRow = {
 };
 
 export function wineFromRow(row: WineRow): Wine {
+  const pairings = parseKimiPairingsBlob(row.kimi_pairings);
   return withKimiDefaults(
     withVerificationDefaults({
       id: row.id,
@@ -81,6 +87,8 @@ export function wineFromRow(row: WineRow): Wine {
       kimiSummary: row.kimi_summary ?? null,
       kimiCuriosity: row.kimi_curiosity ?? null,
       kimiTalkHook: row.kimi_talk_hook ?? null,
+      kimiPairings: pairings.dishes,
+      kimiPairingNote: pairings.note,
       kimiCheckedAt: row.kimi_checked_at ?? null,
       kimiConfidence: row.kimi_confidence as Wine["kimiConfidence"],
       labelImageUrl: row.label_image_url ?? null,
@@ -121,6 +129,10 @@ export function wineToRow(
     base.kimi_summary = wine.kimiSummary;
     base.kimi_curiosity = wine.kimiCuriosity;
     base.kimi_talk_hook = wine.kimiTalkHook;
+    base.kimi_pairings = serializeKimiPairings(
+      wine.kimiPairings,
+      wine.kimiPairingNote
+    );
     base.kimi_checked_at = wine.kimiCheckedAt;
     base.kimi_confidence = wine.kimiConfidence;
   }

@@ -7,6 +7,10 @@ export type KimiResearch = {
   kimiSummary: string | null;
   kimiCuriosity: string | null;
   kimiTalkHook: string | null;
+  /** AI dishes tailored to this bottle. */
+  kimiPairings: string[] | null;
+  /** One-line why these dishes fit. */
+  kimiPairingNote: string | null;
   kimiCheckedAt: string | null;
   kimiConfidence: MatchConfidence | null;
 };
@@ -17,6 +21,8 @@ export const emptyKimiResearch: KimiResearch = {
   kimiSummary: null,
   kimiCuriosity: null,
   kimiTalkHook: null,
+  kimiPairings: null,
+  kimiPairingNote: null,
   kimiCheckedAt: null,
   kimiConfidence: null,
 };
@@ -32,6 +38,8 @@ export function withKimiDefaults<T extends Partial<Wine>>(
     kimiSummary: wine.kimiSummary ?? null,
     kimiCuriosity: wine.kimiCuriosity ?? null,
     kimiTalkHook: wine.kimiTalkHook ?? null,
+    kimiPairings: wine.kimiPairings ?? null,
+    kimiPairingNote: wine.kimiPairingNote ?? null,
     kimiCheckedAt: wine.kimiCheckedAt ?? null,
     kimiConfidence: wine.kimiConfidence ?? null,
   };
@@ -50,6 +58,58 @@ function asString(value: unknown): string {
     : value == null
       ? ""
       : String(value).trim();
+}
+
+function asStringList(value: unknown): string[] | null {
+  if (Array.isArray(value)) {
+    const list = value
+      .map((item) => asString(item))
+      .filter(Boolean)
+      .slice(0, 8);
+    return list.length > 0 ? list : null;
+  }
+  if (typeof value === "string" && value.trim()) {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      if (Array.isArray(parsed)) return asStringList(parsed);
+    } catch {
+      /* fall through */
+    }
+    const list = value
+      .split(/\n|;|·|\|/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .slice(0, 8);
+    return list.length > 0 ? list : null;
+  }
+  return null;
+}
+
+/** Persist pairings blob for text column. */
+export function serializeKimiPairings(
+  dishes: string[] | null,
+  note: string | null
+): string | null {
+  if (!dishes?.length && !note) return null;
+  return JSON.stringify({
+    dishes: dishes ?? [],
+    note: note ?? "",
+  });
+}
+
+export function parseKimiPairingsBlob(
+  raw: string | null | undefined
+): { dishes: string[] | null; note: string | null } {
+  if (!raw?.trim()) return { dishes: null, note: null };
+  try {
+    const o = JSON.parse(raw) as { dishes?: unknown; note?: unknown };
+    return {
+      dishes: asStringList(o.dishes),
+      note: asString(o.note) || null,
+    };
+  } catch {
+    return { dishes: asStringList(raw), note: null };
+  }
 }
 
 export function parseKimiResearchPayload(raw: unknown): Omit<
@@ -92,6 +152,13 @@ export function parseKimiResearchPayload(raw: unknown): Omit<
     kimiTalkHook:
       asString(
         o.talkHook ?? o.talk_hook ?? o.kimiTalkHook ?? o.conversation
+      ) || null,
+    kimiPairings: asStringList(
+      o.pairings ?? o.dishes ?? o.kimiPairings ?? o.maridaje
+    ),
+    kimiPairingNote:
+      asString(
+        o.pairingNote ?? o.pairing_note ?? o.kimiPairingNote ?? o.maridajeNota
       ) || null,
     kimiConfidence: mapped,
   };

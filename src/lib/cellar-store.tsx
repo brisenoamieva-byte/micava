@@ -160,6 +160,8 @@ function draftToWine(draft: WineDraft, id: string, existing?: Wine): Wine {
     kimiSummary: existing?.kimiSummary ?? null,
     kimiCuriosity: existing?.kimiCuriosity ?? null,
     kimiTalkHook: existing?.kimiTalkHook ?? null,
+    kimiPairings: existing?.kimiPairings ?? null,
+    kimiPairingNote: existing?.kimiPairingNote ?? null,
     kimiCheckedAt: existing?.kimiCheckedAt ?? null,
     kimiConfidence: existing?.kimiConfidence ?? null,
     labelImageUrl: existing?.labelImageUrl ?? null,
@@ -264,21 +266,33 @@ export function CellarProvider({ children }: { children: ReactNode }) {
   const upsertWineRemote = useCallback(async (wine: Wine, userId: string) => {
     if (!isSupabaseConfigured()) return;
     const supabase = createClient();
-    const tryUpsert = async (includeKimi: boolean) => {
+    const tryUpsert = async (includeKimi: boolean, includePairings: boolean) => {
       const row = wineToRow(wine, userId, {
         includeCellarId: multiCellarRef.current,
         includeKimi,
       });
+      if (includeKimi && !includePairings) {
+        delete row.kimi_pairings;
+      }
       return supabase.from("wines").upsert(row, { onConflict: "user_id,id" });
     };
-    let { error } = await tryUpsert(kimiColumnsRef.current);
+    let includePairings = true;
+    let { error } = await tryUpsert(kimiColumnsRef.current, includePairings);
+    if (
+      error &&
+      kimiColumnsRef.current &&
+      /kimi_pairings/i.test(error.message ?? "")
+    ) {
+      includePairings = false;
+      ({ error } = await tryUpsert(true, false));
+    }
     if (
       error &&
       kimiColumnsRef.current &&
       /kimi_|column|schema|could not find/i.test(error.message ?? "")
     ) {
       kimiColumnsRef.current = false;
-      ({ error } = await tryUpsert(false));
+      ({ error } = await tryUpsert(false, false));
     }
     if (error) console.warn("upsert wine failed", error.message);
   }, []);
@@ -521,6 +535,8 @@ export function CellarProvider({ children }: { children: ReactNode }) {
             kimiSummary: research.kimiSummary,
             kimiCuriosity: research.kimiCuriosity,
             kimiTalkHook: research.kimiTalkHook,
+            kimiPairings: research.kimiPairings,
+            kimiPairingNote: research.kimiPairingNote,
             kimiCheckedAt: research.kimiCheckedAt,
             kimiConfidence: research.kimiConfidence,
           };

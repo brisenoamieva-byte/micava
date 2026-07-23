@@ -40,66 +40,61 @@
   display: inline-flex;
   align-items: baseline;
   color: var(--ink);
-  line-height: 1;
+  line-height: 0.95;
   white-space: nowrap;
 }
 
 .brand-cava {
   font-family: var(--font-cormorant), Georgia, serif;
   font-weight: 500;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.035em;
   font-style: normal;
 }
 
 .brand-tale {
-  font-family: var(--font-italianno), "Segoe Script", "Apple Chancery", cursive;
+  font-family: var(--font-tale), Georgia, "Times New Roman", serif;
   font-weight: 400;
-  font-style: normal;
+  font-style: italic;
   color: var(--wine);
-  letter-spacing: 0.01em;
-  /* Scripts read small next to display serifs — optical match */
-  font-size: 1.38em;
-  line-height: 0.85;
-  margin-left: 0.02em;
-  transform: translateY(0.06em);
+  letter-spacing: -0.02em;
+  /* Keep Tale close to Cava optically — premium = restraint */
+  font-size: 1.06em;
+  line-height: 1;
+  margin-left: 0.04em;
 }
 
 .brand-wordmark--sm {
-  font-size: 1.25rem;
-}
-
-.brand-wordmark--sm .brand-tale {
-  font-size: 1.48em;
+  font-size: 1.2rem;
 }
 
 .brand-wordmark--md {
-  font-size: 1.5rem;
+  font-size: 1.45rem;
 }
 
 @media (min-width: 768px) {
   .brand-wordmark--md {
-    font-size: 1.875rem;
+    font-size: 1.75rem;
   }
 }
 
 .brand-wordmark--lg {
-  font-size: 1.875rem;
+  font-size: 1.75rem;
 }
 
 @media (min-width: 768px) {
   .brand-wordmark--lg {
-    font-size: 2.25rem;
+    font-size: 2.1rem;
   }
 }
 
 .brand-wordmark--hero {
-  font-size: clamp(3rem, 14vw, 7rem);
+  font-size: clamp(3rem, 13vw, 6.5rem);
+  letter-spacing: -0.02em;
 }
 
 .brand-wordmark--hero .brand-tale {
-  font-size: 1.28em;
-  margin-left: 0.01em;
-  transform: translateY(0.04em);
+  font-size: 1.04em;
+  margin-left: 0.05em;
 }
 
 * {

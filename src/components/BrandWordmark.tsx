@@ -12,8 +12,8 @@ const sizeClass = {
 } as const;
 
 /**
- * Dual-type wordmark: Cava (Cormorant) + Tale (Italianno).
- * Reads as one name with cellar structure + human story.
+ * Dual-type wordmark: Cava (Cormorant) + Tale (Instrument Serif italic).
+ * Cellar structure + spoken story — refined, not calligraphy.
  */
 export function BrandWordmark({ className = "", size = "md" }: Props) {
   return (

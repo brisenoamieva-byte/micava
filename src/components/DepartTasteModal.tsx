@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import { AiTheaterStatus } from "@/components/AiTheaterStatus";
 import type { KimiResearch } from "@/lib/kimi-research";
 import { buildWineShareText, shareOrCopyText } from "@/lib/share-wine";
 import type { DepartAction, DepartExtras, Wine } from "@/lib/types";
@@ -199,9 +200,7 @@ export function DepartTasteModal({
 
         {showDiscovery ? (
           <div className="mt-5 space-y-3 border-t border-[var(--line)] pt-4">
-            {loadingStory ? (
-              <p className="text-sm text-ink-soft">Preparando la historia…</p>
-            ) : null}
+            <AiTheaterStatus active={loadingStory} />
             {storyError ? (
               <p className="text-sm text-[var(--wine)]">{storyError}</p>
             ) : null}

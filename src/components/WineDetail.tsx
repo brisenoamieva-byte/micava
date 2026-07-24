@@ -18,6 +18,7 @@ import {
 } from "@/lib/rating-verify";
 import { formatPrice, formatVivino, typeAccent } from "@/lib/wines";
 import { buildWineShareText, shareOrCopyText } from "@/lib/share-wine";
+import { AiTheaterStatus } from "@/components/AiTheaterStatus";
 
 type Props = {
   wine: Wine | null;
@@ -387,6 +388,8 @@ export function WineDetail({
           {kimiError ? (
             <p className="mt-2 text-sm text-[var(--wine)]">{kimiError}</p>
           ) : null}
+
+          <AiTheaterStatus active={kimiLoading} className="mt-2" />
 
           {!hasKimi ? (
             <div className="mt-3">

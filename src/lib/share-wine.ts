@@ -2,6 +2,15 @@ import type { Wine } from "@/lib/types";
 import { formatPrice, formatVivino } from "@/lib/wines";
 
 export const CAVATALE_URL = "https://cavatale.com";
+export const CAVATALE_REGISTRO_URL = `${CAVATALE_URL}/registro`;
+
+/** Invite a collector friend to create their own cava. */
+export function buildInviteFriendText(): string {
+  return [
+    "Estoy armando mi cava en Cavatale — historias de las botellas, no solo Vivino.",
+    `Crea la tuya: ${CAVATALE_REGISTRO_URL}`,
+  ].join("\n");
+}
 
 export type ShareDiscovery = {
   story?: string | null;

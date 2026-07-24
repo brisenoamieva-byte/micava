@@ -18,6 +18,10 @@ import { WineList } from "@/components/WineList";
 import { useCellar } from "@/lib/cellar-store";
 import { useAuth } from "@/lib/auth-store";
 import { uploadLabelImage } from "@/lib/label-image";
+import {
+  buildInviteFriendText,
+  shareOrCopyText,
+} from "@/lib/share-wine";
 import type { DepartAction, DepartExtras, Filters, MatchConfidence, RatingSource, Wine } from "@/lib/types";
 import {
   cellarStats,
@@ -81,6 +85,7 @@ export default function CavaPage() {
   const [departAction, setDepartAction] = useState<DepartAction>("opened");
   const [movingWineId, setMovingWineId] = useState<string | null>(null);
   const [moveSheetWine, setMoveSheetWine] = useState<Wine | null>(null);
+  const [inviteHint, setInviteHint] = useState<string | null>(null);
 
   useEffect(() => {
     if (!selectedId && wines[0]) setSelectedId(wines[0].id);
@@ -173,6 +178,19 @@ export default function CavaPage() {
     setDepartAction(action);
   }
 
+  async function handleInviteFriend() {
+    const result = await shareOrCopyText(
+      buildInviteFriendText(),
+      "Invitar a Cavatale"
+    );
+    if (result === "copied") {
+      setInviteHint("Copiado");
+      window.setTimeout(() => setInviteHint(null), 2000);
+    } else if (result === "shared") {
+      setInviteHint(null);
+    }
+  }
+
   function handleVerifyRating(
     wine: Wine,
     data: {
@@ -262,6 +280,13 @@ export default function CavaPage() {
               onClick={() => openAdd()}
             >
               + Agregar
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost min-h-[40px] px-3 text-sm"
+              onClick={() => void handleInviteFriend()}
+            >
+              {inviteHint ?? "Invitar amigo"}
             </button>
             <button
               type="button"

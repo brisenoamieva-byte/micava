@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { guardKimiApi } from "@/lib/api-guard";
 import {
   extractJsonObject,
   parseScanLabelResult,
@@ -76,6 +77,9 @@ async function readImageDataUrl(request: Request): Promise<string> {
 }
 
 export async function POST(request: Request) {
+  const guard = await guardKimiApi(request);
+  if (!guard.ok) return guard.response;
+
   const apiKey = process.env.KIMI_API_KEY?.trim();
   if (!apiKey) {
     return badRequest(

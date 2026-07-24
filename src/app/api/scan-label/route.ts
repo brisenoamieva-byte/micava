@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { guardKimiApi } from "@/lib/api-guard";
+import { kimiChatWithWebSearch } from "@/lib/kimi-web-search";
 import {
   extractJsonObject,
   parseScanLabelResult,
@@ -11,30 +12,53 @@ export const maxDuration = 60;
 
 const KIMI_BASE = "https://api.moonshot.ai/v1";
 const MODEL = process.env.KIMI_MODEL?.trim() || "kimi-k2.6";
-const MAX_BYTES = 6 * 1024 * 1024; // ~6MB decoded image budget via data URL length
+const MAX_BYTES = 6 * 1024 * 1024;
 
-const SYSTEM = `Eres un experto en vinos. Analizas fotos de etiquetas (frente y/o contraetiqueta) para rellenar la ficha completa de Cavatale.
+/**
+ * Pass 1: vision. Not OCR-only — identify wines from artwork when text is missing.
+ */
+const VISION_SYSTEM = `Eres un sommelier / experto en identificación de vinos por ETIQUETA VISUAL.
+
+Tu trabajo NO es solo leer texto (OCR). Muchas etiquetas modernas son casi solo imagen: ilustración, tipografía estilizada, logo, colores, composición. Debes RECONOCER el vino comercial cuando la marca es identificable por su diseño, igual que un humano que ya lo ha visto en tienda o Vivino.
+
+Prioridad de identificación:
+1) Huella visual: arte, ilustración, mascota, colores dominantes, tipografía característica, escudo/logo, layout (qué va arriba/abajo), contraetiqueta si se ve.
+2) Cualquier texto legible (nombre, bodega, DO, cosecha, uvas, % vol.).
+3) Conocimiento de marcas conocidas que coincidan con esa huella.
 
 Responde SOLO con un objeto JSON válido (sin markdown) con EXACTAMENTE estas claves:
+name, winery, country, region, type, grape, aging, vintage, vivino, price, confidence, notes, matchMethod, searchQuery.
+
+Definiciones:
+- name (string): nombre comercial del vino. Si la etiqueta no tiene texto pero reconoces el vino por la imagen, PON el nombre comercial real. Si no puedes identificarlo, "".
+- winery (string): bodega / productor.
+- country (string): España, México, Argentina, Chile, Francia, Italia, USA, Australia u Otro.
+- region (string): DO / valle / appellation. "" si no sabes.
+- type (string): exactamente Tinto | Blanco | Rosado | Espumoso.
+- grape (string): uva(s) si se leen o son conocidas para ESE vino; si no, "".
+- aging (string): Joven/Crianza/Reserva/etc. si aplica; si no, "".
+- vintage (number|null): año de cosecha si se ve; no confundir con año de embotellado; si no, null.
+- vivino (number|null): score típico Vivino 1–5 SOLO si identificaste el vino concreto con certeza razonable. Si no, null (se buscará después). NUNCA inventes.
+- price (number|null): precio menudeo típico en MXN (entero) si conoces ese vino en México con certeza; si no, null.
+- confidence ("high"|"medium"|"low"): certeza de la IDENTIDAD del vino (no de la foto).
+- notes (string): breve: qué viste (ej. "solo ilustración de búho, tipografía curva") y qué es dudoso.
+- matchMethod ("text"|"visual"|"mixed"): text=principalmente OCR; visual=casi sin texto / por diseño; mixed=ambos.
+- searchQuery (string): 1 consulta corta en inglés o español para buscar en internet ese vino exacto + Vivino/precio (ej. "Monte Xanic Cabernet 2020 Vivino price Mexico"). Si name="", arma query con pistas visuales.
+
+Si la imagen no parece una etiqueta de vino, name="" y confidence="low".`;
+
+const ENRICH_SYSTEM = `Eres un investigador de vinos para Cavatale (México).
+Debes USAR la búsqueda web ($web_search) para confirmar identidad, rating Vivino y precio de referencia en MXN.
+Responde SOLO con JSON válido (sin markdown) con EXACTAMENTE:
 name, winery, country, region, type, grape, aging, vintage, vivino, price, confidence, notes.
 
-Debes intentar completar TODOS los campos de catálogo. Lee todo el texto visible (nombre, bodega, DO, cosecha, variedades, crianza, % vol., etc.).
-
-Definiciones (todas obligatorias en el JSON):
-- name (string): nombre comercial del vino tal como aparece (ej. "Viña Alberdi", "Un Poco Loco"). No pongas solo la bodega aquí.
-- winery (string): bodega / productor / maison (ej. "La Rioja Alta", "Casa Madero").
-- country (string): país en español, uno de: España, México, Argentina, Chile, Francia, Italia, USA, Australia, Otro. Infórmalo aunque solo diga la región (Rioja→España, Mendoza→Argentina, Valle de Guadalupe→México, Bordeaux→Francia, Napa→USA).
-- region (string): DO / DOC / appellation / valle / zona (ej. "Rioja", "Ribera del Duero", "Valle de Guadalupe", "Mendoza", "Champagne"). Si no se ve ni se infiere con alta confianza, "".
-- type (string): exactamente uno de: Tinto, Blanco, Rosado, Espumoso. Usa color, estilo o palabras como "red/white/rosé/sparkling/cava/champagne".
-- grape (string): uva(s). Prioridad: (1) texto en etiqueta/contraetiqueta, (2) si el vino es claramente identificable, variedades típicas conocidas (ej. Tempranillo, Malbec, Cabernet Sauvignon). Varias uvas separadas por coma. Si no sabes, "".
-- aging (string): nivel o estilo de crianza si aparece o es parte del nombre/línea: Joven, Crianza, Reserva, Gran Reserva, Roble, Barrica, meses en barrica, etc. Si no hay indicios, "".
-- vintage (number|null): año de cosecha (4 dígitos) si se ve en la etiqueta. No uses el año de embotellado si está claramente marcado como tal. Si no se ve, null.
-- vivino (number|null): calificación típica Vivino 1–5 SOLO si conoces ese vino con certeza. Si no estás seguro, null. NUNCA inventes.
-- price (number|null): precio de referencia en MXN solo si se ve en la foto (etiqueta de tienda, sticker) o si conoces un precio típico de ese vino en México con alta confianza. Si no, null. Solo el número entero, sin símbolo.
-- confidence ("high"|"medium"|"low"): legibilidad y certeza global de la identificación.
-- notes (string): frase corta en español: qué faltó o qué es dudoso (ej. "año borroso", "uva no legible"). "" si todo está claro.
-
-Si la imagen no es una etiqueta de vino, name="" y confidence="low".`;
+Reglas:
+- Busca primero en Vivino / sitios de vino / tiendas MX (La Europea, Vinoteca, Amazon MX, etc.).
+- vivino: número 1–5 (un decimal ok) del vino/cosecha si aparece; si solo hay rango, toma el más citado; si no hay dato fiable, null.
+- price: entero MXN de menudeo típico actual o reciente; si solo USD/EUR, convierte aprox. a MXN; si no hay, null.
+- No inventes ratings ni precios. Prefiere null a inventar.
+- Si la búsqueda corrige el nombre/bodega, actualízalos.
+- notes: qué fuentes usaste en una frase corta (sin URLs largas).`;
 
 type KimiChatResponse = {
   choices?: Array<{ message?: { content?: string | null } }>;
@@ -68,12 +92,189 @@ async function readImageDataUrl(request: Request): Promise<string> {
   const body = (await request.json()) as { imageDataUrl?: string };
   const dataUrl = body.imageDataUrl?.trim();
   if (!dataUrl?.startsWith("data:image/")) {
-    throw new Error("Envía imageDataUrl (data:image/...;base64,...) o multipart image.");
+    throw new Error(
+      "Envía imageDataUrl (data:image/...;base64,...) o multipart image."
+    );
   }
   if (dataUrl.length > MAX_BYTES * 1.4) {
     throw new Error("La imagen es demasiado grande.");
   }
   return dataUrl;
+}
+
+type VisionExtra = {
+  matchMethod?: string;
+  searchQuery?: string;
+};
+
+function parseVisionExtras(raw: unknown): VisionExtra {
+  if (!raw || typeof raw !== "object") return {};
+  const o = raw as Record<string, unknown>;
+  return {
+    matchMethod:
+      typeof o.matchMethod === "string" ? o.matchMethod.trim() : undefined,
+    searchQuery:
+      typeof o.searchQuery === "string" ? o.searchQuery.trim() : undefined,
+  };
+}
+
+function buildSearchQuery(fields: ScanLabelFields, extras: VisionExtra): string {
+  if (extras.searchQuery) return extras.searchQuery;
+  const parts = [
+    fields.name,
+    fields.winery,
+    fields.vintage != null ? String(fields.vintage) : "",
+    fields.region,
+    "Vivino",
+    "precio México",
+  ].filter(Boolean);
+  return parts.join(" ");
+}
+
+function mergeEnrichment(
+  base: ScanLabelFields,
+  enriched: ScanLabelFields
+): ScanLabelFields {
+  const pickStr = (a: string, b: string) => (b.trim() ? b : a);
+  const pickNum = (a: number | null, b: number | null) =>
+    b != null ? b : a;
+
+  return {
+    name: pickStr(base.name, enriched.name) || base.name,
+    winery: pickStr(base.winery, enriched.winery),
+    country:
+      enriched.country && enriched.country !== "Otro"
+        ? enriched.country
+        : base.country,
+    region: pickStr(base.region, enriched.region),
+    type: enriched.type || base.type,
+    grape: pickStr(base.grape, enriched.grape),
+    aging: pickStr(base.aging, enriched.aging),
+    vintage: pickNum(base.vintage, enriched.vintage),
+    vivino: pickNum(base.vivino, enriched.vivino),
+    price: pickNum(base.price, enriched.price),
+    confidence:
+      enriched.confidence === "high" || base.confidence === "high"
+        ? enriched.vivino != null || enriched.price != null
+          ? enriched.confidence === "low"
+            ? base.confidence
+            : enriched.confidence
+          : base.confidence === "high"
+            ? "high"
+            : enriched.confidence
+        : enriched.confidence !== "low"
+          ? enriched.confidence
+          : base.confidence,
+    notes: [base.notes, enriched.notes].filter(Boolean).join(" · ").slice(0, 280),
+  };
+}
+
+async function visionIdentify(
+  apiKey: string,
+  imageDataUrl: string
+): Promise<{ fields: ScanLabelFields; extras: VisionExtra; raw: unknown }> {
+  const kimiRes = await fetch(`${KIMI_BASE}/chat/completions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      thinking: { type: "disabled" },
+      response_format: { type: "json_object" },
+      max_tokens: 2048,
+      messages: [
+        { role: "system", content: VISION_SYSTEM },
+        {
+          role: "user",
+          content: [
+            {
+              type: "image_url",
+              image_url: { url: imageDataUrl },
+            },
+            {
+              type: "text",
+              text: "Identifica este vino. Si casi no hay texto, usa la huella visual (arte, colores, logo). Completa el JSON incluyendo matchMethod, searchQuery, y vivino/price solo si estás seguro; si no, null.",
+            },
+          ],
+        },
+      ],
+    }),
+  });
+
+  const rawText = await kimiRes.text();
+  let payload: KimiChatResponse;
+  try {
+    payload = JSON.parse(rawText) as KimiChatResponse;
+  } catch {
+    throw new Error("Respuesta inválida de Kimi (visión).");
+  }
+  if (!kimiRes.ok) {
+    throw new Error(
+      payload.error?.message || `Kimi visión ${kimiRes.status}.`
+    );
+  }
+
+  const content = payload.choices?.[0]?.message?.content?.trim();
+  if (!content) throw new Error("Kimi no devolvió contenido (visión).");
+
+  const raw = extractJsonObject(content);
+  const fields = parseScanLabelResult(raw);
+  const extras = parseVisionExtras(raw);
+  return { fields, extras, raw };
+}
+
+async function enrichWithWeb(
+  apiKey: string,
+  fields: ScanLabelFields,
+  extras: VisionExtra
+): Promise<ScanLabelFields | null> {
+  // Skip if we already have both market fields with decent identity
+  if (
+    fields.vivino != null &&
+    fields.price != null &&
+    fields.confidence === "high"
+  ) {
+    return null;
+  }
+
+  const query = buildSearchQuery(fields, extras);
+  if (!query.trim() && !fields.name) return null;
+
+  const user = `Identidad tentativa del vino (puede venir de foto con poco texto):
+- name: ${fields.name || "(desconocido)"}
+- winery: ${fields.winery || ""}
+- country: ${fields.country}
+- region: ${fields.region}
+- type: ${fields.type}
+- grape: ${fields.grape}
+- aging: ${fields.aging}
+- vintage: ${fields.vintage ?? ""}
+- matchMethod: ${extras.matchMethod || ""}
+- notes visuales: ${fields.notes || ""}
+- consulta sugerida: ${query}
+
+Usa $web_search (varias búsquedas si hace falta: Vivino rating, precio México) y devuelve el JSON final con vivino y price rellenados cuando existan datos públicos.`;
+
+  const content = await kimiChatWithWebSearch({
+    apiKey,
+    model: MODEL,
+    system: ENRICH_SYSTEM,
+    user,
+    maxRounds: 4,
+    maxTokens: 1536,
+  });
+
+  if (!content) return null;
+
+  try {
+    // Model may wrap JSON; strip if tools left prose
+    const raw = extractJsonObject(content);
+    return parseScanLabelResult(raw);
+  } catch {
+    return null;
+  }
 }
 
 export async function POST(request: Request) {
@@ -95,93 +296,59 @@ export async function POST(request: Request) {
     return badRequest(e instanceof Error ? e.message : "Imagen inválida.");
   }
 
-  let kimiRes: Response;
+  let vision: { fields: ScanLabelFields; extras: VisionExtra };
   try {
-    kimiRes = await fetch(`${KIMI_BASE}/chat/completions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        thinking: { type: "disabled" },
-        response_format: { type: "json_object" },
-        max_tokens: 2048,
-        messages: [
-          { role: "system", content: SYSTEM },
-          {
-            role: "user",
-            content: [
-              {
-                type: "image_url",
-                image_url: { url: imageDataUrl },
-              },
-              {
-                type: "text",
-                text: "Identifica este vino y completa TODOS los campos del JSON: name, winery, country, region, type, grape, aging, vintage, vivino, price. Usa null o \"\" solo cuando realmente no se pueda saber.",
-              },
-            ],
-          },
-        ],
-      }),
-    });
-  } catch {
-    return NextResponse.json(
-      { error: "No se pudo contactar a Kimi. Revisa tu conexión." },
-      { status: 502 }
-    );
-  }
-
-  const rawText = await kimiRes.text();
-  let payload: KimiChatResponse;
-  try {
-    payload = JSON.parse(rawText) as KimiChatResponse;
-  } catch {
-    return NextResponse.json(
-      { error: "Respuesta inválida de Kimi.", detail: rawText.slice(0, 200) },
-      { status: 502 }
-    );
-  }
-
-  if (!kimiRes.ok) {
-    const msg =
-      payload.error?.message ||
-      `Kimi respondió ${kimiRes.status}. Revisa créditos o la API key.`;
-    return NextResponse.json({ error: msg }, { status: 502 });
-  }
-
-  const content = payload.choices?.[0]?.message?.content?.trim();
-  if (!content) {
-    return NextResponse.json(
-      { error: "Kimi no devolvió contenido." },
-      { status: 502 }
-    );
-  }
-
-  let fields: ScanLabelFields;
-  try {
-    fields = parseScanLabelResult(extractJsonObject(content));
+    vision = await visionIdentify(apiKey, imageDataUrl);
   } catch (e) {
     return NextResponse.json(
       {
-        error: e instanceof Error ? e.message : "No se pudo interpretar la respuesta.",
-        detail: content.slice(0, 400),
+        error:
+          e instanceof Error
+            ? e.message
+            : "No se pudo contactar a Kimi. Revisa tu conexión.",
       },
       { status: 502 }
     );
   }
+
+  let fields = vision.fields;
 
   if (!fields.name) {
     return NextResponse.json(
       {
         error:
           fields.notes ||
-          "No pude leer un vino en esa foto. Prueba con más luz y la etiqueta de frente.",
+          "No pude identificar el vino en esa foto (ni por texto ni por diseño). Prueba con más luz, de frente, o contraetiqueta.",
         fields,
       },
       { status: 422 }
     );
+  }
+
+  // Pass 2: web search for Vivino + price (and identity confirmation)
+  try {
+    const enriched = await enrichWithWeb(apiKey, fields, vision.extras);
+    if (enriched?.name) {
+      fields = mergeEnrichment(fields, enriched);
+    }
+  } catch {
+    // Keep vision-only result; market fields may stay null
+  }
+
+  const methodNote =
+    vision.extras.matchMethod === "visual"
+      ? "Identificado por diseño visual"
+      : vision.extras.matchMethod === "mixed"
+        ? "Identificado por texto + diseño"
+        : vision.extras.matchMethod === "text"
+          ? "Identificado por texto de etiqueta"
+          : "";
+
+  if (methodNote && !fields.notes.includes("Identificado")) {
+    fields = {
+      ...fields,
+      notes: [methodNote, fields.notes].filter(Boolean).join(" · ").slice(0, 280),
+    };
   }
 
   return NextResponse.json({ fields });

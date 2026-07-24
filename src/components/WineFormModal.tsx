@@ -423,7 +423,9 @@ export function WineFormModal({
                 disabled={scanning}
                 onClick={() => scanInputRef.current?.click()}
               >
-                {scanning ? "Leyendo etiqueta…" : "Escanear etiqueta"}
+                {scanning
+                  ? "Identificando y buscando rating…"
+                  : "Escanear etiqueta"}
               </button>
               <button
                 type="button"
@@ -462,7 +464,7 @@ export function WineFormModal({
                 onClick={() => scanInputRef.current?.click()}
               >
                 {scanning
-                  ? "Leyendo etiqueta…"
+                  ? "Identificando y buscando rating…"
                   : editing
                     ? "Rellenar desde foto"
                     : "Escanear etiqueta"}

@@ -138,7 +138,7 @@ export default function HomePage() {
               {loggedIn ? "Abrir mi cava" : "Empezar gratis"}
             </Link>
             <p className="text-sm text-ink-soft">
-              Beta abierta — hecha para coleccionistas, no para redes masivas.
+              Beta abierta — hecha para coleccionistas.
             </p>
           </div>
         </div>

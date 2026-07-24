@@ -9,13 +9,23 @@ type Props = {
   selectedId: string | null;
   onSelect: (wine: Wine) => void;
   compact?: boolean;
+  /** Total bottles in cellar (before filters). Distinguishes empty inventory. */
+  inventoryCount?: number;
 };
 
-export function WineList({ wines, selectedId, onSelect, compact = false }: Props) {
+export function WineList({
+  wines,
+  selectedId,
+  onSelect,
+  compact = false,
+  inventoryCount,
+}: Props) {
   if (wines.length === 0) {
     return (
       <p className="py-10 text-center text-sm text-ink-soft">
-        Ningún vino coincide con los filtros.
+        {inventoryCount === 0
+          ? "Tu cava está vacía. Escanea tu primera botella o prueba la cava de ejemplo."
+          : "Ningún vino coincide con los filtros."}
       </p>
     );
   }

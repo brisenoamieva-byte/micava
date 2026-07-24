@@ -17,16 +17,7 @@ import {
   wineSearcherUrl,
 } from "@/lib/rating-verify";
 import { formatPrice, formatVivino, typeAccent } from "@/lib/wines";
-
-function shareText(wine: Wine): string {
-  const lines = [
-    wine.name,
-    [wine.winery, wine.vintage, wine.region].filter(Boolean).join(" · "),
-    `Vivino ${formatVivino(wine.vivino)} · ${formatPrice(wine.price)}`,
-    wine.slot ? `Ubicación: ${wine.slot}` : null,
-  ].filter(Boolean);
-  return lines.join("\n");
-}
+import { buildWineShareText, shareOrCopyText } from "@/lib/share-wine";
 
 type Props = {
   wine: Wine | null;
@@ -232,17 +223,11 @@ export function WineDetail({
 
   async function handleShare() {
     if (!wine) return;
-    const text = shareText(wine);
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: wine.name, text });
-        return;
-      }
-      await navigator.clipboard.writeText(text);
+    const text = buildWineShareText(wine);
+    const result = await shareOrCopyText(text, wine.name);
+    if (result === "copied") {
       setShareHint("Copiado");
       window.setTimeout(() => setShareHint(null), 2000);
-    } catch {
-      // user cancelled share — ignore
     }
   }
 
@@ -285,6 +270,8 @@ export function WineDetail({
         throw new Error(payload.error || "No se pudo investigar este vino.");
       }
       onSaveKimiResearch(wine, payload.research);
+      setShareHint("Historia lista");
+      window.setTimeout(() => setShareHint(null), 3500);
     } catch (e) {
       const msg =
         e instanceof Error ? e.message : "Error al consultar la IA.";
@@ -452,6 +439,13 @@ export function WineDetail({
                   </p>
                 </div>
               ) : null}
+              <button
+                type="button"
+                className="btn btn-primary min-h-[48px] w-full text-base"
+                onClick={() => void handleShare()}
+              >
+                {shareHint ?? "Compartir historia"}
+              </button>
             </div>
           ) : null}
 

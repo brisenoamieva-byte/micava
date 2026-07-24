@@ -102,7 +102,14 @@
       "grape": "Tempranillo-Graciano",
       "vintage": 2019,
       "vivino": 4.3,
-      "price": 1755
+      "price": 1755,
+      "kimiSummary": "LAN A Mano nace de una selección a mano en viñedos viejos de Rioja: menos kilos, más intención. Es el gesto de una bodega grande que decide bajar la velocidad y dejar que el Tempranillo y el Graciano hablen sin prisa.",
+      "kimiCuriosity": "El nombre no es marketing vacío: en cosechas clave, racimos se eligen racimo a racimo. El Graciano, uva minoritaria y caprichosa, aporta frescura y perfume cuando el Tempranillo quiere solo potencia.",
+      "kimiTalkHook": "¿Cuántas botellas de Rioja conoces donde alguien admite que el Graciano manda más de lo que dice la etiqueta?",
+      "kimiPairings": ["Cordero asado", "Quesos curados de oveja", "Arroz de setas"],
+      "kimiPairingNote": "Estructura de crianza con acidez viva — pide grasa, umami y algo salado.",
+      "kimiCheckedAt": "2026-07-20T12:00:00.000Z",
+      "kimiConfidence": "likely"
     },
     {
       "id": "w002",
@@ -118,7 +125,14 @@
       "grape": "Zinfandel",
       "vintage": 2021,
       "vivino": 4.2,
-      "price": 400
+      "price": 400,
+      "kimiSummary": "1000 Stories envejece Zinfandel californiano en barricas de bourbon usadas: el vino toma vainilla, coco tostado y un eco dulce del whiskey sin dejar de ser fruta negra. Una idea americana — reutilizar madera con pasado — contada en cada copa.",
+      "kimiCuriosity": "Las barricas de bourbon solo pueden usarse una vez por ley en EE.UU. para whiskey; el vino las rescata. Cada lote de 1000 Stories es, literalmente, segunda vida de cientos de barricas con historia propia.",
+      "kimiTalkHook": "Si esta botella pudiera hablar, ¿qué contaría primero: la uva de California o el whiskey que vivió en esa madera?",
+      "kimiPairings": ["Costillas BBQ", "Chocolate negro", "Hamburguesa ahumada"],
+      "kimiPairingNote": "Dulzor de barrica y especias del Zin — brillan con ahumado, grasa y amargo.",
+      "kimiCheckedAt": "2026-07-20T12:00:00.000Z",
+      "kimiConfidence": "likely"
     },
     {
       "id": "w003",
@@ -134,7 +148,14 @@
       "grape": "Nebbiolo",
       "vintage": 2021,
       "vivino": 4.2,
-      "price": 450
+      "price": 450,
+      "kimiSummary": "Borgogno es una de las casas históricas de Barolo: Nebbiolo de Langhe con tanino noble y perfume de rosa seca y alquitrán. Abrir esta botella es invitar a la mesa un pedazo de Alba — paciente, austera y profundamente italiana.",
+      "kimiCuriosity": "La familia Borgogno elabora en Barolo desde el siglo XIX; durante décadas su cantina fue punto de encuentro de productores locales. El Nebbiolo aquí no se maquilla: si el año fue duro, la botella lo dice.",
+      "kimiTalkHook": "¿Prefieres un vino que te seduce al primer sorbo, o uno que te pide paciencia… y luego no lo olvidas?",
+      "kimiPairings": ["Ossobuco", "Risotto de hongos", "Queso Castelmagno"],
+      "kimiPairingNote": "Tanino y acidez del Nebbiolo — pide platos con grasa, umami y tiempo en mesa.",
+      "kimiCheckedAt": "2026-07-20T12:00:00.000Z",
+      "kimiConfidence": "likely"
     },
     {
       "id": "w004",

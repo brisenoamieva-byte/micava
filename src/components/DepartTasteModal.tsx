@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import type { KimiResearch } from "@/lib/kimi-research";
+import { buildWineShareText, shareOrCopyText } from "@/lib/share-wine";
 import type { DepartAction, DepartExtras, Wine } from "@/lib/types";
 
 type Props = {
@@ -61,12 +62,14 @@ export function DepartTasteModal({
   });
   const [loadingStory, setLoadingStory] = useState(false);
   const [storyError, setStoryError] = useState("");
+  const [shareHint, setShareHint] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open || !wine) return;
     setMyRating(null);
     setNote("");
     setStoryError("");
+    setShareHint(null);
     const existing = bitsFromWine(wine);
     setDiscovery(existing);
 
@@ -149,6 +152,20 @@ export function DepartTasteModal({
     });
   }
 
+  async function handleShareStory() {
+    if (!wine) return;
+    const text = buildWineShareText(wine, {
+      story: discovery.story,
+      curiosity: discovery.curiosity,
+      talkHook: discovery.talkHook,
+    });
+    const result = await shareOrCopyText(text, wine.name);
+    if (result === "copied") {
+      setShareHint("Copiado para WhatsApp");
+      window.setTimeout(() => setShareHint(null), 2500);
+    }
+  }
+
   const showDiscovery = action === "opened" || action === "gifted";
 
   return (
@@ -222,6 +239,13 @@ export function DepartTasteModal({
                     </p>
                   </div>
                 ) : null}
+                <button
+                  type="button"
+                  className="btn btn-primary min-h-[48px] w-full text-base"
+                  onClick={() => void handleShareStory()}
+                >
+                  {shareHint ?? "Compartir por WhatsApp"}
+                </button>
               </>
             ) : null}
             {!loadingStory && !hasBits(discovery) && !storyError ? (

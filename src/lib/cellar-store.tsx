@@ -12,12 +12,10 @@ import {
 } from "react";
 import { useAuth } from "@/lib/auth-store";
 import {
-  emptyKimiResearch,
   withKimiDefaults,
   type KimiResearch,
 } from "@/lib/kimi-research";
 import {
-  emptyVerification,
   withVerificationDefaults,
   type RatingVerification,
 } from "@/lib/rating-verify";
@@ -217,11 +215,11 @@ function loadHistoryLocal(): CellarLogEntry[] {
 }
 
 function seedWithDefaults(cellarId: string | null): Wine[] {
+  // seedWines already carries verification + kimi defaults (and any
+  // preloaded story fields from wines.json). Do not wipe them with empties.
   return seedWines.map((w) =>
     normalizeWine({
       ...w,
-      ...emptyVerification,
-      ...emptyKimiResearch,
       cellarId: w.slot && w.slot !== "abajo" ? cellarId : null,
     })
   );

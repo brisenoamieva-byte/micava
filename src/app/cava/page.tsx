@@ -334,6 +334,35 @@ export default function CavaPage() {
               onSelectWine={(w) => selectWine(w, true, "lista")}
             />
           </div>
+        ) : wines.length === 0 && ready ? (
+          <section className="discovery-stage mt-6 sm:mt-8">
+            <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--wine)]">
+              Tu cava
+            </p>
+            <h2 className="display mt-2 text-[1.85rem] leading-tight text-ink sm:text-3xl">
+              Empieza con la primera botella
+            </h2>
+            <p className="mt-2 max-w-lg text-sm leading-relaxed text-ink-soft">
+              Escanea una etiqueta o carga una cava de ejemplo con historias
+              listas para la mesa — sin depender de la IA en vivo.
+            </p>
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <button
+                type="button"
+                className="btn btn-primary min-h-[48px] px-4 text-base"
+                onClick={() => openAdd()}
+              >
+                Escanear primera botella
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost min-h-[48px] px-4 text-base"
+                onClick={() => void loadDemoSeed()}
+              >
+                Probar cava de ejemplo
+              </button>
+            </div>
+          </section>
         ) : (
           <>
         <div
@@ -425,6 +454,7 @@ export default function CavaPage() {
                 wines={visible}
                 selectedId={selected?.id ?? null}
                 onSelect={(w) => selectWine(w)}
+                inventoryCount={wines.length}
               />
             </section>
           }
@@ -484,6 +514,7 @@ export default function CavaPage() {
                 selectedId={selected?.id ?? null}
                 onSelect={(w) => selectWine(w, true, "lista")}
                 compact
+                inventoryCount={wines.length}
               />
             </section>
           )}
@@ -496,15 +527,7 @@ export default function CavaPage() {
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-ink-soft xl:mt-6">
-          {wines.length === 0 ? (
-            <button
-              type="button"
-              className="underline-offset-2 hover:text-ink hover:underline"
-              onClick={() => void loadDemoSeed()}
-            >
-              Cargar cava de ejemplo
-            </button>
-          ) : (
+          {wines.length > 0 ? (
             <button
               type="button"
               className="underline-offset-2 hover:text-ink hover:underline"
@@ -520,7 +543,7 @@ export default function CavaPage() {
             >
               Vaciar cava
             </button>
-          )}
+          ) : null}
           <span>
             {user?.email
               ? `Guardado en la nube · ${user.email}`

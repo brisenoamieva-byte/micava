@@ -66,10 +66,11 @@ export default function CavaPage() {
     applyKimiResearch,
     moveWine,
     departWine,
-    resetCellar,
     loadDemoSeed,
     importLocalCellar,
     dismissImportOffer,
+    isDemoCellar,
+    endDemoCellar,
   } = useCellar();
   const { signOut, user, configured } = useAuth();
   const [filters, setFilters] = useState<Filters>(initialFilters);
@@ -368,7 +369,7 @@ export default function CavaPage() {
               Empieza con la primera botella
             </h2>
             <p className="mt-2 max-w-lg text-sm leading-relaxed text-ink-soft">
-              Escanea una etiqueta o carga una cava de ejemplo con historias
+              Escanea una etiqueta o carga una cava de ejemplo (~6 botellas)
               listas para la mesa — sin depender de la IA en vivo.
             </p>
             <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
@@ -387,9 +388,85 @@ export default function CavaPage() {
                 Probar cava de ejemplo
               </button>
             </div>
+            <p className="mt-3 text-xs text-ink-soft">
+              La de ejemplo son 6 botellas. Cuando termines la prueba, usa
+              “Terminar prueba” para vaciar solo tu cuenta y empezar la tuya.
+            </p>
           </section>
         ) : (
           <>
+        {isDemoCellar || wines.length >= 20 ? (
+          <section className="mt-5 rounded-[12px] border border-[rgba(110,31,44,0.22)] bg-[rgba(250,249,245,0.92)] px-4 py-3 sm:mt-6">
+            {wines.length >= 20 ? (
+              <>
+                <p className="text-sm font-medium text-ink">
+                  Cava de ejemplo antigua
+                </p>
+                <p className="mt-1 text-sm text-ink-soft">
+                  Tienes muchas botellas de prueba. Cámbialas por las 6 de
+                  ejemplo, o termina la prueba para empezar tu cava vacía.
+                </p>
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <button
+                    type="button"
+                    className="btn btn-primary min-h-[44px] px-3 text-sm"
+                    onClick={() => {
+                      if (
+                        confirm(
+                          "¿Reemplazar tu cava actual por 6 botellas de ejemplo?\nSolo afecta TU cuenta."
+                        )
+                      ) {
+                        void loadDemoSeed();
+                      }
+                    }}
+                  >
+                    Cambiar a 6 de ejemplo
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost min-h-[44px] px-3 text-sm"
+                    onClick={() => {
+                      if (
+                        confirm(
+                          "¿Terminar la prueba y vaciar SOLO tu cava?\nTu cuenta quedará vacía para escanear tus botellas. La cava de otras personas no se toca."
+                        )
+                      ) {
+                        endDemoCellar();
+                      }
+                    }}
+                  >
+                    Terminar prueba (vaciar)
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-medium text-ink">
+                  Cava de ejemplo · {wines.length} botellas
+                </p>
+                <p className="mt-1 text-sm text-ink-soft">
+                  Estás en modo prueba. Cuando quieras tu cava real, termina la
+                  prueba: se vacía solo tu cuenta y puedes escanear tus botellas.
+                </p>
+                <button
+                  type="button"
+                  className="btn btn-primary mt-3 min-h-[44px] px-3 text-sm"
+                  onClick={() => {
+                    if (
+                      confirm(
+                        "¿Terminar la prueba y vaciar SOLO tu cava?\nTu cuenta quedará vacía para escanear tus botellas. La cava de otras personas no se toca."
+                      )
+                    ) {
+                      endDemoCellar();
+                    }
+                  }}
+                >
+                  Terminar prueba (vaciar)
+                </button>
+              </>
+            )}
+          </section>
+        ) : null}
         <div
           className={[
             "mt-5 space-y-4 sm:mt-6",
@@ -559,14 +636,18 @@ export default function CavaPage() {
               onClick={() => {
                 if (
                   confirm(
-                    "¿Vaciar tu cava en la nube?\nEsta acción no se puede deshacer."
+                    isDemoCellar || wines.length >= 20
+                      ? "¿Terminar la prueba y vaciar SOLO tu cava?\nTu cuenta quedará vacía. La cava de otras personas no se toca."
+                      : "¿Vaciar SOLO tu cava?\nSe borran las botellas de tu cuenta. La cava de otros usuarios no se toca.\nEsta acción no se puede deshacer."
                   )
                 ) {
-                  resetCellar();
+                  endDemoCellar();
                 }
               }}
             >
-              Vaciar cava
+              {isDemoCellar || wines.length >= 20
+                ? "Terminar prueba (vaciar)"
+                : "Vaciar cava"}
             </button>
           ) : null}
           <span>

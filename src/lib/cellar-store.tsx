@@ -41,11 +41,30 @@ import type {
   Wine,
   WineDraft,
 } from "@/lib/types";
-import { parseLocation, seedWines } from "@/lib/wines";
+import { parseLocation } from "@/lib/wines";
+import { buildDemoSeedWines } from "@/lib/demo-seed";
 
 const STORAGE_KEY = "micava.wines.v1";
 const HISTORY_KEY = "micava.history.v1";
 const IMPORT_FLAG = "micava.import.offered.v1";
+const DEMO_FLAG = "micava.demo.active.v1";
+
+function isDemoFlagOn(): boolean {
+  try {
+    return localStorage.getItem(DEMO_FLAG) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function setDemoFlag(on: boolean) {
+  try {
+    if (on) localStorage.setItem(DEMO_FLAG, "1");
+    else localStorage.removeItem(DEMO_FLAG);
+  } catch {
+    /* ignore */
+  }
+}
 
 function localDefaultCellar(): CellarUnit {
   return {
@@ -102,6 +121,10 @@ type CellarContextValue = {
     extras?: DepartExtras
   ) => void;
   resetCellar: () => void;
+  /** True when the user loaded the curated demo seed on this device. */
+  isDemoCellar: boolean;
+  /** Clear only this user's bottles and exit demo mode. */
+  endDemoCellar: () => void;
   loadDemoSeed: () => Promise<void>;
   importLocalCellar: () => Promise<void>;
   dismissImportOffer: () => void;
@@ -215,14 +238,8 @@ function loadHistoryLocal(): CellarLogEntry[] {
 }
 
 function seedWithDefaults(cellarId: string | null): Wine[] {
-  // seedWines already carries verification + kimi defaults (and any
-  // preloaded story fields from wines.json). Do not wipe them with empties.
-  return seedWines.map((w) =>
-    normalizeWine({
-      ...w,
-      cellarId: w.slot && w.slot !== "abajo" ? cellarId : null,
-    })
-  );
+  // Curated ~6 bottles for new-user demo — not the full founder inventory.
+  return buildDemoSeedWines(cellarId).map((w) => normalizeWine(w));
 }
 
 export function wineToDraft(wine: Wine): WineDraft {
@@ -250,6 +267,7 @@ export function CellarProvider({ children }: { children: ReactNode }) {
   const [activeCellarId, setActiveCellarId] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [canImportLocal, setCanImportLocal] = useState(false);
+  const [isDemoCellar, setIsDemoCellar] = useState(false);
   const userIdRef = useRef<string | null>(null);
   /** False until `cellars` + `wines.cellar_id` exist in Supabase. */
   const multiCellarRef = useRef(false);
@@ -684,14 +702,24 @@ export function CellarProvider({ children }: { children: ReactNode }) {
     [deleteWineRemote, insertHistoryRemote]
   );
 
+  useEffect(() => {
+    setIsDemoCellar(isDemoFlagOn());
+  }, [user?.id]);
+
   const resetCellar = useCallback(() => {
     const uid = userIdRef.current;
     setWines([]);
+    setDemoFlag(false);
+    setIsDemoCellar(false);
     if (uid && isSupabaseConfigured()) {
       const supabase = createClient();
       void supabase.from("wines").delete().eq("user_id", uid);
     }
   }, []);
+
+  const endDemoCellar = useCallback(() => {
+    resetCellar();
+  }, [resetCellar]);
 
   const loadDemoSeed = useCallback(async () => {
     const uid = userIdRef.current;
@@ -706,6 +734,8 @@ export function CellarProvider({ children }: { children: ReactNode }) {
     setWines(fresh);
     setCanImportLocal(false);
     localStorage.setItem(IMPORT_FLAG, "1");
+    setDemoFlag(true);
+    setIsDemoCellar(true);
     if (uid) await persistWines(fresh, uid);
   }, [cellars, ensureDefaultCellar, persistWines]);
 
@@ -875,6 +905,8 @@ export function CellarProvider({ children }: { children: ReactNode }) {
       removeWine,
       departWine,
       resetCellar,
+      isDemoCellar,
+      endDemoCellar,
       loadDemoSeed,
       importLocalCellar,
       dismissImportOffer,
@@ -900,6 +932,8 @@ export function CellarProvider({ children }: { children: ReactNode }) {
       removeWine,
       departWine,
       resetCellar,
+      isDemoCellar,
+      endDemoCellar,
       loadDemoSeed,
       importLocalCellar,
       dismissImportOffer,

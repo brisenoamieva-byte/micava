@@ -69,7 +69,7 @@ export default function HomePage() {
             <p className="fade-up-delay mt-5 max-w-lg text-base leading-relaxed text-[#4f4a43] sm:mt-6 sm:text-lg md:text-[1.25rem] md:leading-snug">
               Cada botella guarda un lugar, unas manos, una decisión. Cavatale
               deja que el vino hable: cuida tu cava y, al descorchar, te entrega
-              la historia que enciende la mesa.
+              la historia que abre la conversación.
             </p>
 
             <div className="fade-up-delay-2 mt-8 flex flex-col items-start gap-3 sm:mt-10 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">

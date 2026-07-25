@@ -178,7 +178,8 @@ alter table public.wines
   add column if not exists label_image_url text,
   add column if not exists kimi_curiosity text,
   add column if not exists kimi_talk_hook text,
-  add column if not exists cavatale_rating double precision;
+  add column if not exists cavatale_rating double precision,
+  add column if not exists kimi_user_note text;
 
 create index if not exists wines_cellar_id_idx on public.wines (cellar_id);
 

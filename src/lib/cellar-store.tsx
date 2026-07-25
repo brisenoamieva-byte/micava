@@ -94,6 +94,8 @@ type CellarContextValue = {
     options?: { syncVivino?: boolean }
   ) => void;
   saveKimiResearch: (id: string, research: KimiResearch) => number;
+  /** Persist owner dispute note for story review (not ground truth). */
+  saveKimiUserNote: (id: string, note: string | null) => number;
   setLabelImageUrl: (id: string, labelImageUrl: string | null) => void;
   applyKimiResearch: (
     id: string,
@@ -171,6 +173,7 @@ function draftToWine(draft: WineDraft, id: string, existing?: Wine): Wine {
     kimiPairingNote: existing?.kimiPairingNote ?? null,
     kimiCheckedAt: existing?.kimiCheckedAt ?? null,
     kimiConfidence: existing?.kimiConfidence ?? null,
+    kimiUserNote: existing?.kimiUserNote ?? null,
     labelImageUrl: existing?.labelImageUrl ?? null,
   };
 }
@@ -317,7 +320,11 @@ export function CellarProvider({ children }: { children: ReactNode }) {
     if (!isSupabaseConfigured()) return;
     if (typeof navigator !== "undefined" && !navigator.onLine) return;
     const supabase = createClient();
-    const tryUpsert = async (includeKimi: boolean, includePairings: boolean) => {
+    const tryUpsert = async (
+      includeKimi: boolean,
+      includePairings: boolean,
+      includeUserNote: boolean
+    ) => {
       const row = wineToRow(wine, userId, {
         includeCellarId: multiCellarRef.current,
         includeKimi,
@@ -325,17 +332,33 @@ export function CellarProvider({ children }: { children: ReactNode }) {
       if (includeKimi && !includePairings) {
         delete row.kimi_pairings;
       }
+      if (includeKimi && !includeUserNote) {
+        delete row.kimi_user_note;
+      }
       return supabase.from("wines").upsert(row, { onConflict: "user_id,id" });
     };
     let includePairings = true;
-    let { error } = await tryUpsert(kimiColumnsRef.current, includePairings);
+    let includeUserNote = true;
+    let { error } = await tryUpsert(
+      kimiColumnsRef.current,
+      includePairings,
+      includeUserNote
+    );
+    if (
+      error &&
+      kimiColumnsRef.current &&
+      /kimi_user_note/i.test(error.message ?? "")
+    ) {
+      includeUserNote = false;
+      ({ error } = await tryUpsert(true, includePairings, false));
+    }
     if (
       error &&
       kimiColumnsRef.current &&
       /kimi_pairings/i.test(error.message ?? "")
     ) {
       includePairings = false;
-      ({ error } = await tryUpsert(true, false));
+      ({ error } = await tryUpsert(true, false, includeUserNote));
     }
     if (
       error &&
@@ -343,7 +366,7 @@ export function CellarProvider({ children }: { children: ReactNode }) {
       /kimi_|column|schema|could not find/i.test(error.message ?? "")
     ) {
       kimiColumnsRef.current = false;
-      ({ error } = await tryUpsert(false, false));
+      ({ error } = await tryUpsert(false, false, false));
     }
     if (error) {
       reportSyncError(
@@ -651,6 +674,29 @@ export function CellarProvider({ children }: { children: ReactNode }) {
                 ? research.kimiPrice
                 : w.price,
           };
+        });
+        touched = nextList.filter((w) => wineIdentityKey(w) === key);
+        return nextList;
+      });
+      const uid = userIdRef.current;
+      if (uid) {
+        for (const w of touched) void upsertWineRemote(w, uid);
+      }
+      return touched.length;
+    },
+    [upsertWineRemote]
+  );
+
+  const saveKimiUserNote = useCallback(
+    (id: string, note: string | null) => {
+      let touched: Wine[] = [];
+      setWines((prev) => {
+        const source = prev.find((w) => w.id === id);
+        if (!source) return prev;
+        const key = wineIdentityKey(source);
+        const nextList = prev.map((w) => {
+          if (wineIdentityKey(w) !== key) return w;
+          return { ...w, kimiUserNote: note };
         });
         touched = nextList.filter((w) => wineIdentityKey(w) === key);
         return nextList;
@@ -1028,6 +1074,7 @@ export function CellarProvider({ children }: { children: ReactNode }) {
       updateWine,
       verifyWineRating,
       saveKimiResearch,
+      saveKimiUserNote,
       setLabelImageUrl,
       applyKimiResearch,
       moveWine,
@@ -1057,6 +1104,7 @@ export function CellarProvider({ children }: { children: ReactNode }) {
       updateWine,
       verifyWineRating,
       saveKimiResearch,
+      saveKimiUserNote,
       setLabelImageUrl,
       applyKimiResearch,
       moveWine,

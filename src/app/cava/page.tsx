@@ -69,6 +69,7 @@ export default function CavaPage() {
     updateWine,
     verifyWineRating,
     saveKimiResearch,
+    saveKimiUserNote,
     setLabelImageUrl,
     applyKimiResearch,
     moveWine,
@@ -353,6 +354,8 @@ export default function CavaPage() {
     onVerifyRating: handleVerifyRating,
     onSaveKimiResearch: (w: Wine, research: Parameters<typeof saveKimiResearch>[1]) =>
       saveKimiResearch(w.id, research),
+    onSaveKimiUserNote: (w: Wine, note: string | null) =>
+      saveKimiUserNote(w.id, note),
     onApplyKimiResearch: (
       w: Wine,
       fields: { vivino?: boolean; price?: boolean }

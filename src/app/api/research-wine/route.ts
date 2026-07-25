@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { guardKimiApi } from "@/lib/api-guard";
 import {
   assessKimiStoryQuality,
+  buildUserCorrectionPromptBlock,
+  normalizeUserCorrectionNote,
   parseKimiResearchFromModelText,
   polishKimiResearchNarratives,
   wineIdentityForResearch,
@@ -114,6 +116,10 @@ type Body = {
   vivino?: number | null;
   cavataleRating?: number | null;
   price?: number | null;
+  /** Owner dispute / report of error — NOT ground truth. */
+  userCorrection?: string | null;
+  /** Alias of userCorrection. */
+  feedback?: string | null;
 };
 
 type KimiChatResponse = {
@@ -249,6 +255,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Falta el nombre del vino." }, { status: 400 });
   }
 
+  const correctionRaw = body.userCorrection ?? body.feedback ?? null;
+  let correctionNote: string | null = null;
+  if (correctionRaw != null && String(correctionRaw).trim()) {
+    const checked = normalizeUserCorrectionNote(String(correctionRaw));
+    if (!checked.ok) {
+      return NextResponse.json({ error: checked.error }, { status: 400 });
+    }
+    correctionNote = checked.note;
+  }
+
   const identity = wineIdentityForResearch({
     name,
     winery: body.winery ?? "",
@@ -263,7 +279,10 @@ export async function POST(request: Request) {
     price: body.price ?? null,
   });
 
-  const userPrompt = buildUserPrompt(identity);
+  const correctionBlock = correctionNote
+    ? buildUserCorrectionPromptBlock(correctionNote)
+    : "";
+  const userPrompt = buildUserPrompt(identity) + correctionBlock;
   const first = await callKimi(apiKey, userPrompt);
   let sessionUsage: KimiTokenUsage | null = first.usage;
 

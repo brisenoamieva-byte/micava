@@ -47,6 +47,11 @@ export type Wine = {
   /** ISO timestamp of last Kimi research. */
   kimiCheckedAt: string | null;
   kimiConfidence: MatchConfidence | null;
+  /**
+   * Owner dispute/feedback about the story (not ground truth).
+   * Passed to research as a contested claim for review.
+   */
+  kimiUserNote: string | null;
 };
 
 /** One physical furniture unit / grid belonging to a user. */

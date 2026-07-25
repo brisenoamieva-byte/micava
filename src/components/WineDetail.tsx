@@ -6,6 +6,7 @@ import { CountryFlag } from "@/components/CountryFlag";
 import { parseGrapes } from "@/lib/grapes";
 import {
   isThinKimiStory,
+  normalizeUserCorrectionNote,
   type KimiResearch,
 } from "@/lib/kimi-research";
 import { resolveLabelImageUrl } from "@/lib/label-image";
@@ -44,6 +45,8 @@ type Props = {
     }
   ) => void;
   onSaveKimiResearch?: (wine: Wine, research: KimiResearch) => number | void;
+  /** Persist owner dispute note (feedback only, not truth). */
+  onSaveKimiUserNote?: (wine: Wine, note: string | null) => number | void;
   onApplyKimiResearch?: (
     wine: Wine,
     fields: { vivino?: boolean; price?: boolean }
@@ -62,6 +65,7 @@ export function WineDetail({
   onGifted,
   onVerifyRating,
   onSaveKimiResearch,
+  onSaveKimiUserNote,
   onApplyKimiResearch,
   onMove,
 }: Props) {
@@ -82,6 +86,9 @@ export function WineDetail({
     estimate: number;
     current: number | null;
   } | null>(null);
+  const [correctionOpen, setCorrectionOpen] = useState(false);
+  const [correctionDraft, setCorrectionDraft] = useState("");
+  const [correctionError, setCorrectionError] = useState("");
   const researchAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -101,6 +108,9 @@ export function WineDetail({
     setApplyHint(null);
     setVivinoOffer(null);
     setLabelSrc(null);
+    setCorrectionOpen(false);
+    setCorrectionDraft(wine?.kimiUserNote ?? "");
+    setCorrectionError("");
     researchAbortRef.current?.abort();
     researchAbortRef.current = null;
   }, [wine?.id]);
@@ -283,12 +293,21 @@ export function WineDetail({
     }
   }
 
-  async function handleKimiResearch() {
+  async function handleKimiResearch(opts?: {
+    userCorrection?: string;
+  }) {
     if (!wine || !onSaveKimiResearch || kimiLoading) return;
     researchAbortRef.current?.abort();
     const abort = new AbortController();
     researchAbortRef.current = abort;
     const timeoutId = window.setTimeout(() => abort.abort(), 55_000);
+
+    const correctionFromSubmit = opts?.userCorrection?.trim()
+      ? opts.userCorrection.trim()
+      : null;
+    // Re-research may reuse last dispute note as contested claim (never truth).
+    const storedNote = wine.kimiUserNote?.trim() || null;
+    const userCorrection = correctionFromSubmit || storedNote || undefined;
 
     setKimiLoading(true);
     setKimiError("");
@@ -311,6 +330,7 @@ export function WineDetail({
           vivino: wine.vivino,
           cavataleRating: wine.cavataleRating,
           price: wine.price,
+          ...(userCorrection ? { userCorrection } : {}),
         }),
         signal: abort.signal,
       });
@@ -343,6 +363,9 @@ export function WineDetail({
       }
       const research = payload.research;
       const applied = onSaveKimiResearch(wine, research);
+      if (correctionFromSubmit && onSaveKimiUserNote) {
+        onSaveKimiUserNote(wine, correctionFromSubmit);
+      }
       const n = typeof applied === "number" ? applied : 1;
       setResearchJustDone(true);
       const thin =
@@ -352,6 +375,10 @@ export function WineDetail({
         n > 1 ? `Historia aplicada a ${n} botellas iguales` : "Historia lista"
       );
       window.setTimeout(() => setShareHint(null), 3500);
+      if (correctionFromSubmit) {
+        setCorrectionOpen(false);
+        setCorrectionError("");
+      }
 
       // Vivino: never auto-update. Offer only if high-conf and estimate differs.
       const est = research.kimiVivino;
@@ -385,6 +412,16 @@ export function WineDetail({
       if (researchAbortRef.current === abort) researchAbortRef.current = null;
       setKimiLoading(false);
     }
+  }
+
+  function handleSubmitCorrection() {
+    const checked = normalizeUserCorrectionNote(correctionDraft);
+    if (!checked.ok) {
+      setCorrectionError(checked.error);
+      return;
+    }
+    setCorrectionError("");
+    void handleKimiResearch({ userCorrection: checked.note });
   }
 
   const kimiDeltaVivino = ratingDelta(wine.vivino, wine.kimiVivino);
@@ -595,6 +632,81 @@ export function WineDetail({
                   suele dar otra versión.
                 </p>
               ) : null}
+
+              {!kimiLoading ? (
+                <div className="pt-1">
+                  {!correctionOpen ? (
+                    <button
+                      type="button"
+                      className="text-xs text-ink-soft underline-offset-2 hover:text-ink hover:underline"
+                      disabled={kimiLoading}
+                      onClick={() => {
+                        setCorrectionOpen(true);
+                        setCorrectionError("");
+                        if (!correctionDraft && wine.kimiUserNote) {
+                          setCorrectionDraft(wine.kimiUserNote);
+                        }
+                      }}
+                    >
+                      ¿Algo incorrecto?
+                    </button>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                        Reportar un error
+                      </p>
+                      <p className="text-xs leading-relaxed text-ink-soft">
+                        Señala qué está mal (dato concreto). No inventamos
+                        biografías a pedido. La IA contrastará tu nota; no la
+                        tomará como verdad automática.
+                      </p>
+                      <label className="sr-only" htmlFor="kimi-correction-note">
+                        Qué dato está mal
+                      </label>
+                      <textarea
+                        id="kimi-correction-note"
+                        rows={3}
+                        maxLength={500}
+                        value={correctionDraft}
+                        disabled={kimiLoading}
+                        placeholder="Corrige o aclara el dato concreto…"
+                        className="w-full resize-y rounded-[10px] border border-[rgba(110,31,44,0.22)] bg-[rgba(255,252,247,0.8)] px-3 py-2 text-sm leading-relaxed text-ink placeholder:text-ink-soft/70 focus:border-[rgba(110,31,44,0.45)] focus:outline-none"
+                        onChange={(e) => {
+                          setCorrectionDraft(e.target.value);
+                          if (correctionError) setCorrectionError("");
+                        }}
+                      />
+                      {correctionError ? (
+                        <p className="text-xs text-[var(--wine)]" role="alert">
+                          {correctionError}
+                        </p>
+                      ) : null}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          className="btn btn-ghost min-h-[40px] px-3 text-sm disabled:opacity-60"
+                          disabled={kimiLoading}
+                          onClick={() => handleSubmitCorrection()}
+                        >
+                          Pedir revisión
+                        </button>
+                        <button
+                          type="button"
+                          className="text-xs text-ink-soft underline-offset-2 hover:underline"
+                          disabled={kimiLoading}
+                          onClick={() => {
+                            setCorrectionOpen(false);
+                            setCorrectionError("");
+                          }}
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+
               <button
                 type="button"
                 className="btn btn-primary min-h-[48px] w-full text-base"

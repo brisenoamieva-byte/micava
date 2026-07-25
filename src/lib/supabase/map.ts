@@ -36,6 +36,7 @@ export type WineRow = {
   kimi_pairings: string | null;
   kimi_checked_at: string | null;
   kimi_confidence: string | null;
+  kimi_user_note: string | null;
   label_image_url: string | null;
 };
 
@@ -93,6 +94,7 @@ export function wineFromRow(row: WineRow): Wine {
       kimiPairingNote: pairings.note,
       kimiCheckedAt: row.kimi_checked_at ?? null,
       kimiConfidence: row.kimi_confidence as Wine["kimiConfidence"],
+      kimiUserNote: row.kimi_user_note ?? null,
       labelImageUrl: row.label_image_url ?? null,
     })
   );
@@ -138,6 +140,7 @@ export function wineToRow(
     );
     base.kimi_checked_at = wine.kimiCheckedAt;
     base.kimi_confidence = wine.kimiConfidence;
+    base.kimi_user_note = wine.kimiUserNote;
   }
   base.label_image_url = wine.labelImageUrl;
   if (opts?.includeCellarId === false) return base;

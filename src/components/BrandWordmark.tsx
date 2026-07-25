@@ -12,8 +12,8 @@ const sizeClass = {
 } as const;
 
 /**
- * Dual-style wordmark: Cava (Cormorant roman) + Tale (Cormorant italic).
- * Same family so the name flows; wine + italic mark the story half.
+ * Dual-style wordmark: Cava (Cormorant roman) + tale (Cormorant italic).
+ * Lowercase tale keeps one flowing name; wine + italic mark the story half.
  */
 export function BrandWordmark({ className = "", size = "md" }: Props) {
   return (
@@ -22,7 +22,7 @@ export function BrandWordmark({ className = "", size = "md" }: Props) {
       aria-label="Cavatale"
     >
       <span className="brand-cava">Cava</span>
-      <span className="brand-tale">Tale</span>
+      <span className="brand-tale">tale</span>
     </span>
   );
 }

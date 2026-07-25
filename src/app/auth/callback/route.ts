@@ -4,6 +4,10 @@ import {
   PENDING_PASSWORD_COOKIE,
   pendingPasswordCookieOptions,
 } from "@/lib/pending-password";
+import {
+  isRecentlyCreatedUser,
+  notifyNewSignup,
+} from "@/lib/notify-signup";
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
@@ -32,11 +36,40 @@ export async function GET(request: NextRequest) {
     return response;
   }
 
+  async function maybeNotifyNewUser(
+    supabase: ReturnType<typeof createAuthRouteClient>
+  ) {
+    if (isRecovery) return;
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user?.email || !isRecentlyCreatedUser(user.created_at)) return;
+      const meta = user.user_metadata ?? {};
+      await notifyNewSignup({
+        email: user.email,
+        displayName:
+          (meta.display_name as string | undefined) ||
+          (meta.full_name as string | undefined) ||
+          (meta.name as string | undefined) ||
+          null,
+        provider:
+          typeof user.app_metadata?.provider === "string"
+            ? user.app_metadata.provider
+            : "oauth",
+        userId: user.id,
+      });
+    } catch {
+      /* never block auth redirect */
+    }
+  }
+
   if (code) {
     const response = withPending(NextResponse.redirect(dest));
     const supabase = createAuthRouteClient(request, response);
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
+      await maybeNotifyNewUser(supabase);
       return response;
     }
   }
@@ -54,6 +87,7 @@ export async function GET(request: NextRequest) {
       token_hash: tokenHash,
     });
     if (!error) {
+      await maybeNotifyNewUser(supabase);
       return response;
     }
   }

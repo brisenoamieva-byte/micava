@@ -108,8 +108,8 @@ export default function HomePage() {
             Tres gestos. Sin complicarte.
           </h2>
           <p className="mt-3 max-w-md text-sm leading-relaxed text-ink-soft sm:text-base">
-            Instálala en el teléfono como app. Escanea en la tienda o en casa;
-            las historias llegan cuando las necesitas en la mesa.
+            Escanea en la tienda o en casa. Acomoda. Cuando abras, la historia
+            está lista para la mesa.
           </p>
 
           <ol className="mt-12 grid gap-10 sm:mt-14 sm:grid-cols-3 sm:gap-8">

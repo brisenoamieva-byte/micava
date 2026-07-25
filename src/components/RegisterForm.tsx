@@ -49,6 +49,16 @@ export function RegisterForm() {
         setError(err.message);
         return;
       }
+      // Fire-and-forget founder alert (Discord webhook and/or email).
+      void fetch("/api/notify-signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim(),
+          displayName: displayName.trim() || null,
+          provider: "email",
+        }),
+      }).catch(() => {});
       if (data.session) {
         router.replace("/cava");
         router.refresh();

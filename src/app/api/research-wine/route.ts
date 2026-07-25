@@ -26,11 +26,21 @@ cavataleRating, vivino, price, confidence, summary, curiosity, talkHook, pairing
 ## Rating Cavatale (OBLIGATORIO cuando tengas base; es el score oficial de la plataforma)
 
 - cavataleRating (number|null): puntuación oficial Cavatale en escala 1.0–5.0 con UN decimal.
-  NO copies Vivino. NO inventes. Es tu juicio sintético de experto Cavatale sobre ESTA botella/cosecha.
-  Basado en señales que conozcas con rigor: calidad del productor, tipicidad y equilibrio del estilo, reputación de la cosecha, consenso de críticos/guías cuando lo sepas, y coherencia precio-calidad cuando aplique.
+  NO copies Vivino. NO inventes. Es el juicio Cavatale: ¿qué tan vale la pena esta botella para CONTAR y VIVIR en la mesa?
+
+  Ponderación (aprox.; la historia pesa más que el score de crítica):
+  1) Historia que se puede contar (~35%): personas, origen, anécdotas, riesgo, herencia, decisión humana detrás del vino.
+  2) Experiencia de mesa (~20%): cómo abre conversación, ritual, emoción al descorchar, sentido de ocasión.
+  3) Originalidad (~15%): lo poco obvio, el giro propio, lo que lo distingue de “otro tinto más”.
+  4) Autenticidad (~15%): honestidad del proyecto (no postureo), tipicidad vivida, coherencia con lugar/gente.
+  5) Interés / rareza narrativa (~10%): dato que hace decir “¿en serio?”, curiosidad real.
+  6) Calidad sensorial / reputación técnica (~5%): solo como suelo mínimo; NO debe dominar el número.
+
+  Un vino técnicamente correcto pero sin historia ni carácter no debe puntuar alto.
+  Un vino con historia humana fuerte, original y auténtica puede superar a uno “mejor puntuado” en Vivino.
   Sé preciso con las décimas (4.2 ≠ 4.3 ≠ 4.4). Evita .0/.5 por pereza.
-  Anclas: ~3.5 cotidiano correcto; ~4.0 muy bueno; ~4.3–4.5 excelente; ≥4.6 excepcional/raro.
-  Si la identidad es dudosa o te faltan señales serias → null (mejor null que un número flojo).
+  Anclas Cavatale: ~3.4 correcto pero olvidable; ~3.8 agradable con algo que contar; ~4.1–4.3 historia + experiencia notables; ~4.4–4.6 muy memorable; ≥4.7 excepcional en relato y autenticidad.
+  Si la identidad es dudosa o no hay señales serias → null (mejor null que un número flojo).
 
 ## Estimaciones de referencia (secundarias)
 
@@ -54,7 +64,7 @@ cavataleRating, vivino, price, confidence, summary, curiosity, talkHook, pairing
 
 1. Personas reales > paisaje genérico > marketing de denominación.
 2. Nunca inventes dueños, fundadores, enólogos, fechas familiares ni premios. Si no los conoces, no los fabriques.
-3. cavataleRating debe ser independiente y más exigente que un promedio de Vivino.
+3. cavataleRating privilegia historia, experiencia, originalidad, autenticidad e interés — no el ranking comunitario.
 4. summary, curiosity, talkHook y pairings NO deben repetir la misma idea.
 5. No digas que consultaste Vivino/internet en vivo.
 6. Español natural (México/LatAm). Sin emojis. Sin markdown dentro de los strings.`;
@@ -134,7 +144,7 @@ export async function POST(request: Request) {
           { role: "system", content: SYSTEM },
           {
             role: "user",
-            content: `Esta botella está a punto de abrirse (o regalarse). Prioriza a las personas detrás del vino (fundadores, dueños, familia, enólogo/a) si las conoces; si no, sé honesto y cuenta lo más íntimo y concreto que sí sepas. Dame: Rating Cavatale (preciso, independiente de Vivino), historia, dato que la mesa repetirá, provocación para conversar, maridaje (pairings + pairingNote), y estimaciones Vivino/precio solo si las conoces bien.
+            content: `Esta botella está a punto de abrirse (o regalarse). Prioriza a las personas detrás del vino (fundadores, dueños, familia, enólogo/a) si las conoces; si no, sé honesto y cuenta lo más íntimo y concreto que sí sepas. Dame: Rating Cavatale ponderando sobre todo historia contable, experiencia de mesa, originalidad, autenticidad e interés (la calidad técnica solo como suelo), más historia, dato que la mesa repetirá, provocación para conversar, maridaje (pairings + pairingNote), y estimaciones Vivino/precio solo si las conoces bien.
 
 Ficha:\n\n${identity}`,
           },

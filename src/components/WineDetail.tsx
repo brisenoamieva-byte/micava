@@ -466,8 +466,8 @@ export function WineDetail({
                 {formatCavataleRating(wine.cavataleRating)}
               </p>
               <p className="mt-1.5 text-xs text-ink-soft">
-                Score propio de Cavatale (IA). Independiente del ranking Vivino
-                de la comunidad.
+                Pondera historia, experiencia, originalidad y autenticidad —
+                no el ranking Vivino de la comunidad.
               </p>
             </div>
           ) : null}

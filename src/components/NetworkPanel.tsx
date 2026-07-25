@@ -571,7 +571,7 @@ export function NetworkPanel({ onUnreadTotalChange }: NetworkPanelProps = {}) {
               maxLength={160}
               value={formBio}
               onChange={(e) => setFormBio(e.target.value)}
-              placeholder="Qué te gusta beber, región favorita…"
+              placeholder="Qué te gusta tomar, región favorita…"
             />
           </label>
 

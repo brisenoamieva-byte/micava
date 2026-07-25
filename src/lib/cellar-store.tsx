@@ -685,47 +685,51 @@ export function CellarProvider({ children }: { children: ReactNode }) {
     setWines([]);
     setHistory([]);
     setCanImportLocal(false);
-    // Don't re-offer the browser's old local cava after an intentional wipe.
     try {
       localStorage.setItem(IMPORT_FLAG, "1");
+      // Shared device: don't keep a browser copy that can be re-imported by mistake.
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(HISTORY_KEY);
     } catch {
       /* ignore */
     }
 
     if (!uid || !isSupabaseConfigured()) return;
 
-    const supabase = createClient();
-    const { error: wineErr } = await supabase
-      .from("wines")
-      .delete()
-      .eq("user_id", uid);
-    if (wineErr) {
-      console.warn("vaciar cava (wines) failed", wineErr.message);
-    }
-    const { error: histErr } = await supabase
-      .from("cellar_history")
-      .delete()
-      .eq("user_id", uid);
-    if (histErr) {
-      console.warn("vaciar cava (history) failed", histErr.message);
-    }
-
-    // Verify empty; if rows remain, force-delete by id list.
-    const { data: leftover } = await supabase
-      .from("wines")
-      .select("id")
-      .eq("user_id", uid);
-    if (leftover?.length) {
-      const ids = leftover.map((r) => r.id as string);
-      // Chunk in case of large cavas
-      for (let i = 0; i < ids.length; i += 100) {
-        const chunk = ids.slice(i, i + 100);
-        await supabase
-          .from("wines")
-          .delete()
-          .eq("user_id", uid)
-          .in("id", chunk);
+    try {
+      const res = await fetch("/api/clear-cellar", { method: "POST" });
+      const raw = await res.text();
+      let payload: { error?: string; remaining?: number; deleted?: number } =
+        {};
+      try {
+        payload = JSON.parse(raw) as typeof payload;
+      } catch {
+        /* ignore */
       }
+
+      if (!res.ok) {
+        console.warn("vaciar cava failed", payload.error || res.status);
+        alert(
+          payload.error ||
+            "No se pudo vaciar la cava en la nube. Cierra sesión, vuelve a entrar e inténtalo."
+        );
+        // Reload from cloud so UI matches reality
+        loadGenRef.current += 1;
+        window.location.reload();
+        return;
+      }
+
+      if ((payload.remaining ?? 0) > 0) {
+        alert(
+          `Aún quedan ${payload.remaining} botellas en la nube. Prueba otra vez o cierra sesión y vuelve a entrar.`
+        );
+        window.location.reload();
+        return;
+      }
+    } catch (e) {
+      console.warn("vaciar cava network error", e);
+      alert("No hubo conexión al vaciar. Inténtalo de nuevo.");
+      window.location.reload();
     }
   }, []);
 

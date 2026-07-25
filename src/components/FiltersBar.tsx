@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, type CSSProperties } from "react";
+import {
+  useEffect,
+  useMemo,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import type { Filters, SortOption, Wine } from "@/lib/types";
 import { grapesInCellar } from "@/lib/grapes";
 import {
@@ -48,42 +53,50 @@ function scoreBounds(
   };
 }
 
-type DualScoreRangeProps = {
-  label: string;
+type DualRangeFieldProps = {
+  label: ReactNode;
   bounds: { min: number; max: number };
   minValue: number;
   maxValue: number;
+  step: number;
   displayLabel: string;
+  formatBound: (n: number) => string;
+  maxBoundSuffix?: string;
   onMin: (v: number) => void;
   onMax: (v: number) => void;
   minAria: string;
   maxAria: string;
 };
 
-function DualScoreRange({
+/** Shared layout so Vivino / Cavatale / Precio align across sm:grid-cols-3. */
+function DualRangeField({
   label,
   bounds,
   minValue,
   maxValue,
+  step,
   displayLabel,
+  formatBound,
+  maxBoundSuffix = "",
   onMin,
   onMax,
   minAria,
   maxAria,
-}: DualScoreRangeProps) {
+}: DualRangeFieldProps) {
   const span = bounds.max - bounds.min || 1;
   const fillStart = ((minValue - bounds.min) / span) * 100;
   const fillEnd = ((maxValue - bounds.min) / span) * 100;
 
   return (
-    <label className="min-w-0">
-      <span className="mb-1 flex items-center justify-between gap-2 text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
-        <span>{label}</span>
-        <span className="normal-case tracking-normal text-ink">
+    <label className="flex min-w-0 flex-col">
+      {/* Reserved 2-line title slot so short labels (Precio) match wrapped ones */}
+      <span className="mb-1 grid min-h-[2.5rem] grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:min-h-[2.75rem] sm:text-xs">
+        <span className="leading-snug">{label}</span>
+        <span className="shrink-0 self-start pt-px normal-case tracking-normal text-ink">
           {displayLabel}
         </span>
       </span>
-      <div className="flex min-h-[44px] flex-col justify-center rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.8)] px-2.5 py-2 sm:px-3">
+      <div className="flex min-h-[52px] flex-1 flex-col justify-center rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.8)] px-2.5 py-2 sm:px-3">
         <div
           className="dual-range"
           style={
@@ -98,7 +111,7 @@ function DualScoreRange({
             type="range"
             min={bounds.min}
             max={bounds.max}
-            step={0.1}
+            step={step}
             value={minValue}
             onChange={(e) => onMin(Number(e.target.value))}
             aria-label={minAria}
@@ -108,19 +121,31 @@ function DualScoreRange({
             type="range"
             min={bounds.min}
             max={bounds.max}
-            step={0.1}
+            step={step}
             value={maxValue}
             onChange={(e) => onMax(Number(e.target.value))}
             aria-label={maxAria}
             className="dual-range-input is-max"
           />
         </div>
-        <div className="mt-1 flex justify-between text-[10px] text-ink-soft">
-          <span>{bounds.min.toFixed(1)}</span>
-          <span>{bounds.max.toFixed(1)}</span>
+        <div className="mt-1 flex h-[1rem] items-center justify-between text-[10px] leading-none text-ink-soft">
+          <span>{formatBound(bounds.min)}</span>
+          <span>
+            {formatBound(bounds.max)}
+            {maxBoundSuffix}
+          </span>
         </div>
       </div>
     </label>
+  );
+}
+
+function ScoreRangeTitle({ name }: { name: string }) {
+  return (
+    <>
+      Calificación{" "}
+      <span className="sm:block">{name}</span>
+    </>
   );
 }
 
@@ -271,10 +296,6 @@ export function FiltersBar({ filters, onChange, total, wines }: Props) {
     });
   }
 
-  const span = priceBounds.max - priceBounds.min || 1;
-  const fillStart = ((minValue - priceBounds.min) / span) * 100;
-  const fillEnd = ((maxValue - priceBounds.min) / span) * 100;
-
   const priceLabel = priceUnfiltered
     ? "Cualquiera"
     : `${formatPrice(minValue)} – ${formatPrice(maxValue)}${atPriceCeil ? "+" : ""}`;
@@ -396,76 +417,49 @@ export function FiltersBar({ filters, onChange, total, wines }: Props) {
         </div>
 
         {/* Tres rangos: Calificación Vivino · Calificación Cavatale · Precio */}
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-          <DualScoreRange
-            label="Calificación Vivino"
+        <div className="grid grid-cols-1 items-stretch gap-2.5 sm:grid-cols-3">
+          <DualRangeField
+            label={<ScoreRangeTitle name="Vivino" />}
             bounds={vivinoBounds}
             minValue={vivinoMin}
             maxValue={vivinoMax}
+            step={0.1}
             displayLabel={vivinoLabel}
+            formatBound={(n) => n.toFixed(1)}
             onMin={onMinVivinoSlide}
             onMax={onMaxVivinoSlide}
             minAria="Calificación Vivino mínima"
             maxAria="Calificación Vivino máxima"
           />
 
-          <DualScoreRange
-            label="Calificación Cavatale"
+          <DualRangeField
+            label={<ScoreRangeTitle name="Cavatale" />}
             bounds={cavataleBounds}
             minValue={cavataleMin}
             maxValue={cavataleMax}
+            step={0.1}
             displayLabel={cavataleLabel}
+            formatBound={(n) => n.toFixed(1)}
             onMin={onMinCavataleSlide}
             onMax={onMaxCavataleSlide}
             minAria="Calificación Cavatale mínima"
             maxAria="Calificación Cavatale máxima"
           />
 
-          <label className="min-w-0">
-            <span className="mb-1 flex items-center justify-between gap-2 text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
-              <span>Precio</span>
-              <span className="normal-case tracking-normal text-ink">
-                {priceLabel}
-              </span>
-            </span>
-            <div className="flex min-h-[44px] flex-col justify-center rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.8)] px-2.5 py-2 sm:px-3">
-              <div
-                className="dual-range"
-                style={
-                  {
-                    "--fill-start": `${Math.min(100, Math.max(0, fillStart))}%`,
-                    "--fill-end": `${Math.min(100, Math.max(0, fillEnd))}%`,
-                  } as CSSProperties
-                }
-              >
-                <div className="dual-range-track" aria-hidden />
-                <input
-                  type="range"
-                  min={priceBounds.min}
-                  max={priceBounds.max}
-                  step={priceBounds.step}
-                  value={minValue}
-                  onChange={(e) => onMinPriceSlide(Number(e.target.value))}
-                  aria-label="Precio mínimo"
-                  className="dual-range-input is-min"
-                />
-                <input
-                  type="range"
-                  min={priceBounds.min}
-                  max={priceBounds.max}
-                  step={priceBounds.step}
-                  value={maxValue}
-                  onChange={(e) => onMaxPriceSlide(Number(e.target.value))}
-                  aria-label="Precio máximo"
-                  className="dual-range-input is-max"
-                />
-              </div>
-              <div className="mt-1 flex justify-between text-[10px] text-ink-soft">
-                <span>{formatPrice(priceBounds.min)}</span>
-                <span>{formatPrice(priceBounds.max)}+</span>
-              </div>
-            </div>
-          </label>
+          <DualRangeField
+            label="Precio"
+            bounds={priceBounds}
+            minValue={minValue}
+            maxValue={maxValue}
+            step={priceBounds.step}
+            displayLabel={priceLabel}
+            formatBound={formatPrice}
+            maxBoundSuffix="+"
+            onMin={onMinPriceSlide}
+            onMax={onMaxPriceSlide}
+            minAria="Precio mínimo"
+            maxAria="Precio máximo"
+          />
         </div>
 
         <p className="text-sm text-ink-soft">{total} resultados</p>

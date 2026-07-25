@@ -346,9 +346,10 @@ export default function CavaPage() {
 
         {canImportLocal ? (
           <div className="mt-4 rounded-[12px] border border-[rgba(110,31,44,0.25)] bg-[rgba(110,31,44,0.06)] p-4 text-sm text-ink">
-            <p className="font-medium">Hay una cava guardada en este navegador.</p>
+            <p className="font-medium">Hay botellas guardadas en este teléfono/navegador.</p>
             <p className="mt-1 text-ink-soft">
-              ¿La importas a tu cuenta en la nube?
+              Solo impórtalas si son tuyas. Si es la cava de otra persona en el
+              mismo dispositivo, toca “Ahora no”.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <button
@@ -356,7 +357,7 @@ export default function CavaPage() {
                 className="btn btn-primary min-h-[40px] px-3 text-sm"
                 onClick={() => void importLocalCellar()}
               >
-                Importar
+                Importar a mi cuenta
               </button>
               <button
                 type="button"
@@ -588,7 +589,7 @@ export default function CavaPage() {
                     "¿Vaciar SOLO tu cava?\nSe borran las botellas de tu cuenta. La cava de otros usuarios no se toca.\nEsta acción no se puede deshacer."
                   )
                 ) {
-                  resetCellar();
+                  void resetCellar();
                 }
               }}
             >

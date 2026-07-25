@@ -101,7 +101,7 @@ type CellarContextValue = {
     action: DepartAction,
     extras?: DepartExtras
   ) => void;
-  resetCellar: () => void;
+  resetCellar: () => Promise<void>;
   importLocalCellar: () => Promise<void>;
   dismissImportOffer: () => void;
   addCellarUnit: (input: {
@@ -239,6 +239,8 @@ export function CellarProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [canImportLocal, setCanImportLocal] = useState(false);
   const userIdRef = useRef<string | null>(null);
+  /** Bumps on vaciar / user switch so in-flight cloud loads can't restore deleted bottles. */
+  const loadGenRef = useRef(0);
   /** False until `cellars` + `wines.cellar_id` exist in Supabase. */
   const multiCellarRef = useRef(false);
   /** False if kimi_* columns are missing in Supabase. */
@@ -367,6 +369,7 @@ export function CellarProvider({ children }: { children: ReactNode }) {
     }
 
     let cancelled = false;
+    const gen = ++loadGenRef.current;
     userIdRef.current = user.id;
     setReady(false);
 
@@ -391,7 +394,7 @@ export function CellarProvider({ children }: { children: ReactNode }) {
           .limit(100),
       ]);
 
-      if (cancelled) return;
+      if (cancelled || gen !== loadGenRef.current) return;
 
       const multiOk = !cellarErr;
       multiCellarRef.current = multiOk;
@@ -414,10 +417,13 @@ export function CellarProvider({ children }: { children: ReactNode }) {
               : w
           );
           if (multiOk) {
+            if (gen !== loadGenRef.current) return;
             await persistWines(cloudWines, user.id);
           }
         }
       }
+
+      if (cancelled || gen !== loadGenRef.current) return;
 
       const cloudHistory = ((histRows ?? []) as HistoryRow[]).map(
         historyFromRow
@@ -672,12 +678,54 @@ export function CellarProvider({ children }: { children: ReactNode }) {
     [deleteWineRemote, insertHistoryRemote]
   );
 
-  const resetCellar = useCallback(() => {
+  const resetCellar = useCallback(async () => {
     const uid = userIdRef.current;
+    // Invalidate any in-flight cloud fetch so it can't resurrect bottles.
+    loadGenRef.current += 1;
     setWines([]);
-    if (uid && isSupabaseConfigured()) {
-      const supabase = createClient();
-      void supabase.from("wines").delete().eq("user_id", uid);
+    setHistory([]);
+    setCanImportLocal(false);
+    // Don't re-offer the browser's old local cava after an intentional wipe.
+    try {
+      localStorage.setItem(IMPORT_FLAG, "1");
+    } catch {
+      /* ignore */
+    }
+
+    if (!uid || !isSupabaseConfigured()) return;
+
+    const supabase = createClient();
+    const { error: wineErr } = await supabase
+      .from("wines")
+      .delete()
+      .eq("user_id", uid);
+    if (wineErr) {
+      console.warn("vaciar cava (wines) failed", wineErr.message);
+    }
+    const { error: histErr } = await supabase
+      .from("cellar_history")
+      .delete()
+      .eq("user_id", uid);
+    if (histErr) {
+      console.warn("vaciar cava (history) failed", histErr.message);
+    }
+
+    // Verify empty; if rows remain, force-delete by id list.
+    const { data: leftover } = await supabase
+      .from("wines")
+      .select("id")
+      .eq("user_id", uid);
+    if (leftover?.length) {
+      const ids = leftover.map((r) => r.id as string);
+      // Chunk in case of large cavas
+      for (let i = 0; i < ids.length; i += 100) {
+        const chunk = ids.slice(i, i + 100);
+        await supabase
+          .from("wines")
+          .delete()
+          .eq("user_id", uid)
+          .in("id", chunk);
+      }
     }
   }, []);
 

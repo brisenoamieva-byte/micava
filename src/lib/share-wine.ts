@@ -4,11 +4,17 @@ import { formatPrice, formatVivino } from "@/lib/wines";
 export const CAVATALE_URL = "https://cavatale.com";
 export const CAVATALE_REGISTRO_URL = `${CAVATALE_URL}/registro`;
 
-/** Invite a collector friend to create their own cava. */
+/** Invite a relative/friend with a plain explanation of what Cavatale does. */
 export function buildInviteFriendText(): string {
   return [
-    "Estoy armando mi cava en Cavatale — historias de las botellas, no solo Vivino.",
-    `Crea la tuya: ${CAVATALE_REGISTRO_URL}`,
+    "Te invito a Cavatale — es gratis.",
+    "",
+    "Sirve para tres cosas:",
+    "1) Tomar foto de la etiqueta y guardar la botella (rating y precio).",
+    "2) Ver tu cava en un mapa (dónde está cada una).",
+    "3) Pedir la historia del vino para contar en la mesa.",
+    "",
+    `Crea tu cava aquí (1 minuto): ${CAVATALE_REGISTRO_URL}`,
   ].join("\n");
 }
 

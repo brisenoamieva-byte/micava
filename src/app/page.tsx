@@ -10,18 +10,18 @@ import { cellarStats, formatPrice } from "@/lib/wines";
 const STEPS = [
   {
     n: "01",
-    title: "Escanea la etiqueta",
-    body: "Una foto basta. La IA completa nombre, uva, región y más.",
+    title: "Foto de la etiqueta",
+    body: "Como sacar una foto con el celular. La app reconoce el vino y completa la ficha.",
   },
   {
     n: "02",
-    title: "Acomoda en tu mueble",
-    body: "Mapa de la cava: cada botella en su hueco, o abajo / fuera.",
+    title: "Tu mapa de la cava",
+    body: "Cada botella en su hueco del mueble — o “abajo” si aún no la acomodas.",
   },
   {
     n: "03",
-    title: "Cuenta la historia",
-    body: "Al descorchar: relato, dato curioso, maridaje y un gancho para la mesa.",
+    title: "La historia al abrir",
+    body: "Un relato corto, un dato curioso y con qué maridarlo — para contarlo en la mesa.",
   },
 ] as const;
 

@@ -8,10 +8,14 @@ export default function RegisterPage() {
         <BrandMark size="sm" />
         <div className="mt-10 flex flex-1 flex-col justify-center">
           <h1 className="display text-4xl text-ink">Crear mi cava</h1>
-          <p className="mt-2 text-sm text-ink-soft">
-            Gratis. Cada quien con su propia cava — y sus historias — en la
-            nube.
+          <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+            Gratis. En minutos puedes:
           </p>
+          <ul className="mt-3 space-y-1.5 text-sm text-ink-soft">
+            <li>· Guardar botellas con una foto de la etiqueta</li>
+            <li>· Verlas en el mapa de tu mueble</li>
+            <li>· Leer la historia del vino al abrirlo</li>
+          </ul>
           <div className="mt-8">
             <RegisterForm />
           </div>

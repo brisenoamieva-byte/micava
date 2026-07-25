@@ -7,6 +7,7 @@ import { CellarUnitsBar } from "@/components/CellarUnitsBar";
 import { DepartTasteModal } from "@/components/DepartTasteModal";
 import { DisplayNameEditor } from "@/components/DisplayNameEditor";
 import { FiltersBar } from "@/components/FiltersBar";
+import { FirstRunGuide } from "@/components/FirstRunGuide";
 import { InstallAppHint } from "@/components/InstallAppHint";
 import { MoveWineSheet } from "@/components/MoveWineSheet";
 import { RecentHistory } from "@/components/RecentHistory";
@@ -87,6 +88,26 @@ export default function CavaPage() {
   const [movingWineId, setMovingWineId] = useState<string | null>(null);
   const [moveSheetWine, setMoveSheetWine] = useState<Wine | null>(null);
   const [inviteHint, setInviteHint] = useState<string | null>(null);
+  const [guideDismissed, setGuideDismissed] = useState(false);
+  const [showHowTo, setShowHowTo] = useState(false);
+
+  useEffect(() => {
+    try {
+      setGuideDismissed(localStorage.getItem("micava.guide.dismissed.v1") === "1");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  function dismissGuide() {
+    setGuideDismissed(true);
+    setShowHowTo(false);
+    try {
+      localStorage.setItem("micava.guide.dismissed.v1", "1");
+    } catch {
+      /* ignore */
+    }
+  }
 
   useEffect(() => {
     if (!selectedId && wines[0]) setSelectedId(wines[0].id);
@@ -287,7 +308,14 @@ export default function CavaPage() {
               className="btn btn-ghost min-h-[40px] px-3 text-sm"
               onClick={() => void handleInviteFriend()}
             >
-              {inviteHint ?? "Invitar amigo"}
+              {inviteHint ?? "Invitar"}
+            </button>
+            <button
+              type="button"
+              className="min-h-[40px] text-sm underline-offset-2 hover:text-ink hover:underline"
+              onClick={() => setShowHowTo(true)}
+            >
+              Cómo funciona
             </button>
             <button
               type="button"
@@ -361,40 +389,43 @@ export default function CavaPage() {
             />
           </div>
         ) : wines.length === 0 && ready ? (
-          <section className="discovery-stage mt-6 sm:mt-8">
-            <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--wine)]">
-              Tu cava
-            </p>
-            <h2 className="display mt-2 text-[1.85rem] leading-tight text-ink sm:text-3xl">
-              Empieza con la primera botella
-            </h2>
-            <p className="mt-2 max-w-lg text-sm leading-relaxed text-ink-soft">
-              Escanea una etiqueta o carga una cava de ejemplo (~6 botellas)
-              listas para la mesa — sin depender de la IA en vivo.
-            </p>
-            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-              <button
-                type="button"
-                className="btn btn-primary min-h-[48px] px-4 text-base"
-                onClick={() => openAdd()}
-              >
-                Escanear primera botella
-              </button>
-              <button
-                type="button"
-                className="btn btn-ghost min-h-[48px] px-4 text-base"
-                onClick={() => void loadDemoSeed()}
-              >
-                Probar cava de ejemplo
-              </button>
-            </div>
-            <p className="mt-3 text-xs text-ink-soft">
-              La de ejemplo son 6 botellas. Cuando termines la prueba, usa
-              “Terminar prueba” para vaciar solo tu cuenta y empezar la tuya.
-            </p>
-          </section>
+          <FirstRunGuide
+            onScan={() => openAdd()}
+            onDemo={() => void loadDemoSeed()}
+          />
         ) : (
           <>
+        {showHowTo || (!guideDismissed && wines.length > 0 && wines.length < 20 && !isDemoCellar) ? (
+          showHowTo ? (
+            <div className="mt-5">
+              <FirstRunGuide
+                onScan={() => {
+                  setShowHowTo(false);
+                  openAdd();
+                }}
+                onDemo={() => {
+                  setShowHowTo(false);
+                  void loadDemoSeed();
+                }}
+                onDismiss={dismissGuide}
+              />
+              <button
+                type="button"
+                className="mt-2 text-xs text-ink-soft underline-offset-2 hover:underline"
+                onClick={dismissGuide}
+              >
+                Cerrar guía
+              </button>
+            </div>
+          ) : (
+            <FirstRunGuide
+              variant="compact"
+              onScan={() => openAdd()}
+              onDemo={() => void loadDemoSeed()}
+              onDismiss={dismissGuide}
+            />
+          )
+        ) : null}
         {isDemoCellar || wines.length >= 20 ? (
           <section className="mt-5 rounded-[12px] border border-[rgba(110,31,44,0.22)] bg-[rgba(250,249,245,0.92)] px-4 py-3 sm:mt-6">
             {wines.length >= 20 ? (

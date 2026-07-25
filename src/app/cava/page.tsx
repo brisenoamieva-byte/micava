@@ -730,8 +730,8 @@ export default function CavaPage() {
                 {wines.find((w) => w.id === movingWineId)?.name ?? "botella"}
               </p>
               <p className="text-xs text-ink-soft">
-                Elige otro mueble arriba, toca una casilla en el mapa, o ocupa
-                el primer hueco libre.
+                Ahora toca el hueco destino en el mapa. Puedes cambiar de mueble
+                arriba.
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <button

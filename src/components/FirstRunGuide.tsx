@@ -20,7 +20,7 @@ const STEPS = [
   {
     n: "2",
     title: "Acomodarla en el mueble",
-    body: "El mapa es la rejilla de tu mueble. Toca un hueco libre (+) o déjala “abajo / fuera” hasta acomodarla.",
+    body: "El mapa es la rejilla de tu mueble. Toca un hueco libre (+) o déjala “abajo / fuera”. Para reubicar después: deja presionada la botella y toca el nuevo hueco.",
   },
   {
     n: "3",

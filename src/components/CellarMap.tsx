@@ -42,6 +42,7 @@ const DRAG_MIME = "application/x-micava-wine";
 const MOVE_THRESHOLD_PX = 12;
 /** Hold to enter pick-and-place (scroll stays free). */
 const LONG_PRESS_MS = 280;
+const MOVE_HINT_KEY = "micava.map.move.hint.v1";
 
 function cellLabel(wine: Wine): string {
   const name = wine.name.trim();
@@ -107,11 +108,29 @@ export function CellarMap({
   const [portalReady, setPortalReady] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const [overTarget, setOverTarget] = useState<string | null>(null);
+  const [showMoveHint, setShowMoveHint] = useState(false);
   const didDrag = useRef(false);
 
   useEffect(() => {
     setPortalReady(true);
   }, []);
+
+  useEffect(() => {
+    try {
+      setShowMoveHint(localStorage.getItem(MOVE_HINT_KEY) !== "1");
+    } catch {
+      setShowMoveHint(true);
+    }
+  }, []);
+
+  function dismissMoveHint() {
+    setShowMoveHint(false);
+    try {
+      localStorage.setItem(MOVE_HINT_KEY, "1");
+    } catch {
+      /* ignore */
+    }
+  }
 
   useEffect(() => {
     if (!expanded) return;
@@ -259,8 +278,8 @@ export function CellarMap({
           </p>
           <p className="text-xs text-ink-soft">
             {expanded
-              ? "Toca una casilla, ocupa el primer hueco libre, o cierra el mapa para cambiar de mueble."
-              : "Cambia de mueble arriba, toca una casilla, o ocupa el primer hueco libre."}
+              ? "Ahora toca el hueco donde quieres dejarla. Cierra el mapa para cambiar de mueble."
+              : "Ahora toca el hueco destino. Puedes cambiar de mueble arriba."}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             {onPlaceAt ? (
@@ -309,45 +328,63 @@ export function CellarMap({
             Soltando · {movingWine.name}
           </p>
           <p className="text-xs text-ink-soft">
-            Suelta sobre un hueco, otra botella o Abajo / fuera.
+            Suelta sobre el hueco nuevo o en Abajo / fuera.
           </p>
         </div>
       ) : (
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs text-ink-soft">
-            {touchUi
-              ? "Toca para ver · mantén para mover · + para agregar"
-              : "Arrastra al hueco o a Abajo · clic para ver · + para agregar"}
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            {!expanded ? (
+        <div className="space-y-2">
+          {showMoveHint && onPickForMove ? (
+            <div className="flex items-start justify-between gap-3 rounded-[10px] border border-[rgba(110,31,44,0.22)] bg-[rgba(122,36,48,0.05)] px-3 py-2">
+              <p className="text-xs leading-relaxed text-ink sm:text-[13px]">
+                {touchUi
+                  ? "Para mover: deja presionada la botella; luego toca el hueco nuevo."
+                  : "Para mover: arrastra la botella al hueco nuevo (o a Abajo / fuera)."}
+              </p>
               <button
                 type="button"
-                className="btn btn-ghost min-h-[44px] px-3 text-xs"
-                aria-label="Ampliar mapa"
-                onClick={() => setExpanded(true)}
+                className="shrink-0 text-[11px] font-medium text-ink-soft underline-offset-2 hover:text-ink hover:underline"
+                onClick={dismissMoveHint}
               >
-                Ampliar
+                Entendido
               </button>
-            ) : null}
-            {canSendAbajo && selectedWine ? (
-              <button
-                type="button"
-                className="btn btn-ghost min-h-[44px] px-3 text-xs"
-                onClick={() => onMoveWine?.(selectedWine.id, "abajo")}
-              >
-                Enviar abajo / fuera
-              </button>
-            ) : null}
-            {!pickMode && selectedWine && onPickForMove ? (
-              <button
-                type="button"
-                className="btn btn-ghost min-h-[44px] px-3 text-xs"
-                onClick={() => onPickForMove(selectedWine)}
-              >
-                Mover…
-              </button>
-            ) : null}
+            </div>
+          ) : null}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-ink-soft">
+              {touchUi
+                ? "Deja presionada → elige hueco · toca = ver · + = agregar"
+                : "Arrastra al hueco · clic = ver · + = agregar"}
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              {!expanded ? (
+                <button
+                  type="button"
+                  className="btn btn-ghost min-h-[44px] px-3 text-xs"
+                  aria-label="Ampliar mapa"
+                  onClick={() => setExpanded(true)}
+                >
+                  Ampliar
+                </button>
+              ) : null}
+              {canSendAbajo && selectedWine ? (
+                <button
+                  type="button"
+                  className="btn btn-ghost min-h-[44px] px-3 text-xs"
+                  onClick={() => onMoveWine?.(selectedWine.id, "abajo")}
+                >
+                  Enviar abajo / fuera
+                </button>
+              ) : null}
+              {!pickMode && selectedWine && onPickForMove ? (
+                <button
+                  type="button"
+                  className="btn btn-ghost min-h-[44px] px-3 text-xs"
+                  onClick={() => onPickForMove(selectedWine)}
+                >
+                  Mover…
+                </button>
+              ) : null}
+            </div>
           </div>
         </div>
       )}

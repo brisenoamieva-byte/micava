@@ -18,6 +18,7 @@ import {
   sendMessage,
   updateOwnNetworkProfile,
 } from "@/lib/network";
+import { isMexicoCountry, MEXICO_STATES } from "@/lib/mexico-states";
 
 type Tab = "presencia" | "directorio" | "chats";
 
@@ -330,7 +331,19 @@ export function NetworkPanel() {
               list="network-countries"
               className="mt-1 w-full min-h-[44px] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.9)] px-3 py-2 text-ink"
               value={formCountry}
-              onChange={(e) => setFormCountry(e.target.value)}
+              onChange={(e) => {
+                const next = e.target.value;
+                setFormCountry(next);
+                if (
+                  isMexicoCountry(next) &&
+                  formCity &&
+                  !MEXICO_STATES.includes(
+                    formCity as (typeof MEXICO_STATES)[number]
+                  )
+                ) {
+                  setFormCity("");
+                }
+              }}
               placeholder="México"
             />
             <datalist id="network-countries">
@@ -341,13 +354,34 @@ export function NetworkPanel() {
           </label>
 
           <label className="block text-sm text-ink-soft">
-            Ciudad
-            <input
-              className="mt-1 w-full min-h-[44px] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.9)] px-3 py-2 text-ink"
-              value={formCity}
-              onChange={(e) => setFormCity(e.target.value)}
-              placeholder="Ciudad de México"
-            />
+            {isMexicoCountry(formCountry) ? "Estado" : "Ciudad"}
+            {isMexicoCountry(formCountry) ? (
+              <select
+                className="mt-1 w-full min-h-[44px] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.9)] px-3 py-2 text-ink"
+                value={
+                  MEXICO_STATES.includes(
+                    formCity as (typeof MEXICO_STATES)[number]
+                  )
+                    ? formCity
+                    : ""
+                }
+                onChange={(e) => setFormCity(e.target.value)}
+              >
+                <option value="">Elige un estado…</option>
+                {MEXICO_STATES.map((state) => (
+                  <option key={state} value={state}>
+                    {state}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                className="mt-1 w-full min-h-[44px] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.9)] px-3 py-2 text-ink"
+                value={formCity}
+                onChange={(e) => setFormCity(e.target.value)}
+                placeholder="Ciudad"
+              />
+            )}
           </label>
 
           <label className="block text-sm text-ink-soft">
@@ -415,13 +449,34 @@ export function NetworkPanel() {
               </datalist>
             </label>
             <label className="block text-sm text-ink-soft">
-              Ciudad
-              <input
-                className="mt-1 w-full min-h-[44px] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.9)] px-3 py-2 text-ink"
-                value={filterCity}
-                onChange={(e) => setFilterCity(e.target.value)}
-                placeholder="Todas"
-              />
+              {isMexicoCountry(filterCountry) ? "Estado" : "Ciudad"}
+              {isMexicoCountry(filterCountry) ? (
+                <select
+                  className="mt-1 w-full min-h-[44px] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.9)] px-3 py-2 text-ink"
+                  value={
+                    MEXICO_STATES.includes(
+                      filterCity as (typeof MEXICO_STATES)[number]
+                    )
+                      ? filterCity
+                      : ""
+                  }
+                  onChange={(e) => setFilterCity(e.target.value)}
+                >
+                  <option value="">Todos</option>
+                  {MEXICO_STATES.map((state) => (
+                    <option key={state} value={state}>
+                      {state}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  className="mt-1 w-full min-h-[44px] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.9)] px-3 py-2 text-ink"
+                  value={filterCity}
+                  onChange={(e) => setFilterCity(e.target.value)}
+                  placeholder="Todas"
+                />
+              )}
             </label>
           </div>
 

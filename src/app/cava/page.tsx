@@ -9,6 +9,7 @@ import { DisplayNameEditor } from "@/components/DisplayNameEditor";
 import { FiltersBar } from "@/components/FiltersBar";
 import { FirstRunGuide } from "@/components/FirstRunGuide";
 import { InstallAppHint } from "@/components/InstallAppHint";
+import { KimiUsageHint } from "@/components/KimiUsageHint";
 import { MoveWineSheet } from "@/components/MoveWineSheet";
 import { NetworkPanel } from "@/components/NetworkPanel";
 import { RecentHistory } from "@/components/RecentHistory";
@@ -833,6 +834,7 @@ export default function CavaPage() {
               ? `Guardado en la nube · ${user.email}`
               : "Los cambios se guardan en la nube."}
           </span>
+          {user ? <KimiUsageHint /> : null}
         </div>
           </>
         )}

@@ -3,6 +3,12 @@
  * Official docs warn the builtin is being updated; callers should tolerate failure.
  */
 
+import {
+  addKimiUsage,
+  parseKimiUsage,
+  type KimiTokenUsage,
+} from "@/lib/kimi-usage";
+
 const KIMI_BASE = "https://api.moonshot.ai/v1";
 
 type KimiToolCall = {
@@ -27,6 +33,11 @@ type KimiChoice = {
 type KimiChatResponse = {
   choices?: KimiChoice[];
   error?: { message?: string };
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
 };
 
 const WEB_SEARCH_TOOL = {
@@ -62,9 +73,15 @@ async function kimiRequest(
   return payload;
 }
 
+export type KimiWebSearchResult = {
+  content: string | null;
+  usage: KimiTokenUsage | null;
+};
+
 /**
  * Runs a short chat with `$web_search` until the model returns final text.
- * Returns null if search is unavailable or the loop fails.
+ * Returns null content if search is unavailable or the loop fails.
+ * Usage is summed across all rounds (including tool-call turns).
  */
 export async function kimiChatWithWebSearch(options: {
   apiKey: string;
@@ -73,7 +90,7 @@ export async function kimiChatWithWebSearch(options: {
   user: string;
   maxRounds?: number;
   maxTokens?: number;
-}): Promise<string | null> {
+}): Promise<KimiWebSearchResult> {
   const {
     apiKey,
     model,
@@ -88,6 +105,8 @@ export async function kimiChatWithWebSearch(options: {
     { role: "user", content: user },
   ];
 
+  let usage: KimiTokenUsage | null = null;
+
   try {
     for (let round = 0; round < maxRounds; round++) {
       const payload = await kimiRequest(apiKey, model, {
@@ -97,10 +116,11 @@ export async function kimiChatWithWebSearch(options: {
         tools: [WEB_SEARCH_TOOL],
         messages,
       });
+      usage = addKimiUsage(usage, parseKimiUsage(payload));
 
       const choice = payload.choices?.[0];
       const message = choice?.message;
-      if (!message) return null;
+      if (!message) return { content: null, usage };
 
       const finish = choice.finish_reason ?? "";
       if (finish === "tool_calls" && message.tool_calls?.length) {
@@ -126,11 +146,11 @@ export async function kimiChatWithWebSearch(options: {
 
       const content =
         typeof message.content === "string" ? message.content.trim() : "";
-      return content || null;
+      return { content: content || null, usage };
     }
   } catch {
-    return null;
+    return { content: null, usage };
   }
 
-  return null;
+  return { content: null, usage };
 }

@@ -1,6 +1,14 @@
-/* Mi Cava — minimal service worker for installability */
-const CACHE = "micava-shell-v1";
-const PRECACHE = ["/", "/cava", "/login", "/icons/icon-192.png"];
+/* Cavatale — minimal service worker for installability */
+const CACHE = "cavatale-shell-v1";
+const PRECACHE = [
+  "/",
+  "/cava",
+  "/login",
+  "/icons/icon-192.png",
+  "/icons/icon-512.png",
+  "/apple-touch-icon.png",
+  "/brand/cavatale-mark.png",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

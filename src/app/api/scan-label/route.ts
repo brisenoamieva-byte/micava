@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { guardKimiApi } from "@/lib/api-guard";
 import { kimiChatWithWebSearch } from "@/lib/kimi-web-search";
 import {
+  addKimiUsage,
+  parseKimiUsage,
+  recordKimiUsage,
+  type KimiTokenUsage,
+} from "@/lib/kimi-usage";
+import {
   extractJsonObject,
   parseScanLabelResult,
   type ScanLabelFields,
@@ -13,6 +19,7 @@ export const maxDuration = 60;
 
 const KIMI_BASE = "https://api.moonshot.ai/v1";
 const MODEL = process.env.KIMI_MODEL?.trim() || "kimi-k2.6";
+const USAGE_ROUTE = "scan-label";
 const MAX_BYTES = 6 * 1024 * 1024;
 
 const COUNTRY_PROMPT = wineCountriesForPrompt();
@@ -67,6 +74,11 @@ Reglas:
 type KimiChatResponse = {
   choices?: Array<{ message?: { content?: string | null } }>;
   error?: { message?: string };
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
 };
 
 function badRequest(message: string, status = 400) {
@@ -176,7 +188,12 @@ function mergeEnrichment(
 async function visionIdentify(
   apiKey: string,
   imageDataUrl: string
-): Promise<{ fields: ScanLabelFields; extras: VisionExtra; raw: unknown }> {
+): Promise<{
+  fields: ScanLabelFields;
+  extras: VisionExtra;
+  raw: unknown;
+  usage: KimiTokenUsage | null;
+}> {
   const kimiRes = await fetch(`${KIMI_BASE}/chat/completions`, {
     method: "POST",
     headers: {
@@ -214,37 +231,43 @@ async function visionIdentify(
   } catch {
     throw new Error("Respuesta inválida de Kimi (visión).");
   }
+  const usage = parseKimiUsage(payload);
   if (!kimiRes.ok) {
-    throw new Error(
-      payload.error?.message || `Kimi visión ${kimiRes.status}.`
+    throw Object.assign(
+      new Error(payload.error?.message || `Kimi visión ${kimiRes.status}.`),
+      { usage }
     );
   }
 
   const content = payload.choices?.[0]?.message?.content?.trim();
-  if (!content) throw new Error("Kimi no devolvió contenido (visión).");
+  if (!content) {
+    throw Object.assign(new Error("Kimi no devolvió contenido (visión)."), {
+      usage,
+    });
+  }
 
   const raw = extractJsonObject(content);
   const fields = parseScanLabelResult(raw);
   const extras = parseVisionExtras(raw);
-  return { fields, extras, raw };
+  return { fields, extras, raw, usage };
 }
 
 async function enrichWithWeb(
   apiKey: string,
   fields: ScanLabelFields,
   extras: VisionExtra
-): Promise<ScanLabelFields | null> {
+): Promise<{ fields: ScanLabelFields | null; usage: KimiTokenUsage | null }> {
   // Skip if we already have both market fields with decent identity
   if (
     fields.vivino != null &&
     fields.price != null &&
     fields.confidence === "high"
   ) {
-    return null;
+    return { fields: null, usage: null };
   }
 
   const query = buildSearchQuery(fields, extras);
-  if (!query.trim() && !fields.name) return null;
+  if (!query.trim() && !fields.name) return { fields: null, usage: null };
 
   const user = `Identidad tentativa del vino (puede venir de foto con poco texto):
 - name: ${fields.name || "(desconocido)"}
@@ -261,7 +284,7 @@ async function enrichWithWeb(
 
 Usa $web_search (varias búsquedas si hace falta: Vivino rating, precio México) y devuelve el JSON final con vivino y price rellenados cuando existan datos públicos.`;
 
-  const content = await kimiChatWithWebSearch({
+  const result = await kimiChatWithWebSearch({
     apiKey,
     model: MODEL,
     system: ENRICH_SYSTEM,
@@ -270,14 +293,14 @@ Usa $web_search (varias búsquedas si hace falta: Vivino rating, precio México)
     maxTokens: 1536,
   });
 
-  if (!content) return null;
+  if (!result.content) return { fields: null, usage: result.usage };
 
   try {
     // Model may wrap JSON; strip if tools left prose
-    const raw = extractJsonObject(content);
-    return parseScanLabelResult(raw);
+    const raw = extractJsonObject(result.content);
+    return { fields: parseScanLabelResult(raw), usage: result.usage };
   } catch {
-    return null;
+    return { fields: null, usage: result.usage };
   }
 }
 
@@ -300,10 +323,27 @@ export async function POST(request: Request) {
     return badRequest(e instanceof Error ? e.message : "Imagen inválida.");
   }
 
-  let vision: { fields: ScanLabelFields; extras: VisionExtra };
+  let sessionUsage: KimiTokenUsage | null = null;
+  let vision: {
+    fields: ScanLabelFields;
+    extras: VisionExtra;
+    usage: KimiTokenUsage | null;
+  };
   try {
     vision = await visionIdentify(apiKey, imageDataUrl);
+    sessionUsage = addKimiUsage(sessionUsage, vision.usage);
   } catch (e) {
+    const errUsage =
+      e && typeof e === "object" && "usage" in e
+        ? ((e as { usage?: KimiTokenUsage | null }).usage ?? null)
+        : null;
+    sessionUsage = addKimiUsage(sessionUsage, errUsage);
+    await recordKimiUsage({
+      userId: guard.userId,
+      route: USAGE_ROUTE,
+      model: MODEL,
+      usage: sessionUsage,
+    });
     return NextResponse.json(
       {
         error:
@@ -318,6 +358,12 @@ export async function POST(request: Request) {
   let fields = vision.fields;
 
   if (!fields.name) {
+    await recordKimiUsage({
+      userId: guard.userId,
+      route: USAGE_ROUTE,
+      model: MODEL,
+      usage: sessionUsage,
+    });
     return NextResponse.json(
       {
         error:
@@ -332,8 +378,9 @@ export async function POST(request: Request) {
   // Pass 2: web search for Vivino + price (and identity confirmation)
   try {
     const enriched = await enrichWithWeb(apiKey, fields, vision.extras);
-    if (enriched?.name) {
-      fields = mergeEnrichment(fields, enriched);
+    sessionUsage = addKimiUsage(sessionUsage, enriched.usage);
+    if (enriched.fields?.name) {
+      fields = mergeEnrichment(fields, enriched.fields);
     }
   } catch {
     // Keep vision-only result; market fields may stay null
@@ -354,6 +401,13 @@ export async function POST(request: Request) {
       notes: [methodNote, fields.notes].filter(Boolean).join(" · ").slice(0, 280),
     };
   }
+
+  await recordKimiUsage({
+    userId: guard.userId,
+    route: USAGE_ROUTE,
+    model: MODEL,
+    usage: sessionUsage,
+  });
 
   return NextResponse.json({ fields });
 }

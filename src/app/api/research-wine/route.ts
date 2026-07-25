@@ -7,12 +7,19 @@ import {
   wineIdentityForResearch,
   type KimiResearch,
 } from "@/lib/kimi-research";
+import {
+  addKimiUsage,
+  parseKimiUsage,
+  recordKimiUsage,
+  type KimiTokenUsage,
+} from "@/lib/kimi-usage";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const KIMI_BASE = "https://api.moonshot.ai/v1";
 const MODEL = process.env.KIMI_MODEL?.trim() || "kimi-k2.6";
+const USAGE_ROUTE = "research-wine";
 
 const SYSTEM = `Eres el narrador y crítico de Cavatale: conviertes una botella de una cava personal en algo que la gente QUIERE escuchar y contar, y asignas el Rating Cavatale oficial.
 
@@ -112,6 +119,11 @@ type Body = {
 type KimiChatResponse = {
   choices?: Array<{ message?: { content?: string | null } }>;
   error?: { message?: string };
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
 };
 
 function buildUserPrompt(identity: string): string {
@@ -126,8 +138,8 @@ async function callKimi(
   apiKey: string,
   userContent: string
 ): Promise<
-  | { ok: true; content: string }
-  | { ok: false; status: number; error: string; detail?: string }
+  | { ok: true; content: string; usage: KimiTokenUsage | null }
+  | { ok: false; status: number; error: string; detail?: string; usage: KimiTokenUsage | null }
 > {
   let kimiRes: Response;
   try {
@@ -154,6 +166,7 @@ async function callKimi(
       ok: false,
       status: 502,
       error: "No se pudo contactar a la IA. Revisa la conexión e intenta de nuevo.",
+      usage: null,
     };
   }
 
@@ -167,8 +180,11 @@ async function callKimi(
       status: 502,
       error: "Respuesta inválida de Kimi.",
       detail: rawText.slice(0, 200),
+      usage: null,
     };
   }
+
+  const usage = parseKimiUsage(payload);
 
   if (!kimiRes.ok) {
     return {
@@ -177,14 +193,20 @@ async function callKimi(
       error:
         payload.error?.message ||
         `Kimi respondió ${kimiRes.status}. Revisa créditos o la API key.`,
+      usage,
     };
   }
 
   const content = payload.choices?.[0]?.message?.content?.trim();
   if (!content) {
-    return { ok: false, status: 502, error: "Kimi no devolvió contenido." };
+    return {
+      ok: false,
+      status: 502,
+      error: "Kimi no devolvió contenido.",
+      usage,
+    };
   }
-  return { ok: true, content };
+  return { ok: true, content, usage };
 }
 
 function finalizeResearch(content: string): {
@@ -243,7 +265,15 @@ export async function POST(request: Request) {
 
   const userPrompt = buildUserPrompt(identity);
   const first = await callKimi(apiKey, userPrompt);
+  let sessionUsage: KimiTokenUsage | null = first.usage;
+
   if (!first.ok) {
+    await recordKimiUsage({
+      userId: guard.userId,
+      route: USAGE_ROUTE,
+      model: MODEL,
+      usage: sessionUsage,
+    });
     return NextResponse.json(
       { error: first.error, detail: first.detail },
       { status: first.status }
@@ -254,6 +284,12 @@ export async function POST(request: Request) {
   try {
     finalized = finalizeResearch(first.content);
   } catch (e) {
+    await recordKimiUsage({
+      userId: guard.userId,
+      route: USAGE_ROUTE,
+      model: MODEL,
+      usage: sessionUsage,
+    });
     return NextResponse.json(
       {
         error:
@@ -268,6 +304,7 @@ export async function POST(request: Request) {
 
   if (finalized.shouldRetry) {
     const second = await callKimi(apiKey, userPrompt + RETRY_USER_SUFFIX);
+    sessionUsage = addKimiUsage(sessionUsage, second.usage);
     if (second.ok) {
       try {
         const retry = finalizeResearch(second.content);
@@ -280,6 +317,13 @@ export async function POST(request: Request) {
       }
     }
   }
+
+  await recordKimiUsage({
+    userId: guard.userId,
+    route: USAGE_ROUTE,
+    model: MODEL,
+    usage: sessionUsage,
+  });
 
   const research = {
     ...finalized.research,

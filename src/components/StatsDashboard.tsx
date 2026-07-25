@@ -3,8 +3,8 @@
 import { useMemo, useState, type ReactNode } from "react";
 import type { CellarLogEntry, CellarUnit, Wine } from "@/lib/types";
 import { CountryFlag } from "@/components/CountryFlag";
-import { buildInsights, type ReplenishItem } from "@/lib/analytics";
-import { formatPrice, formatVivino, typeAccent } from "@/lib/wines";
+import { buildInsights, qualityScore, type ReplenishItem } from "@/lib/analytics";
+import { formatCavataleRating, formatPrice, formatVivino, typeAccent } from "@/lib/wines";
 
 type Props = {
   wines: Wine[];
@@ -35,7 +35,7 @@ export function StatsDashboard({
       .filter((w) => w.vintage === selectedYear)
       .sort(
         (a, b) =>
-          (b.vivino ?? 0) - (a.vivino ?? 0) ||
+          (qualityScore(b) ?? 0) - (qualityScore(a) ?? 0) ||
           a.name.localeCompare(b.name, "es")
       );
   }, [wines, selectedYear]);
@@ -46,7 +46,7 @@ export function StatsDashboard({
       .filter((w) => (w.region || "") === selectedRegion)
       .sort(
         (a, b) =>
-          (b.vivino ?? 0) - (a.vivino ?? 0) ||
+          (qualityScore(b) ?? 0) - (qualityScore(a) ?? 0) ||
           a.name.localeCompare(b.name, "es")
       );
   }, [wines, selectedRegion]);
@@ -57,7 +57,7 @@ export function StatsDashboard({
       .filter((w) => (w.country || "") === selectedCountry)
       .sort(
         (a, b) =>
-          (b.vivino ?? 0) - (a.vivino ?? 0) ||
+          (qualityScore(b) ?? 0) - (qualityScore(a) ?? 0) ||
           a.name.localeCompare(b.name, "es")
       );
   }, [wines, selectedCountry]);
@@ -91,8 +91,8 @@ export function StatsDashboard({
           }
         />
         <Kpi
-          label="Media Vivino"
-          value={formatVivino(insights.avgVivino)}
+          label="Media Cavatale"
+          value={formatCavataleRating(insights.avgCavatale)}
           hint={`${insights.regions} regiones`}
         />
         <div className="panel col-span-2 flex items-center gap-4 p-4 lg:col-span-1">
@@ -195,11 +195,11 @@ export function StatsDashboard({
 
         {/* Tipo donut + bands */}
         <section className="panel p-4 sm:p-5">
-          <Header title="Perfil" subtitle="Tipo, Vivino y rangos de precio" />
+          <Header title="Perfil" subtitle="Tipo, Cavatale y rangos de precio" />
           <div className="mt-5 flex flex-col items-center gap-6 sm:flex-row sm:items-start">
             <TypeDonut items={insights.byType} total={insights.bottles} />
             <div className="w-full flex-1 space-y-5">
-              <BandBlock title="Clasificación Vivino" bands={insights.vivinoBands} color="var(--wine)" />
+              <BandBlock title="Clasificación Cavatale" bands={insights.cavataleBands} color="var(--wine)" />
               <BandBlock title="Precio" bands={insights.priceBands} color="var(--oak)" />
             </div>
           </div>
@@ -277,14 +277,18 @@ export function StatsDashboard({
       <div className="grid gap-5 lg:grid-cols-2">
         <RankList
           title="Mejor calificados"
-          subtitle="Para impresionar o regalar"
-          wines={insights.topByVivino}
-          metric={(w) => formatVivino(w.vivino)}
+          subtitle="Rating Cavatale (o Vivino si aún no hay Cavatale)"
+          wines={insights.topByCavatale}
+          metric={(w) =>
+            w.cavataleRating != null
+              ? formatCavataleRating(w.cavataleRating)
+              : formatVivino(w.vivino)
+          }
           onSelect={onSelectWine}
         />
         <RankList
           title="Mayor valor"
-          subtitle="Referencia Vivino en MXN"
+          subtitle="Precio de referencia en MXN"
           wines={insights.topByPrice}
           metric={(w) => formatPrice(w.price)}
           onSelect={onSelectWine}
@@ -436,7 +440,9 @@ function DrilldownList({
                 </span>
               </span>
               <span className="shrink-0 text-right text-xs font-medium text-ink">
-                {formatVivino(w.vivino)}
+                {w.cavataleRating != null
+                  ? formatCavataleRating(w.cavataleRating)
+                  : formatVivino(w.vivino)}
                 <span className="mt-0.5 block font-normal text-ink-soft">
                   {formatPrice(w.price)}
                 </span>

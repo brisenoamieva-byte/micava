@@ -50,17 +50,17 @@ export function RegisterForm() {
         setError(err.message);
         return;
       }
-      // Fire-and-forget founder alert (Discord webhook and/or email).
-      void fetch("/api/notify-signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: email.trim(),
-          displayName: displayName.trim() || null,
-          provider: "email",
-        }),
-      }).catch(() => {});
+      // Notify only with a session (route requires auth). Pending email
+      // confirm is covered by /auth/callback after the user verifies.
       if (data.session) {
+        void fetch("/api/notify-signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            displayName: displayName.trim() || null,
+            provider: "email",
+          }),
+        }).catch(() => {});
         router.replace("/cava");
         router.refresh();
         return;

@@ -7,6 +7,9 @@ import { createClient } from "@/lib/supabase/server";
  */
 const WINDOW_MS = 10 * 60 * 1000;
 const MAX_REQUESTS = 20;
+/** Stricter cap for founder-notify (abuse = spam to Discord/email). */
+const NOTIFY_WINDOW_MS = 10 * 60 * 1000;
+const NOTIFY_MAX_REQUESTS = 8;
 
 type Bucket = { count: number; resetAt: number };
 
@@ -29,15 +32,19 @@ function clientKey(request: Request, userId?: string | null): string {
   return `ip:${ip}`;
 }
 
-function hitRateLimit(key: string): boolean {
+function hitRateLimit(
+  key: string,
+  maxRequests = MAX_REQUESTS,
+  windowMs = WINDOW_MS
+): boolean {
   const now = Date.now();
   const existing = buckets.get(key);
   if (!existing || existing.resetAt <= now) {
-    buckets.set(key, { count: 1, resetAt: now + WINDOW_MS });
+    buckets.set(key, { count: 1, resetAt: now + windowMs });
     return false;
   }
   existing.count += 1;
-  if (existing.count > MAX_REQUESTS) return true;
+  if (existing.count > maxRequests) return true;
   return false;
 }
 
@@ -94,4 +101,30 @@ export async function guardKimiApi(request: Request): Promise<ApiGuardResult> {
   }
 
   return { ok: true, userId };
+}
+
+/**
+ * Soft rate limit for /api/notify-signup (IP or user).
+ * Call after auth/secret checks so attackers hit 401 before burning quota less often.
+ */
+export function guardNotifyRateLimit(request: Request, userId?: string | null): ApiGuardResult {
+  const key = `notify:${clientKey(request, userId)}`;
+  if (hitRateLimit(key, NOTIFY_MAX_REQUESTS, NOTIFY_WINDOW_MS)) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { error: "Demasiados avisos. Espera unos minutos." },
+        { status: 429 }
+      ),
+    };
+  }
+  return { ok: true, userId: userId ?? null };
+}
+
+/** Constant-time-ish compare for optional SIGNUP_NOTIFY_SECRET. */
+export function timingSafeEqualString(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let out = 0;
+  for (let i = 0; i < a.length; i++) out |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return out === 0;
 }

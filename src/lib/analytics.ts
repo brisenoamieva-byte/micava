@@ -30,6 +30,9 @@ export type CellarInsights = {
   bottles: number;
   value: number;
   avgPrice: number | null;
+  /** Mean Cavatale rating when available; falls back to Vivino mean if none. */
+  avgCavatale: number | null;
+  /** @deprecated Prefer avgCavatale; kept as alias for callers. */
   avgVivino: number | null;
   countries: number;
   regions: number;
@@ -42,9 +45,13 @@ export type CellarInsights = {
   byCountry: NamedCount[];
   byType: NamedCount[];
   byRegion: NamedCount[];
+  cavataleBands: BandCount[];
+  /** @deprecated Prefer cavataleBands. */
   vivinoBands: BandCount[];
   priceBands: BandCount[];
   vintages: { year: number; count: number }[];
+  topByCavatale: Wine[];
+  /** @deprecated Prefer topByCavatale. */
   topByVivino: Wine[];
   topByPrice: Wine[];
   toReplenish: ReplenishItem[];
@@ -71,10 +78,17 @@ function replenishKey(w: { name: string; winery: string }): string {
 }
 
 function preferBottle(a: Wine, b: Wine): Wine {
-  const aV = a.vivino ?? 0;
-  const bV = b.vivino ?? 0;
-  if (aV !== bV) return aV > bV ? a : b;
+  const aC = a.cavataleRating ?? a.vivino ?? 0;
+  const bC = b.cavataleRating ?? b.vivino ?? 0;
+  if (aC !== bC) return aC > bC ? a : b;
   return (a.price ?? 0) >= (b.price ?? 0) ? a : b;
+}
+
+/** Official quality score for dashboard ranking (Cavatale first). */
+export function qualityScore(w: Pick<Wine, "cavataleRating" | "vivino">): number | null {
+  if (w.cavataleRating != null) return w.cavataleRating;
+  if (w.vivino != null) return w.vivino;
+  return null;
 }
 
 function uniqueByIdentity(wines: Wine[]): Wine[] {
@@ -173,7 +187,8 @@ export function buildInsights(
   history: CellarLogEntry[] = []
 ): CellarInsights {
   const withPrice = wines.filter((w) => w.price != null);
-  const withVivino = wines.filter((w) => w.vivino != null);
+  const withCavatale = wines.filter((w) => w.cavataleRating != null);
+  const withQuality = wines.filter((w) => qualityScore(w) != null);
   const value = sum(withPrice.map((w) => w.price ?? 0));
 
   const units =
@@ -202,18 +217,24 @@ export function buildInsights(
       ? `${units[0].cols}×${units[0].rows.length}`
       : `${units.length} muebles`;
 
-  const vivinoDefs = [
+  const bandSource = withCavatale.length > 0 ? withCavatale : withQuality;
+  const bandScore = (w: Wine) =>
+    withCavatale.length > 0
+      ? (w.cavataleRating ?? 0)
+      : (qualityScore(w) ?? 0);
+
+  const scoreDefs = [
     { label: "4.2+", test: (v: number) => v >= 4.2 },
     { label: "4.0–4.1", test: (v: number) => v >= 4.0 && v < 4.2 },
     { label: "3.7–3.9", test: (v: number) => v >= 3.7 && v < 4.0 },
     { label: "< 3.7", test: (v: number) => v < 3.7 },
   ];
-  const vivinoBands: BandCount[] = vivinoDefs.map((b) => {
-    const count = withVivino.filter((w) => b.test(w.vivino ?? 0)).length;
+  const cavataleBands: BandCount[] = scoreDefs.map((b) => {
+    const count = bandSource.filter((w) => b.test(bandScore(w))).length;
     return {
       label: b.label,
       count,
-      share: withVivino.length ? count / withVivino.length : 0,
+      share: bandSource.length ? count / bandSource.length : 0,
     };
   });
 
@@ -241,10 +262,11 @@ export function buildInsights(
     .map(([year, count]) => ({ year, count }))
     .sort((a, b) => a.year - b.year);
 
-  const topByVivino = uniqueByIdentity(withVivino)
+  const topByCavatale = uniqueByIdentity(withQuality)
     .sort(
       (a, b) =>
-        (b.vivino ?? 0) - (a.vivino ?? 0) || (b.price ?? 0) - (a.price ?? 0)
+        (qualityScore(b) ?? 0) - (qualityScore(a) ?? 0) ||
+        (b.price ?? 0) - (a.price ?? 0)
     )
     .slice(0, 5);
 
@@ -252,13 +274,19 @@ export function buildInsights(
     .sort((a, b) => (b.price ?? 0) - (a.price ?? 0))
     .slice(0, 5);
 
+  const avgCavatale =
+    withCavatale.length > 0
+      ? sum(withCavatale.map((w) => w.cavataleRating ?? 0)) / withCavatale.length
+      : withQuality.length > 0
+        ? sum(withQuality.map((w) => qualityScore(w) ?? 0)) / withQuality.length
+        : null;
+
   return {
     bottles: wines.length,
     value,
     avgPrice: withPrice.length ? value / withPrice.length : null,
-    avgVivino: withVivino.length
-      ? sum(withVivino.map((w) => w.vivino ?? 0)) / withVivino.length
-      : null,
+    avgCavatale,
+    avgVivino: avgCavatale,
     countries: new Set(wines.map((w) => w.country).filter(Boolean)).size,
     regions: new Set(wines.map((w) => w.region).filter(Boolean)).size,
     occupancy: totalSlots ? occupiedGrid / totalSlots : 0,
@@ -269,10 +297,12 @@ export function buildInsights(
     byCountry: groupCount(wines, (w) => w.country),
     byType: groupCount(wines, (w) => w.type),
     byRegion: groupCount(wines, (w) => w.region).slice(0, 8),
-    vivinoBands,
+    cavataleBands,
+    vivinoBands: cavataleBands,
     priceBands,
     vintages,
-    topByVivino,
+    topByCavatale,
+    topByVivino: topByCavatale,
     topByPrice,
     toReplenish: buildReplenish(wines, history),
   };

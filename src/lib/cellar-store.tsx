@@ -78,6 +78,9 @@ type CellarContextValue = {
   activeCellar: CellarUnit | null;
   ready: boolean;
   canImportLocal: boolean;
+  /** Last cloud save failure (upsert/delete); null when ok or dismissed. */
+  syncError: string | null;
+  clearSyncError: () => void;
   addWine: (draft: WineDraft) => Wine;
   updateWine: (id: string, draft: WineDraft) => void;
   verifyWineRating: (
@@ -240,6 +243,7 @@ export function CellarProvider({ children }: { children: ReactNode }) {
   const [activeCellarId, setActiveCellarId] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [canImportLocal, setCanImportLocal] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const userIdRef = useRef<string | null>(null);
   /** Bumps on vaciar / user switch so in-flight cloud loads can't restore deleted bottles. */
   const loadGenRef = useRef(0);
@@ -252,6 +256,13 @@ export function CellarProvider({ children }: { children: ReactNode }) {
     () => cellars.find((c) => c.id === activeCellarId) ?? cellars[0] ?? null,
     [cellars, activeCellarId]
   );
+
+  const clearSyncError = useCallback(() => setSyncError(null), []);
+
+  const reportSyncError = useCallback((message: string) => {
+    console.warn(message);
+    setSyncError(message);
+  }, []);
 
   const upsertWineRemote = useCallback(async (wine: Wine, userId: string) => {
     if (!isSupabaseConfigured()) return;
@@ -284,24 +295,46 @@ export function CellarProvider({ children }: { children: ReactNode }) {
       kimiColumnsRef.current = false;
       ({ error } = await tryUpsert(false, false));
     }
-    if (error) console.warn("upsert wine failed", error.message);
-  }, []);
+    if (error) {
+      reportSyncError(
+        `No se pudo guardar en la nube: ${error.message}. Los cambios pueden perderse al recargar.`
+      );
+    } else {
+      setSyncError(null);
+    }
+  }, [reportSyncError]);
 
   const deleteWineRemote = useCallback(async (id: string, userId: string) => {
     if (!isSupabaseConfigured()) return;
     const supabase = createClient();
-    await supabase.from("wines").delete().eq("user_id", userId).eq("id", id);
-  }, []);
+    const { error } = await supabase
+      .from("wines")
+      .delete()
+      .eq("user_id", userId)
+      .eq("id", id);
+    if (error) {
+      reportSyncError(
+        `No se pudo borrar en la nube: ${error.message}. Revisa al recargar.`
+      );
+    }
+  }, [reportSyncError]);
 
   const insertHistoryRemote = useCallback(
     async (entry: CellarLogEntry, userId: string) => {
       if (!isSupabaseConfigured()) return;
       const supabase = createClient();
-      await supabase.from("cellar_history").upsert(historyToRow(entry, userId), {
-        onConflict: "user_id,id",
-      });
+      const { error } = await supabase
+        .from("cellar_history")
+        .upsert(historyToRow(entry, userId), {
+          onConflict: "user_id,id",
+        });
+      if (error) {
+        reportSyncError(
+          `No se pudo guardar el historial: ${error.message}.`
+        );
+      }
     },
-    []
+    [reportSyncError]
   );
 
   const persistWines = useCallback(async (list: Wine[], userId: string) => {
@@ -322,16 +355,31 @@ export function CellarProvider({ children }: { children: ReactNode }) {
       .map((r) => r.id as string)
       .filter((id) => !keep.has(id));
     if (toDelete.length) {
-      await supabase
+      const { error: delErr } = await supabase
         .from("wines")
         .delete()
         .eq("user_id", userId)
         .in("id", toDelete);
+      if (delErr) {
+        reportSyncError(
+          `No se pudo sincronizar borrados: ${delErr.message}.`
+        );
+        return;
+      }
     }
     if (rows.length) {
-      await supabase.from("wines").upsert(rows, { onConflict: "user_id,id" });
+      const { error } = await supabase
+        .from("wines")
+        .upsert(rows, { onConflict: "user_id,id" });
+      if (error) {
+        reportSyncError(
+          `No se pudo guardar en la nube: ${error.message}. Los cambios pueden perderse al recargar.`
+        );
+        return;
+      }
     }
-  }, []);
+    setSyncError(null);
+  }, [reportSyncError]);
 
   const ensureDefaultCellar = useCallback(
     async (
@@ -364,6 +412,7 @@ export function CellarProvider({ children }: { children: ReactNode }) {
       setCellars([]);
       setActiveCellarId(null);
       setCanImportLocal(false);
+      setSyncError(null);
       setReady(true);
       userIdRef.current = null;
       multiCellarRef.current = false;
@@ -911,6 +960,8 @@ export function CellarProvider({ children }: { children: ReactNode }) {
       activeCellar,
       ready: ready && authReady,
       canImportLocal,
+      syncError,
+      clearSyncError,
       addWine,
       updateWine,
       verifyWineRating,
@@ -935,6 +986,8 @@ export function CellarProvider({ children }: { children: ReactNode }) {
       ready,
       authReady,
       canImportLocal,
+      syncError,
+      clearSyncError,
       addWine,
       updateWine,
       verifyWineRating,

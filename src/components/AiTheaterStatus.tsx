@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ThinkingIndicator } from "@/components/ThinkingIndicator";
 
 const STAGES = [
   "Buscando personas detrás…",
@@ -34,12 +35,11 @@ export function AiTheaterStatus({ active, className = "" }: Props) {
   if (!active) return null;
 
   return (
-    <p
-      className={`text-sm text-ink-soft ${className}`.trim()}
-      role="status"
-      aria-live="polite"
-    >
-      {STAGES[index]}
-    </p>
+    <ThinkingIndicator
+      className={className}
+      tone="wine"
+      size="md"
+      label={STAGES[index]}
+    />
   );
 }

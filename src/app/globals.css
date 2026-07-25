@@ -259,6 +259,81 @@ select {
   animation: slotPulse 1.8s ease-in-out infinite;
 }
 
+/* AI / scan “thinking” — mark pulse + soft spark + staggered dots */
+@keyframes thinkingMarkPulse {
+  0%,
+  100% {
+    opacity: 0.72;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes thinkingSpark {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  40% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  70% {
+    opacity: 0;
+    transform: scale(1.15);
+  }
+}
+
+@keyframes thinkingDot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+.thinking-mark {
+  animation: thinkingMarkPulse 1.8s var(--ease) infinite;
+}
+
+.thinking-spark {
+  pointer-events: none;
+  position: absolute;
+  top: -2px;
+  right: -3px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--wine-soft);
+  box-shadow: 0 0 0 1px rgba(250, 247, 241, 0.35);
+  animation: thinkingSpark 2.4s var(--ease) infinite;
+}
+
+.thinking-indicator[data-tone="cream"] .thinking-spark,
+.btn-primary .thinking-spark {
+  background: rgba(250, 247, 241, 0.95);
+  box-shadow: 0 0 0 1px rgba(110, 31, 44, 0.25);
+}
+
+.thinking-dot:nth-child(1) {
+  animation: thinkingDot 1.2s ease-in-out infinite;
+}
+.thinking-dot:nth-child(2) {
+  animation: thinkingDot 1.2s ease-in-out 0.15s infinite;
+}
+.thinking-dot:nth-child(3) {
+  animation: thinkingDot 1.2s ease-in-out 0.3s infinite;
+}
+
 /* Heart of the detail view — story CTA / discovery content */
 .discovery-stage {
   border: 1px solid rgba(110, 31, 44, 0.22);
@@ -622,8 +697,26 @@ select {
   .fade-up-delay,
   .fade-up-delay-2,
   .slot-active,
-  .btn {
+  .btn,
+  .thinking-mark,
+  .thinking-spark,
+  .thinking-dot {
     animation: none !important;
     transition: none !important;
+  }
+
+  .thinking-mark {
+    opacity: 1;
+    transform: none;
+  }
+
+  .thinking-spark {
+    opacity: 0.45;
+    transform: none;
+  }
+
+  .thinking-dot {
+    opacity: 0.7;
+    transform: none;
   }
 }

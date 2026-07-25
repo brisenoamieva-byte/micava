@@ -18,6 +18,7 @@ import {
   scanFieldsToDraftPatch,
   type ScanLabelFields,
 } from "@/lib/scan-label";
+import { ThinkingIndicator } from "@/components/ThinkingIndicator";
 
 type Props = {
   open: boolean;
@@ -533,11 +534,18 @@ export function WineFormModal({
                 type="button"
                 className="btn btn-primary flex min-h-[48px] w-full items-center justify-center disabled:opacity-60"
                 disabled={scanning}
+                aria-busy={scanning}
                 onClick={() => scanInputRef.current?.click()}
               >
-                {scanning
-                  ? "Identificando y buscando calificación…"
-                  : "Escanear etiqueta"}
+                {scanning ? (
+                  <ThinkingIndicator
+                    tone="cream"
+                    size="sm"
+                    label="Identificando y buscando calificación…"
+                  />
+                ) : (
+                  "Escanear etiqueta"
+                )}
               </button>
               <button
                 type="button"
@@ -587,13 +595,20 @@ export function WineFormModal({
                 type="button"
                 className="btn btn-ghost flex min-h-[44px] w-full items-center justify-center border border-[var(--line)] disabled:opacity-60"
                 disabled={scanning}
+                aria-busy={scanning}
                 onClick={() => scanInputRef.current?.click()}
               >
-                {scanning
-                  ? "Identificando y buscando calificación…"
-                  : editing
-                    ? "Rellenar desde foto"
-                    : "Escanear etiqueta"}
+                {scanning ? (
+                  <ThinkingIndicator
+                    tone="wine"
+                    size="sm"
+                    label="Identificando y buscando calificación…"
+                  />
+                ) : editing ? (
+                  "Rellenar desde foto"
+                ) : (
+                  "Escanear etiqueta"
+                )}
               </button>
               {scanHint ? (
                 <p className="text-xs text-ink-soft">{scanHint}</p>

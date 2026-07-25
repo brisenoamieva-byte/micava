@@ -22,6 +22,7 @@ import {
 import { formatCavataleRating, formatPrice, formatVivino, typeAccent } from "@/lib/wines";
 import { buildWineShareText, shareOrCopyText } from "@/lib/share-wine";
 import { AiTheaterStatus } from "@/components/AiTheaterStatus";
+import { ThinkingIndicator } from "@/components/ThinkingIndicator";
 
 type Props = {
   wine: Wine | null;
@@ -468,7 +469,10 @@ export function WineDetail({
       </div>
 
       {onSaveKimiResearch ? (
-        <div className="discovery-stage mt-5 sm:mt-6">
+        <div
+          className="discovery-stage mt-5 sm:mt-6"
+          aria-busy={kimiLoading || undefined}
+        >
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--wine)]">
@@ -492,9 +496,14 @@ export function WineDetail({
                 type="button"
                 className="btn btn-ghost min-h-[40px] shrink-0 px-3 text-sm disabled:opacity-60"
                 disabled={kimiLoading}
+                aria-busy={kimiLoading}
                 onClick={() => void handleKimiResearch()}
               >
-                {kimiLoading ? "Contando…" : "Actualizar"}
+                {kimiLoading ? (
+                  <ThinkingIndicator tone="wine" size="sm" label="Contando…" />
+                ) : (
+                  "Actualizar"
+                )}
               </button>
             ) : null}
           </div>

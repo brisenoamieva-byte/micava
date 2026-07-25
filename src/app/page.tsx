@@ -143,7 +143,15 @@ export default function HomePage() {
       <footer className="relative z-10 border-t border-[var(--line)] px-5 py-8 pb-[max(2rem,env(safe-area-inset-bottom))] sm:px-6 md:px-10">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 text-sm text-ink-soft">
           <BrandWordmark size="sm" />
-          <p>cavatale.com</p>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <Link
+              href="/privacidad"
+              className="underline-offset-2 hover:text-ink hover:underline"
+            >
+              Privacidad
+            </Link>
+            <p>cavatale.com</p>
+          </div>
         </div>
       </footer>
     </main>

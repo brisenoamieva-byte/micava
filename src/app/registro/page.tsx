@@ -1,5 +1,6 @@
 import { BrandMark } from "@/components/BrandMark";
 import { RegisterForm } from "@/components/RegisterForm";
+import Link from "next/link";
 
 export default function RegisterPage() {
   return (
@@ -19,6 +20,16 @@ export default function RegisterPage() {
           <div className="mt-8">
             <RegisterForm />
           </div>
+          <p className="mt-6 text-center text-xs text-ink-soft">
+            Al continuar aceptas nuestra{" "}
+            <Link
+              href="/privacidad"
+              className="text-ink underline-offset-2 hover:underline"
+            >
+              Política de privacidad
+            </Link>
+            .
+          </p>
         </div>
       </div>
     </main>

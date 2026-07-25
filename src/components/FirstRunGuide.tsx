@@ -4,7 +4,6 @@ type FirstRunGuideProps = {
   /** Full empty-cava welcome vs compact reminder. */
   variant?: "welcome" | "compact";
   onScan: () => void;
-  onDemo: () => void;
   onDismiss?: () => void;
 };
 
@@ -12,7 +11,7 @@ const STEPS = [
   {
     n: "1",
     title: "Agregar una botella",
-    body: "Toca “+ Agregar”, toma foto de la etiqueta (o escribe el nombre). La app completa datos y busca rating y precio.",
+    body: "Toca “+ Agregar” o el botón de abajo, toma foto de la etiqueta (o escribe el nombre). La app completa datos y busca rating y precio.",
   },
   {
     n: "2",
@@ -27,12 +26,11 @@ const STEPS = [
 ] as const;
 
 /**
- * Plain-language first-run guide — for relatives who are not “app people”.
+ * Plain-language first-run guide — start by adding your own bottles.
  */
 export function FirstRunGuide({
   variant = "welcome",
   onScan,
-  onDemo,
   onDismiss,
 }: FirstRunGuideProps) {
   if (variant === "compact") {
@@ -68,11 +66,10 @@ export function FirstRunGuide({
         Bienvenida a tu cava
       </p>
       <h2 className="display mt-2 text-[1.85rem] leading-tight text-ink sm:text-3xl">
-        Tres cosas que puedes hacer
+        Empieza con tu primera botella
       </h2>
       <p className="mt-2 max-w-lg text-sm leading-relaxed text-ink-soft">
-        Cavatale guarda tus botellas en la nube y te cuenta su historia cuando
-        las abres. Empieza como te acomode:
+        Guarda tus vinos en la nube. Una foto de la etiqueta basta para empezar.
       </p>
 
       <ol className="mt-6 space-y-5">
@@ -94,27 +91,15 @@ export function FirstRunGuide({
         ))}
       </ol>
 
-      <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+      <div className="mt-6">
         <button
           type="button"
-          className="btn btn-primary min-h-[48px] px-4 text-base"
+          className="btn btn-primary min-h-[48px] w-full px-4 text-base sm:w-auto"
           onClick={onScan}
         >
-          Empezar con una foto
-        </button>
-        <button
-          type="button"
-          className="btn btn-ghost min-h-[48px] px-4 text-base"
-          onClick={onDemo}
-        >
-          Ver 6 botellas de ejemplo
+          Agregar mi primera botella
         </button>
       </div>
-      <p className="mt-3 text-xs leading-relaxed text-ink-soft">
-        Si pruebas el ejemplo, luego toca{" "}
-        <span className="text-ink">Terminar prueba (vaciar)</span> para empezar
-        con tus botellas. Solo se borra tu cuenta.
-      </p>
     </section>
   );
 }

@@ -24,7 +24,7 @@ export function WineList({
     return (
       <p className="py-10 text-center text-sm text-ink-soft">
         {inventoryCount === 0
-          ? "Tu cava está vacía. Escanea tu primera botella o prueba la cava de ejemplo."
+          ? "Tu cava está vacía. Agrega tu primera botella con una foto de la etiqueta."
           : "Ningún vino coincide con los filtros."}
       </p>
     );

@@ -25,6 +25,8 @@ type Props = {
   cellars: { id: string; name: string; cols: number; rows: string[] }[];
   activeCellarId: string | null;
   initialSlot?: string;
+  /** When adding: start on chooser (default) or blank form. */
+  initialStep?: "pick" | "form";
   editing?: Wine | null;
   onClose: () => void;
   onSubmit: (
@@ -92,6 +94,7 @@ export function WineFormModal({
   cellars,
   activeCellarId,
   initialSlot = "",
+  initialStep = "pick",
   editing = null,
   onClose,
   onSubmit,
@@ -169,9 +172,10 @@ export function WineFormModal({
       setDraft(wineToDraft(editing));
     } else {
       setDraft(emptyDraft(initialSlot, activeCellarId));
-      setStep(catalog.length > 0 ? "pick" : "form");
+      // Always offer scan vs manual (and catalog when it exists).
+      setStep(initialStep === "form" ? "form" : "pick");
     }
-  }, [open, editing, initialSlot, activeCellarId, catalog.length]);
+  }, [open, editing, initialSlot, initialStep, activeCellarId]);
 
   useEffect(() => {
     return () => {
@@ -424,7 +428,9 @@ export function WineFormModal({
               {editing
                 ? "Editar vino"
                 : showingPick
-                  ? "¿Qué botella sumas?"
+                  ? catalog.length === 0
+                    ? "Tu primera botella"
+                    : "¿Qué botella sumas?"
                   : fromExisting
                     ? "Otra botella"
                     : "Vino nuevo"}
@@ -433,9 +439,13 @@ export function WineFormModal({
               {editing
                 ? "Actualiza datos o ubicación de la botella."
                 : showingPick
-                  ? initialSlot
-                    ? `Casilla ${initialSlot} · elige un vino de tu cava o uno nuevo.`
-                    : "Elige uno que ya tengas, o agrega uno distinto."
+                  ? catalog.length === 0
+                    ? initialSlot
+                      ? `Casilla ${initialSlot} · foto de la etiqueta o escribe el nombre.`
+                      : "Foto de la etiqueta (recomendado) o escribe el nombre a mano."
+                    : initialSlot
+                      ? `Casilla ${initialSlot} · elige un vino de tu cava o uno nuevo.`
+                      : "Elige uno que ya tengas, o agrega uno distinto."
                   : fromExisting
                     ? "Datos copiados · elige mueble y ubicación."
                     : "Completa los datos de un vino que aún no está en tu cava."}
@@ -452,63 +462,71 @@ export function WineFormModal({
 
         {showingPick ? (
           <div className="space-y-3">
-            <label className="block">
-              <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                Buscar en tu cava
-              </span>
-              <input
-                className={fieldClass}
-                value={catalogQuery}
-                onChange={(e) => setCatalogQuery(e.target.value)}
-                placeholder="Nombre, bodega, uva…"
-                enterKeyHint="search"
-              />
-            </label>
+            {catalog.length > 0 ? (
+              <>
+                <label className="block">
+                  <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                    Buscar en tu cava
+                  </span>
+                  <input
+                    className={fieldClass}
+                    value={catalogQuery}
+                    onChange={(e) => setCatalogQuery(e.target.value)}
+                    placeholder="Nombre, bodega, uva…"
+                    enterKeyHint="search"
+                  />
+                </label>
 
-            <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-              Ya en tu cava ({filteredCatalog.length})
-              {initialSlot ? ` · va a ${initialSlot}` : ""}
-            </p>
+                <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                  Ya en tu cava ({filteredCatalog.length})
+                  {initialSlot ? ` · va a ${initialSlot}` : ""}
+                </p>
 
-            <ul className="max-h-[min(50dvh,22rem)] space-y-1.5 overflow-y-auto overscroll-contain pr-0.5">
-              {filteredCatalog.length === 0 ? (
-                <li className="rounded-[10px] border border-dashed border-[var(--line)] px-3 py-4 text-sm text-ink-soft">
-                  No hay coincidencias. Prueba otra búsqueda o agrega uno nuevo.
-                </li>
-              ) : (
-                filteredCatalog.map((w) => {
-                  const copies = wines.filter(
-                    (x) => wineKey(x) === wineKey(w)
-                  ).length;
-                  return (
-                    <li key={wineKey(w)}>
-                      <button
-                        type="button"
-                        onClick={() => applyExisting(w)}
-                        className="flex w-full items-start gap-2 rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.55)] px-3 py-2.5 text-left transition hover:border-[rgba(110,31,44,0.35)] hover:bg-[rgba(110,31,44,0.06)]"
-                      >
-                        <span className="mt-0.5 text-base leading-none" aria-hidden>
-                          {countryFlagEmoji[w.country] ?? "·"}
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate font-medium text-ink">
-                            {w.name}
-                          </span>
-                          <span className="block truncate text-xs text-ink-soft">
-                            {[w.winery, w.vintage, formatVivino(w.vivino)]
-                              .filter(Boolean)
-                              .join(" · ")}
-                          </span>
-                        </span>
-                        <span className="shrink-0 text-xs text-ink-soft">
-                          {copies > 1 ? `${copies} bot.` : "1 bot."}
-                        </span>
-                      </button>
+                <ul className="max-h-[min(50dvh,22rem)] space-y-1.5 overflow-y-auto overscroll-contain pr-0.5">
+                  {filteredCatalog.length === 0 ? (
+                    <li className="rounded-[10px] border border-dashed border-[var(--line)] px-3 py-4 text-sm text-ink-soft">
+                      No hay coincidencias. Prueba otra búsqueda o agrega uno
+                      nuevo.
                     </li>
-                  );
-                })
-              )}
-            </ul>
+                  ) : (
+                    filteredCatalog.map((w) => {
+                      const copies = wines.filter(
+                        (x) => wineKey(x) === wineKey(w)
+                      ).length;
+                      return (
+                        <li key={wineKey(w)}>
+                          <button
+                            type="button"
+                            onClick={() => applyExisting(w)}
+                            className="flex w-full items-start gap-2 rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.55)] px-3 py-2.5 text-left transition hover:border-[rgba(110,31,44,0.35)] hover:bg-[rgba(110,31,44,0.06)]"
+                          >
+                            <span
+                              className="mt-0.5 text-base leading-none"
+                              aria-hidden
+                            >
+                              {countryFlagEmoji[w.country] ?? "·"}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate font-medium text-ink">
+                                {w.name}
+                              </span>
+                              <span className="block truncate text-xs text-ink-soft">
+                                {[w.winery, w.vintage, formatVivino(w.vivino)]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </span>
+                            </span>
+                            <span className="shrink-0 text-xs text-ink-soft">
+                              {copies > 1 ? `${copies} bot.` : "1 bot."}
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })
+                  )}
+                </ul>
+              </>
+            ) : null}
 
             <div className="flex flex-col gap-2">
               <button
@@ -558,7 +576,9 @@ export function WineFormModal({
                   setScanHint("");
                 }}
               >
-                ← Elegir de mi cava
+                {catalog.length === 0
+                  ? "← Escanear o escribir"
+                  : "← Elegir de mi cava"}
               </button>
             ) : null}
 

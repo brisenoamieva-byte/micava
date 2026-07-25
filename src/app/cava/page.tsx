@@ -86,6 +86,9 @@ export default function CavaPage() {
   const [detailReturn, setDetailReturn] = useState<MobilePanel>("lista");
   const [formOpen, setFormOpen] = useState(false);
   const [formSlot, setFormSlot] = useState("");
+  const [formInitialStep, setFormInitialStep] = useState<"pick" | "form">(
+    "pick"
+  );
   const [editing, setEditing] = useState<Wine | null>(null);
   const [departWineTarget, setDepartWineTarget] = useState<Wine | null>(null);
   const [departAction, setDepartAction] = useState<DepartAction>("opened");
@@ -93,6 +96,7 @@ export default function CavaPage() {
   const [moveSheetWine, setMoveSheetWine] = useState<Wine | null>(null);
   const [inviteHint, setInviteHint] = useState<string | null>(null);
   const [guideDismissed, setGuideDismissed] = useState(false);
+  const [storyHintDismissed, setStoryHintDismissed] = useState(false);
   const [showHowTo, setShowHowTo] = useState(false);
   const [clearing, setClearing] = useState(false);
 
@@ -116,6 +120,9 @@ export default function CavaPage() {
   useEffect(() => {
     try {
       setGuideDismissed(localStorage.getItem("micava.guide.dismissed.v1") === "1");
+      setStoryHintDismissed(
+        localStorage.getItem("micava.story.hint.v1") === "1"
+      );
     } catch {
       /* ignore */
     }
@@ -126,6 +133,15 @@ export default function CavaPage() {
     setShowHowTo(false);
     try {
       localStorage.setItem("micava.guide.dismissed.v1", "1");
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function dismissStoryHint() {
+    setStoryHintDismissed(true);
+    try {
+      localStorage.setItem("micava.story.hint.v1", "1");
     } catch {
       /* ignore */
     }
@@ -144,6 +160,31 @@ export default function CavaPage() {
     wines.find((w) => w.id === selectedId) ??
     visible[0] ??
     null;
+
+  const selectedHasStory = Boolean(
+    selected?.kimiSummary ||
+      selected?.kimiCuriosity ||
+      selected?.kimiTalkHook
+  );
+
+  /** One-shot next step after the first bottle; not every session forever. */
+  const showStoryNext =
+    ready &&
+    wines.length === 1 &&
+    !storyHintDismissed &&
+    Boolean(selected) &&
+    !selectedHasStory;
+
+  // Persist dismissal once they already have a story for the focus wine.
+  useEffect(() => {
+    if (!selectedHasStory || storyHintDismissed) return;
+    setStoryHintDismissed(true);
+    try {
+      localStorage.setItem("micava.story.hint.v1", "1");
+    } catch {
+      /* ignore */
+    }
+  }, [selectedHasStory, storyHintDismissed]);
 
   const stats = cellarStats(visible, {
     cols: activeCellar?.cols,
@@ -181,9 +222,10 @@ export default function CavaPage() {
     setMobilePanel(detailReturn);
   }
 
-  function openAdd(slot = "") {
+  function openAdd(slot = "", opts?: { step?: "pick" | "form" }) {
     setEditing(null);
     setFormSlot(slot);
+    setFormInitialStep(opts?.step ?? "pick");
     setFormOpen(true);
     setMode("cava");
   }
@@ -455,34 +497,119 @@ export default function CavaPage() {
             />
           </div>
         ) : wines.length === 0 && ready ? (
-          <FirstRunGuide onScan={() => openAdd()} />
+          <div className="space-y-6">
+            {showHowTo ? (
+              <div className="mt-5">
+                <FirstRunGuide
+                  onScan={() => {
+                    setShowHowTo(false);
+                    openAdd();
+                  }}
+                  onManual={() => {
+                    setShowHowTo(false);
+                    openAdd("", { step: "form" });
+                  }}
+                  onDismiss={dismissGuide}
+                />
+                <button
+                  type="button"
+                  className="mt-2 text-xs text-ink-soft underline-offset-2 hover:underline"
+                  onClick={() => setShowHowTo(false)}
+                >
+                  Cerrar guía
+                </button>
+              </div>
+            ) : (
+              <FirstRunGuide
+                onScan={() => openAdd()}
+                onManual={() => openAdd("", { step: "form" })}
+              />
+            )}
+
+            <div className="space-y-4">
+              <CellarUnitsBar
+                cellars={cellars}
+                wines={wines}
+                activeId={activeCellar?.id ?? null}
+                onSelect={setActiveCellarId}
+                onAdd={addCellarUnit}
+                onUpdate={updateCellarUnit}
+                onDelete={deleteCellarUnit}
+              />
+              <section className="panel p-3 sm:p-5">
+                <div className="mb-3 flex items-baseline justify-between gap-3 sm:mb-4">
+                  <h2 className="display text-xl text-ink sm:text-2xl">
+                    {activeCellar ? activeCellar.name : "Mapa de la cava"}
+                  </h2>
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-ink-soft sm:text-xs">
+                    Toca + para sumar
+                  </p>
+                </div>
+                {activeCellar ? (
+                  <CellarMap
+                    wines={wines}
+                    cols={activeCellar.cols}
+                    rows={activeCellar.rows}
+                    cellarId={activeCellar.id}
+                    title={activeCellar.name}
+                    highlightedIds={new Set()}
+                    selectedId={null}
+                    onSelect={() => {}}
+                    onEmptySlot={(slot) => openAdd(slot)}
+                  />
+                ) : (
+                  <p className="text-sm text-ink-soft">
+                    Crea un mueble para empezar a acomodar botellas.
+                  </p>
+                )}
+              </section>
+            </div>
+          </div>
         ) : (
           <>
-        {showHowTo || (!guideDismissed && wines.length > 0) ? (
-          showHowTo ? (
-            <div className="mt-5">
-              <FirstRunGuide
-                onScan={() => {
-                  setShowHowTo(false);
-                  openAdd();
-                }}
-                onDismiss={dismissGuide}
-              />
-              <button
-                type="button"
-                className="mt-2 text-xs text-ink-soft underline-offset-2 hover:underline"
-                onClick={dismissGuide}
-              >
-                Cerrar guía
-              </button>
-            </div>
-          ) : (
+        {showHowTo ? (
+          <div className="mt-5">
             <FirstRunGuide
-              variant="compact"
-              onScan={() => openAdd()}
+              onScan={() => {
+                setShowHowTo(false);
+                openAdd();
+              }}
+              onManual={() => {
+                setShowHowTo(false);
+                openAdd("", { step: "form" });
+              }}
               onDismiss={dismissGuide}
             />
-          )
+            <button
+              type="button"
+              className="mt-2 text-xs text-ink-soft underline-offset-2 hover:underline"
+              onClick={dismissGuide}
+            >
+              Cerrar guía
+            </button>
+          </div>
+        ) : showStoryNext &&
+          !(mode === "cava" && mobilePanel === "detalle") ? (
+          <FirstRunGuide
+            variant="story-next"
+            onScan={() => openAdd()}
+            onTellStory={() => {
+              if (selected) {
+                selectWine(
+                  selected,
+                  true,
+                  mobilePanel === "mapa" ? "mapa" : "lista"
+                );
+              }
+            }}
+            onDismiss={dismissStoryHint}
+          />
+        ) : !guideDismissed && wines.length > 0 ? (
+          <FirstRunGuide
+            variant="compact"
+            onScan={() => openAdd()}
+            onDismiss={dismissGuide}
+          />
         ) : null}
         <div
           className={[
@@ -715,7 +842,10 @@ export default function CavaPage() {
                 onClick={() => {
                   if (targetMode === "stats") setMode("stats");
                   else if (targetMode === "network") setMode("network");
-                  else {
+                  else if (wines.length === 0) {
+                    setMode("cava");
+                    if (id === "detalle") openAdd();
+                  } else {
                     setMode("cava");
                     setMobilePanel(id as MobilePanel);
                   }
@@ -734,11 +864,13 @@ export default function CavaPage() {
         cellars={cellars}
         activeCellarId={activeCellar?.id ?? null}
         initialSlot={formSlot}
+        initialStep={formInitialStep}
         editing={editing}
         onClose={() => {
           setFormOpen(false);
           setEditing(null);
           setFormSlot("");
+          setFormInitialStep("pick");
         }}
         onSubmit={(draft, extras) => {
           void (async () => {

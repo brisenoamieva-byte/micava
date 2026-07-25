@@ -27,7 +27,7 @@ export function formatVivino(value: number | null | undefined): string {
   return value.toFixed(1);
 }
 
-/** Same 1–5 display as Vivino; used for Rating Cavatale. */
+/** Same 1–5 display as Vivino; used for calificación Cavatale. */
 export function formatCavataleRating(
   value: number | null | undefined
 ): string {

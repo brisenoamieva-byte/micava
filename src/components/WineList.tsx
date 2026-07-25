@@ -69,8 +69,8 @@ export function WineList({
             <span className="shrink-0 text-right text-xs text-ink-soft">
               <span className="block font-medium text-ink">
                 {wine.cavataleRating != null
-                  ? `C ${formatCavataleRating(wine.cavataleRating)}`
-                  : formatVivino(wine.vivino)}
+                  ? `Calif. C ${formatCavataleRating(wine.cavataleRating)}`
+                  : `Calif. V ${formatVivino(wine.vivino)}`}
               </span>
               <span className="block">{formatPrice(wine.price)}</span>
             </span>

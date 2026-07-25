@@ -422,7 +422,8 @@ export default function CavaPage() {
               <strong className="text-ink">{formatPrice(stats.value)}</strong> ref.
             </span>
             <span>
-              media <strong className="text-ink">{formatVivino(stats.avgVivino)}</strong>
+              calif. Vivino{" "}
+              <strong className="text-ink">{formatVivino(stats.avgVivino)}</strong>
             </span>
             <button
               type="button"

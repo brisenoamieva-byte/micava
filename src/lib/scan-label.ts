@@ -168,7 +168,7 @@ export function missingScanFieldLabels(fields: ScanLabelFields): string[] {
     { key: "grape", label: "uva" },
     { key: "aging", label: "añejamiento" },
     { key: "vintage", label: "año" },
-    { key: "vivino", label: "Vivino" },
+    { key: "vivino", label: "calificación Vivino" },
     { key: "price", label: "precio" },
   ];
   return labels

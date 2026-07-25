@@ -536,7 +536,7 @@ export function WineFormModal({
                 onClick={() => scanInputRef.current?.click()}
               >
                 {scanning
-                  ? "Identificando y buscando rating…"
+                  ? "Identificando y buscando calificación…"
                   : "Escanear etiqueta"}
               </button>
               <button
@@ -590,7 +590,7 @@ export function WineFormModal({
                 onClick={() => scanInputRef.current?.click()}
               >
                 {scanning
-                  ? "Identificando y buscando rating…"
+                  ? "Identificando y buscando calificación…"
                   : editing
                     ? "Rellenar desde foto"
                     : "Escanear etiqueta"}
@@ -735,7 +735,7 @@ export function WineFormModal({
 
               <label>
                 <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                  Vivino
+                  Calificación Vivino
                 </span>
                 <input
                   className={fieldClass}

@@ -15,7 +15,7 @@ const STEPS = [
   {
     n: "1",
     title: "Sumar la botella",
-    body: "Foto de la etiqueta (rápido) o escribe el nombre. La app completa ficha, rating y precio de referencia.",
+    body: "Foto de la etiqueta (rápido) o escribe el nombre. La app completa ficha, calificación y precio de referencia.",
   },
   {
     n: "2",

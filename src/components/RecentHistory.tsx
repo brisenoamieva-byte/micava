@@ -89,7 +89,7 @@ export function RecentHistory({ entries }: Props) {
               ) : null}
             </div>
             <div className="shrink-0 text-right text-xs text-ink">
-              {formatVivino(e.wine.vivino)}
+              Calif. V {formatVivino(e.wine.vivino)}
               <span className="mt-0.5 block text-ink-soft">
                 {formatPrice(e.wine.price)}
               </span>

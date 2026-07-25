@@ -726,7 +726,9 @@ function Row({
           wine.winery,
           wine.country,
           wine.vintage != null ? String(wine.vintage) : "",
-          wine.vivino != null ? `Vivino ${wine.vivino.toFixed(1)}` : "",
+          wine.vivino != null
+            ? `Calificación Vivino ${wine.vivino.toFixed(1)}`
+            : "",
           wine.type,
         ]
           .filter(Boolean)

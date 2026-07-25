@@ -184,7 +184,7 @@ export function WineDetail({
   function saveVerification() {
     const value = Number(ratingInput.replace(",", "."));
     if (!Number.isFinite(value) || value < 1 || value > 5) {
-      alert("Ingresa un rating entre 1.0 y 5.0");
+      alert("Ingresa una calificación entre 1.0 y 5.0");
       return;
     }
     onVerifyRating?.(wine!, {
@@ -203,8 +203,8 @@ export function WineDetail({
     if (fields.vivino && wine.kimiVivino != null) {
       parts.push(
         wine.vivino === wine.kimiVivino
-          ? `Vivino ya era ${formatVivino(wine.kimiVivino)}`
-          : `Vivino actualizado a ${formatVivino(wine.kimiVivino)}`
+          ? `Calificación Vivino ya era ${formatVivino(wine.kimiVivino)}`
+          : `Calificación Vivino actualizada a ${formatVivino(wine.kimiVivino)}`
       );
     }
     if (fields.price && wine.kimiPrice != null) {
@@ -413,10 +413,10 @@ export function WineDetail({
           {wine.type}
         </span>
         <span className="rounded-[8px] border border-[rgba(110,31,44,0.4)] bg-[rgba(110,31,44,0.1)] px-2.5 py-1.5 text-xs font-semibold text-ink">
-          Cavatale {formatCavataleRating(wine.cavataleRating)}
+          Calificación Cavatale {formatCavataleRating(wine.cavataleRating)}
         </span>
         <span className="rounded-[8px] border border-[var(--line)] px-2.5 py-1.5 text-xs text-ink-soft">
-          Vivino {formatVivino(wine.vivino)}
+          Calificación Vivino {formatVivino(wine.vivino)}
         </span>
         <span className="rounded-[8px] border border-[var(--line)] px-2.5 py-1.5 text-xs text-ink">
           {formatPrice(wine.price)}
@@ -486,15 +486,15 @@ export function WineDetail({
           {researchJustDone && !kimiLoading && !kimiError ? (
             <p className="mt-2 text-sm text-[var(--wine-deep)]" role="status">
               {vivinoOffer
-                ? "Historia lista. Abajo puedes aceptar o rechazar el Vivino estimado."
-                : "Historia lista. Rating Cavatale y relato actualizados."}
+                ? "Historia lista. Abajo puedes aceptar o rechazar la calificación Vivino estimada."
+                : "Historia lista. Calificación Cavatale y relato actualizados."}
             </p>
           ) : null}
 
           {!hasDiscoveryStory && !kimiLoading ? (
             <div className="mt-3">
               <p className="max-w-md text-sm leading-relaxed text-ink-soft">
-                Historia, dato curioso, gancho de mesa y Rating Cavatale — lo
+                Historia, dato curioso, gancho de mesa y calificación Cavatale — lo
                 que hace distinta a esta botella.
               </p>
               <button
@@ -567,14 +567,14 @@ export function WineDetail({
           {hasKimi && wine.cavataleRating != null ? (
             <div className="mt-4 rounded-[10px] border border-[rgba(110,31,44,0.28)] bg-[rgba(110,31,44,0.08)] px-3 py-3">
               <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--wine)]">
-                Rating Cavatale
+                Calificación Cavatale
               </p>
               <p className="mt-1 display text-3xl leading-none text-ink">
                 {formatCavataleRating(wine.cavataleRating)}
               </p>
               <p className="mt-1.5 text-xs text-ink-soft">
                 Oficial Cavatale · ~30% sabor · ~30% historia · ~25% mesa ·
-                ~15% originalidad. Independiente de Vivino.
+                ~15% originalidad. Independiente de la calificación Vivino.
               </p>
             </div>
           ) : null}
@@ -585,7 +585,7 @@ export function WineDetail({
               role="status"
             >
               <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                ¿Actualizar Vivino (comunidad)?
+                ¿Actualizar calificación Vivino (comunidad)?
               </p>
               <p className="mt-1.5 text-sm leading-relaxed text-ink">
                 Con alta confianza la IA estima{" "}
@@ -602,9 +602,9 @@ export function WineDetail({
                     ).
                   </>
                 ) : (
-                  <> y tu ficha aún no tiene Vivino.</>
+                  <> y tu ficha aún no tiene calificación Vivino.</>
                 )}{" "}
-                El Rating Cavatale no cambia con esto.
+                La calificación Cavatale no cambia con esto.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
@@ -624,8 +624,8 @@ export function WineDetail({
                     setVivinoOffer(null);
                     setApplyHint(
                       vivinoOffer.current != null
-                        ? `Se mantiene tu Vivino ${formatVivino(vivinoOffer.current)}`
-                        : "Se deja la ficha sin Vivino"
+                        ? `Se mantiene tu calificación Vivino ${formatVivino(vivinoOffer.current)}`
+                        : "Se deja la ficha sin calificación Vivino"
                     );
                     window.setTimeout(() => setApplyHint(null), 4000);
                   }}
@@ -641,13 +641,13 @@ export function WineDetail({
           {hasKimi && hasRefEstimates ? (
             <div className="mt-4 space-y-3 border-t border-[rgba(110,31,44,0.14)] pt-4">
               <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                Referencias (Vivino / precio)
+                Referencias (calificación Vivino / precio)
               </p>
               {refsAllMatch ? (
                 <p className="text-sm text-ink-soft">
                   Coinciden con tu ficha
                   {wine.kimiVivino != null
-                    ? ` · Vivino ${formatVivino(wine.kimiVivino)}`
+                    ? ` · Calif. Vivino ${formatVivino(wine.kimiVivino)}`
                     : ""}
                   {wine.kimiPrice != null
                     ? ` · ${formatPrice(wine.kimiPrice)}`
@@ -662,14 +662,14 @@ export function WineDetail({
                         {vivinoNeedsApply ? (
                           <>
                             <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                              Vivino estimado
+                              Calif. Vivino estimada
                             </p>
                             <p className="mt-1 text-sm text-ink">
                               {formatVivino(wine.kimiVivino)}
                               <span className="text-ink-soft">
                                 {wine.vivino == null
-                                  ? " · tu ficha no tiene Vivino"
-                                  : ` · tuyo ${formatVivino(wine.vivino)}`}
+                                  ? " · tu ficha no tiene calificación Vivino"
+                                  : ` · tuya ${formatVivino(wine.vivino)}`}
                               </span>
                               {kimiDeltaVivino != null &&
                               kimiDeltaVivino !== 0 ? (
@@ -688,13 +688,13 @@ export function WineDetail({
                                   applyKimiToFicha({ vivino: true })
                                 }
                               >
-                                Usar este Vivino
+                                Usar esta calificación Vivino
                               </button>
                             ) : null}
                           </>
                         ) : (
                           <p className="text-sm text-ink-soft">
-                            Vivino en ficha: {formatVivino(wine.vivino)}{" "}
+                            Calif. Vivino en ficha: {formatVivino(wine.vivino)}{" "}
                             (coincide con la estimación)
                           </p>
                         )}
@@ -749,9 +749,9 @@ export function WineDetail({
                       }
                     >
                       {vivinoNeedsApply && priceNeedsApply
-                        ? "Aplicar Vivino y precio a mi ficha"
+                        ? "Aplicar calificación Vivino y precio a mi ficha"
                         : vivinoNeedsApply
-                          ? "Aplicar Vivino a mi ficha"
+                          ? "Aplicar calificación Vivino a mi ficha"
                           : "Aplicar precio a mi ficha"}
                     </button>
                   ) : null}
@@ -822,7 +822,7 @@ export function WineDetail({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                Rating externo
+                Calificación externa
               </p>
               <p className="mt-0.5 text-xs text-ink-soft">
                 Última revisión: {formatCheckedAt(wine.lastCheckedAt)}
@@ -930,7 +930,7 @@ export function WineDetail({
                   onChange={(e) => setSyncVivino(e.target.checked)}
                 />
                 <span>
-                  Actualizar también mi Vivino guardado
+                  Actualizar también mi calificación Vivino guardada
                   <span className="block text-xs text-ink-soft">
                     Ahora {formatVivino(wine.vivino)}
                   </span>
@@ -1023,9 +1023,9 @@ export function WineDetail({
       )}
 
       <p className="mt-6 text-xs leading-relaxed text-ink-soft sm:mt-8">
-        Rating Cavatale es el score oficial de la plataforma. Vivino y precio
-        son referencia de comunidad/mercado. La verificación manual sigue
-        disponible abajo.
+        La calificación Cavatale es el score oficial de la plataforma. La
+        calificación Vivino y el precio son referencia de comunidad/mercado. La
+        verificación manual sigue disponible abajo.
       </p>
     </div>
   );

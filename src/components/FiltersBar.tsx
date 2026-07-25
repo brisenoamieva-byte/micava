@@ -21,10 +21,10 @@ const fieldClass =
   "w-full min-h-[44px] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.8)] px-3 py-2.5 outline-none transition focus:border-[rgba(122,36,48,0.45)]";
 
 const sortOptions: { value: SortOption; label: string }[] = [
-  { value: "cavatale-desc", label: "Cavatale ↓" },
-  { value: "cavatale-asc", label: "Cavatale ↑" },
-  { value: "vivino-desc", label: "Vivino ↓" },
-  { value: "vivino-asc", label: "Vivino ↑" },
+  { value: "cavatale-desc", label: "Calif. Cavatale ↓" },
+  { value: "cavatale-asc", label: "Calif. Cavatale ↑" },
+  { value: "vivino-desc", label: "Calif. Vivino ↓" },
+  { value: "vivino-asc", label: "Calif. Vivino ↑" },
   { value: "price-desc", label: "Precio ↓" },
   { value: "price-asc", label: "Precio ↑" },
   { value: "default", label: "Original" },
@@ -395,30 +395,30 @@ export function FiltersBar({ filters, onChange, total, wines }: Props) {
           </label>
         </div>
 
-        {/* Tres rangos en la misma franja: Vivino · Cavatale · Precio */}
+        {/* Tres rangos: Calificación Vivino · Calificación Cavatale · Precio */}
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
           <DualScoreRange
-            label="Vivino"
+            label="Calificación Vivino"
             bounds={vivinoBounds}
             minValue={vivinoMin}
             maxValue={vivinoMax}
             displayLabel={vivinoLabel}
             onMin={onMinVivinoSlide}
             onMax={onMaxVivinoSlide}
-            minAria="Vivino mínimo"
-            maxAria="Vivino máximo"
+            minAria="Calificación Vivino mínima"
+            maxAria="Calificación Vivino máxima"
           />
 
           <DualScoreRange
-            label="Cavatale"
+            label="Calificación Cavatale"
             bounds={cavataleBounds}
             minValue={cavataleMin}
             maxValue={cavataleMax}
             displayLabel={cavataleLabel}
             onMin={onMinCavataleSlide}
             onMax={onMaxCavataleSlide}
-            minAria="Cavatale mínimo"
-            maxAria="Cavatale máximo"
+            minAria="Calificación Cavatale mínima"
+            maxAria="Calificación Cavatale máxima"
           />
 
           <label className="min-w-0">

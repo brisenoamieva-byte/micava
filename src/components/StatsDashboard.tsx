@@ -91,11 +91,11 @@ export function StatsDashboard({
           }
         />
         <Kpi
-          label="Media Cavatale"
+          label="Media calif. Cavatale"
           value={formatCavataleRating(insights.avgCavatale)}
           hint={
             insights.avgCavatale != null
-              ? "solo botellas con Rating Cavatale"
+              ? "solo botellas con calificación Cavatale"
               : "cuenta la historia de un vino"
           }
         />
@@ -199,12 +199,12 @@ export function StatsDashboard({
 
         {/* Tipo donut + bands */}
         <section className="panel p-4 sm:p-5">
-          <Header title="Perfil" subtitle="Tipo, Rating Cavatale y rangos de precio" />
+          <Header title="Perfil" subtitle="Tipo, calificación Cavatale y rangos de precio" />
           <div className="mt-5 flex flex-col items-center gap-6 sm:flex-row sm:items-start">
             <TypeDonut items={insights.byType} total={insights.bottles} />
             <div className="w-full flex-1 space-y-5">
               <BandBlock
-                title="Clasificación Cavatale"
+                title="Calificación Cavatale"
                 emptyHint="Cuenta la historia de un vino para ver bandas"
                 bands={insights.cavataleBands}
                 color="var(--wine)"
@@ -286,12 +286,12 @@ export function StatsDashboard({
       <div className="grid gap-5 lg:grid-cols-2">
         <RankList
           title="Mejor calificados"
-          subtitle="Rating Cavatale primero; si falta, Vivino comunidad"
+          subtitle="Calificación Cavatale primero; si falta, calificación Vivino"
           wines={insights.topByCavatale}
           metric={(w) =>
             w.cavataleRating != null
-              ? `C ${formatCavataleRating(w.cavataleRating)}`
-              : `V ${formatVivino(w.vivino)}`
+              ? `Calif. C ${formatCavataleRating(w.cavataleRating)}`
+              : `Calif. V ${formatVivino(w.vivino)}`
           }
           onSelect={onSelectWine}
         />
@@ -450,8 +450,8 @@ function DrilldownList({
               </span>
               <span className="shrink-0 text-right text-xs font-medium text-ink">
                 {w.cavataleRating != null
-                  ? `C ${formatCavataleRating(w.cavataleRating)}`
-                  : `V ${formatVivino(w.vivino)}`}
+                  ? `Calif. C ${formatCavataleRating(w.cavataleRating)}`
+                  : `Calif. V ${formatVivino(w.vivino)}`}
                 <span className="mt-0.5 block font-normal text-ink-soft">
                   {formatPrice(w.price)}
                 </span>

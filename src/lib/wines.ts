@@ -109,6 +109,12 @@ export function cellarStats(
     rated.length === 0
       ? null
       : rated.reduce((sum, w) => sum + (w.vivino ?? 0), 0) / rated.length;
+  const cavataleRated = list.filter((w) => w.cavataleRating != null);
+  const avgCavatale =
+    cavataleRated.length === 0
+      ? null
+      : cavataleRated.reduce((sum, w) => sum + (w.cavataleRating ?? 0), 0) /
+        cavataleRated.length;
 
   const inGrid =
     opts?.cellarId !== undefined
@@ -120,6 +126,7 @@ export function cellarStats(
     value,
     countries: countries.size,
     avgVivino,
+    avgCavatale,
     emptySlots: getEmptySlots(inGrid, cols, rows, opts?.cellarId).length,
   };
 }

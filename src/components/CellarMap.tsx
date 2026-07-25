@@ -337,8 +337,8 @@ export function CellarMap({
             <div className="flex items-start justify-between gap-3 rounded-[10px] border border-[rgba(110,31,44,0.22)] bg-[rgba(122,36,48,0.05)] px-3 py-2">
               <p className="text-xs leading-relaxed text-ink sm:text-[13px]">
                 {touchUi
-                  ? "Para mover: deja presionada la botella; luego toca el hueco nuevo."
-                  : "Para mover: arrastra la botella al hueco nuevo (o a Abajo / fuera)."}
+                  ? "Para mover: deja presionada la botella; luego toca el hueco nuevo. Toca = ver · + = agregar."
+                  : "Para mover: arrastra la botella al hueco nuevo (o a Abajo / fuera). Clic = ver · + = agregar."}
               </p>
               <button
                 type="button"
@@ -349,42 +349,35 @@ export function CellarMap({
               </button>
             </div>
           ) : null}
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs text-ink-soft">
-              {touchUi
-                ? "Deja presionada → elige hueco · toca = ver · + = agregar"
-                : "Arrastra al hueco · clic = ver · + = agregar"}
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              {!expanded ? (
-                <button
-                  type="button"
-                  className="btn btn-ghost min-h-[44px] px-3 text-xs"
-                  aria-label="Ampliar mapa"
-                  onClick={() => setExpanded(true)}
-                >
-                  Ampliar
-                </button>
-              ) : null}
-              {canSendAbajo && selectedWine ? (
-                <button
-                  type="button"
-                  className="btn btn-ghost min-h-[44px] px-3 text-xs"
-                  onClick={() => onMoveWine?.(selectedWine.id, "abajo")}
-                >
-                  Enviar abajo / fuera
-                </button>
-              ) : null}
-              {!pickMode && selectedWine && onPickForMove ? (
-                <button
-                  type="button"
-                  className="btn btn-ghost min-h-[44px] px-3 text-xs"
-                  onClick={() => onPickForMove(selectedWine)}
-                >
-                  Mover…
-                </button>
-              ) : null}
-            </div>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {!expanded ? (
+              <button
+                type="button"
+                className="btn btn-ghost min-h-[44px] px-3 text-xs"
+                aria-label="Ampliar mapa"
+                onClick={() => setExpanded(true)}
+              >
+                Ampliar
+              </button>
+            ) : null}
+            {canSendAbajo && selectedWine ? (
+              <button
+                type="button"
+                className="btn btn-ghost min-h-[44px] px-3 text-xs"
+                onClick={() => onMoveWine?.(selectedWine.id, "abajo")}
+              >
+                Enviar abajo / fuera
+              </button>
+            ) : null}
+            {!pickMode && selectedWine && onPickForMove ? (
+              <button
+                type="button"
+                className="btn btn-ghost min-h-[44px] px-3 text-xs"
+                onClick={() => onPickForMove(selectedWine)}
+              >
+                Mover…
+              </button>
+            ) : null}
           </div>
         </div>
       )}

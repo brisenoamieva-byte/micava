@@ -30,8 +30,7 @@ import type { DepartAction, DepartExtras, Filters, MatchConfidence, RatingSource
 import {
   cellarStats,
   filterWines,
-  formatPrice,
-  formatVivino,
+  formatCavataleRating,
   getEmptySlots,
 } from "@/lib/wines";
 
@@ -46,7 +45,7 @@ const initialFilters: Filters = {
   maxCavatale: null,
   minPrice: null,
   maxPrice: null,
-  sort: "vivino-desc",
+  sort: "cavatale-desc",
 };
 
 type MobilePanel = "mapa" | "lista" | "detalle";
@@ -405,9 +404,10 @@ export default function CavaPage() {
         ) : null}
         <header className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
           <div className="min-w-0">
-            <BrandMark size="lg" />
+            <BrandMark size="md" />
             <DisplayNameEditor />
-            <div className="mt-3 inline-flex rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.55)] p-1">
+            {/* Desktop only — mobile uses bottom nav for Cava/Pulso/Red */}
+            <div className="mt-3 hidden xl:inline-flex rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.55)] p-1">
               <button
                 type="button"
                 className={[
@@ -456,17 +456,20 @@ export default function CavaPage() {
               </button>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-ink-soft">
-            <span>
-              <strong className="text-ink">{stats.bottles}</strong> botellas
-            </span>
-            <span>
-              <strong className="text-ink">{formatPrice(stats.value)}</strong> ref.
-            </span>
-            <span>
-              calif. Vivino{" "}
-              <strong className="text-ink">{formatVivino(stats.avgVivino)}</strong>
-            </span>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-ink-soft">
+            {ready ? (
+              <>
+                <span>
+                  <strong className="text-ink">{stats.bottles}</strong> botellas
+                </span>
+                <span className="hidden sm:inline">
+                  Cavatale{" "}
+                  <strong className="text-ink">
+                    {formatCavataleRating(stats.avgCavatale)}
+                  </strong>
+                </span>
+              </>
+            ) : null}
             <button
               type="button"
               className="btn btn-primary min-h-[40px] px-3 text-sm"
@@ -474,31 +477,38 @@ export default function CavaPage() {
             >
               + Agregar
             </button>
-            <button
-              type="button"
-              className="btn btn-ghost min-h-[40px] px-3 text-sm"
-              onClick={() => void handleInviteFriend()}
-            >
-              {inviteHint ?? "Invitar"}
-            </button>
-            <button
-              type="button"
-              className="min-h-[40px] text-sm underline-offset-2 hover:text-ink hover:underline"
-              onClick={() => setShowHowTo(true)}
-            >
-              Cómo funciona
-            </button>
-            <button
-              type="button"
-              className="min-h-[40px] text-sm underline-offset-2 hover:text-ink hover:underline"
-              onClick={() => {
-                void signOut().then(() => {
-                  window.location.href = "/";
-                });
-              }}
-            >
-              Salir
-            </button>
+            <details className="relative">
+              <summary className="flex min-h-[40px] cursor-pointer list-none items-center px-1 text-sm underline-offset-2 hover:text-ink hover:underline [&::-webkit-details-marker]:hidden">
+                Más
+              </summary>
+              <div className="absolute right-0 z-20 mt-1 min-w-[10.5rem] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.98)] p-1.5 shadow-sm backdrop-blur-sm">
+                <button
+                  type="button"
+                  className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
+                  onClick={() => void handleInviteFriend()}
+                >
+                  {inviteHint ?? "Invitar"}
+                </button>
+                <button
+                  type="button"
+                  className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
+                  onClick={() => setShowHowTo(true)}
+                >
+                  Cómo funciona
+                </button>
+                <button
+                  type="button"
+                  className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
+                  onClick={() => {
+                    void signOut().then(() => {
+                      window.location.href = "/";
+                    });
+                  }}
+                >
+                  Salir
+                </button>
+              </div>
+            </details>
           </div>
         </header>
 
@@ -564,7 +574,15 @@ export default function CavaPage() {
               onSelectWine={(w) => selectWine(w, true, "lista")}
             />
           </div>
-        ) : wines.length === 0 && ready ? (
+        ) : !ready ? (
+          <div className="mt-6 space-y-4" aria-hidden>
+            <div className="h-10 animate-pulse rounded-[10px] bg-[rgba(110,31,44,0.06)]" />
+            <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+              <div className="h-[280px] animate-pulse rounded-[14px] bg-[rgba(110,31,44,0.05)]" />
+              <div className="h-[280px] animate-pulse rounded-[14px] bg-[rgba(110,31,44,0.05)]" />
+            </div>
+          </div>
+        ) : wines.length === 0 ? (
           <div className="space-y-6">
             {showHowTo ? (
               <div className="mt-5">

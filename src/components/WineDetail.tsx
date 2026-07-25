@@ -474,35 +474,40 @@ export function WineDetail({
         <CountryFlag country={wine.country} size="lg" />
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2 sm:mt-5">
-        <span className="inline-flex items-center gap-1.5 rounded-[8px] border border-[var(--line)] px-2.5 py-1.5 text-xs text-ink">
+      <div className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1.5 sm:mt-5">
+        <span className="inline-flex items-center gap-1.5 text-xs text-ink-soft">
           <span
             className="inline-block h-2 w-2 rounded-full"
             style={{ background: typeAccent(wine.type) }}
           />
           {wine.type}
         </span>
-        <span className="rounded-[8px] border border-[rgba(110,31,44,0.4)] bg-[rgba(110,31,44,0.1)] px-2.5 py-1.5 text-xs font-semibold text-ink">
-          Calificación Cavatale {formatCavataleRating(wine.cavataleRating)}
-        </span>
-        <span className="rounded-[8px] border border-[var(--line)] px-2.5 py-1.5 text-xs text-ink-soft">
-          Calificación Vivino {formatVivino(wine.vivino)}
-        </span>
-        <span className="rounded-[8px] border border-[var(--line)] px-2.5 py-1.5 text-xs text-ink">
-          {formatPrice(wine.price)}
-        </span>
-        {wine.externalRating != null ? (
-          <span className="rounded-[8px] border border-[rgba(110,31,44,0.28)] bg-[rgba(110,31,44,0.06)] px-2.5 py-1.5 text-xs text-ink">
-            Verificado {formatVivino(wine.externalRating)}
-            {delta != null && delta !== 0 ? (
-              <span className="text-ink-soft">
-                {" "}
-                ({delta > 0 ? "+" : ""}
-                {delta.toFixed(1)})
-              </span>
-            ) : null}
+        {wine.cavataleRating != null ? (
+          <span className="display text-2xl leading-none text-ink sm:text-[1.75rem]">
+            {formatCavataleRating(wine.cavataleRating)}
+            <span className="ml-1.5 align-middle font-sans text-[11px] font-normal uppercase tracking-[0.14em] text-ink-soft">
+              Cavatale
+            </span>
           </span>
         ) : null}
+        <span className="text-xs text-ink-soft">
+          Vivino {formatVivino(wine.vivino)}
+          <span className="mx-1.5 text-[var(--line)]">·</span>
+          {formatPrice(wine.price)}
+          {wine.externalRating != null ? (
+            <>
+              <span className="mx-1.5 text-[var(--line)]">·</span>
+              Verificado {formatVivino(wine.externalRating)}
+              {delta != null && delta !== 0 ? (
+                <span>
+                  {" "}
+                  ({delta > 0 ? "+" : ""}
+                  {delta.toFixed(1)})
+                </span>
+              ) : null}
+            </>
+          ) : null}
+        </span>
       </div>
 
       {onSaveKimiResearch ? (

@@ -26,10 +26,10 @@ const fieldClass =
   "w-full min-h-[44px] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.8)] px-3 py-2.5 outline-none transition focus:border-[rgba(122,36,48,0.45)]";
 
 const sortOptions: { value: SortOption; label: string }[] = [
-  { value: "cavatale-desc", label: "Calif. Cavatale ↓" },
-  { value: "cavatale-asc", label: "Calif. Cavatale ↑" },
-  { value: "vivino-desc", label: "Calif. Vivino ↓" },
-  { value: "vivino-asc", label: "Calif. Vivino ↑" },
+  { value: "cavatale-desc", label: "Cavatale ↓" },
+  { value: "cavatale-asc", label: "Cavatale ↑" },
+  { value: "vivino-desc", label: "Vivino ↓" },
+  { value: "vivino-asc", label: "Vivino ↑" },
   { value: "price-desc", label: "Precio ↓" },
   { value: "price-asc", label: "Precio ↑" },
   { value: "default", label: "Original" },

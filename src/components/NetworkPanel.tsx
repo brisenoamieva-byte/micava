@@ -10,10 +10,12 @@ import {
   type NetworkProfile,
   type OwnNetworkProfile,
   fetchOwnNetworkProfile,
+  fetchTotalUnread,
   getOrCreateDm,
   listMessages,
   listMyConversations,
   listNetworkProfiles,
+  markConversationRead,
   placeLabel,
   sendMessage,
   updateOwnNetworkProfile,
@@ -36,8 +38,26 @@ const COUNTRY_SUGGESTIONS = [
 ];
 
 const POLL_MS = 8000;
+const UNREAD_POLL_MS = 20000;
 
-export function NetworkPanel() {
+function UnreadBadge({ count, label }: { count: number; label?: string }) {
+  if (count <= 0) return null;
+  const text = count > 99 ? "99+" : String(count);
+  return (
+    <span
+      className="inline-flex min-w-[1.25rem] items-center justify-center rounded-[8px] bg-[var(--wine)] px-1.5 py-0.5 text-[10px] font-medium leading-none text-[rgba(255,252,247,0.96)]"
+      aria-label={label ?? `${count} no leídos`}
+    >
+      {text}
+    </span>
+  );
+}
+
+type NetworkPanelProps = {
+  onUnreadTotalChange?: (total: number) => void;
+};
+
+export function NetworkPanel({ onUnreadTotalChange }: NetworkPanelProps = {}) {
   const { user, displayName, refreshProfile } = useAuth();
   const [tab, setTab] = useState<Tab>("directorio");
   const [own, setOwn] = useState<OwnNetworkProfile | null>(null);
@@ -63,12 +83,38 @@ export function NetworkPanel() {
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
   const [realtimeMode, setRealtimeMode] = useState<RealtimeMode>("off");
+  const [totalUnread, setTotalUnread] = useState(0);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const onUnreadRef = useRef(onUnreadTotalChange);
+  onUnreadRef.current = onUnreadTotalChange;
 
   const [formVisible, setFormVisible] = useState(false);
   const [formCountry, setFormCountry] = useState("");
   const [formCity, setFormCity] = useState("");
   const [formBio, setFormBio] = useState("");
+
+  const refreshUnread = useCallback(async () => {
+    try {
+      const total = await fetchTotalUnread();
+      setTotalUnread(total);
+      onUnreadRef.current?.(total);
+    } catch {
+      // Migration 009 may not be applied yet — keep badge at 0.
+    }
+  }, []);
+
+  const markActiveRead = useCallback(
+    async (conversationId: string) => {
+      await markConversationRead(conversationId);
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === conversationId ? { ...c, unreadCount: 0 } : c
+        )
+      );
+      await refreshUnread();
+    },
+    [refreshUnread]
+  );
 
   const loadOwn = useCallback(async () => {
     if (!user) return;
@@ -116,6 +162,9 @@ export function NetworkPanel() {
     try {
       const list = await listMyConversations(user.id);
       setConversations(list);
+      const total = list.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+      setTotalUnread(total);
+      onUnreadRef.current?.(total);
     } catch (e) {
       setError(
         e instanceof Error ? e.message : "No se pudieron cargar los chats."
@@ -131,6 +180,7 @@ export function NetworkPanel() {
       try {
         const msgs = await listMessages(conversationId);
         setMessages(msgs);
+        await markActiveRead(conversationId);
       } catch (e) {
         if (!opts?.quiet) {
           setError(
@@ -141,7 +191,7 @@ export function NetworkPanel() {
         if (!opts?.quiet) setMessagesLoading(false);
       }
     },
-    []
+    [markActiveRead]
   );
 
   useEffect(() => {
@@ -151,12 +201,33 @@ export function NetworkPanel() {
       setLoading(true);
       setError(null);
       await loadOwn();
-      if (!cancelled) setLoading(false);
+      if (!cancelled) {
+        await refreshUnread();
+        setLoading(false);
+      }
     })();
     return () => {
       cancelled = true;
     };
-  }, [user, loadOwn]);
+  }, [user, loadOwn, refreshUnread]);
+
+  // Poll unread while Red is open (covers Realtime gaps + other conversations).
+  useEffect(() => {
+    if (!user) return;
+    const id = window.setInterval(() => {
+      void refreshUnread();
+      if (tab === "chats" && !activeConversationId) {
+        void loadConversations();
+      }
+    }, UNREAD_POLL_MS);
+    return () => window.clearInterval(id);
+  }, [
+    user,
+    refreshUnread,
+    tab,
+    activeConversationId,
+    loadConversations,
+  ]);
 
   useEffect(() => {
     if (tab === "directorio") void loadDirectory();
@@ -203,6 +274,8 @@ export function NetworkPanel() {
             if (prev.some((m) => m.id === row.id)) return prev;
             return [...prev, row];
           });
+          // Viewing this thread → mark read (including peer messages).
+          void markActiveRead(conversationId);
         }
       )
       .subscribe((status) => {
@@ -254,7 +327,7 @@ export function NetworkPanel() {
       void supabase.removeChannel(channel);
       setRealtimeMode("off");
     };
-  }, [activeConversationId, user, refreshMessages]);
+  }, [activeConversationId, user, refreshMessages, markActiveRead]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -375,7 +448,15 @@ export function NetworkPanel() {
                 if (id !== "chats") setActiveConversationId(null);
               }}
             >
-              {label}
+              <span className="inline-flex items-center gap-1.5">
+                {label}
+                {id === "chats" ? (
+                  <UnreadBadge
+                    count={totalUnread}
+                    label={`${totalUnread} mensajes no leídos`}
+                  />
+                ) : null}
+              </span>
             </button>
           ))}
         </div>
@@ -743,10 +824,31 @@ export function NetworkPanel() {
                           onClick={() => void openConversation(c)}
                         >
                           <span className="min-w-0">
-                            <span className="block font-medium text-ink">
-                              {c.other?.display_name?.trim() || "Coleccionista"}
+                            <span className="flex items-center gap-2">
+                              <span
+                                className={[
+                                  "block truncate",
+                                  c.unreadCount > 0
+                                    ? "font-semibold text-ink"
+                                    : "font-medium text-ink",
+                                ].join(" ")}
+                              >
+                                {c.other?.display_name?.trim() ||
+                                  "Coleccionista"}
+                              </span>
+                              <UnreadBadge
+                                count={c.unreadCount}
+                                label={`${c.unreadCount} no leídos`}
+                              />
                             </span>
-                            <span className="mt-0.5 block truncate text-xs text-ink-soft">
+                            <span
+                              className={[
+                                "mt-0.5 block truncate text-xs",
+                                c.unreadCount > 0
+                                  ? "font-medium text-ink"
+                                  : "text-ink-soft",
+                              ].join(" ")}
+                            >
                               {c.lastBody || "Sin mensajes aún"}
                             </span>
                           </span>

@@ -33,6 +33,7 @@ create policy "profiles_select_network_visible"
   using (network_visible = true);
 
 -- See supabase/migrations/006_user_network.sql for conversations, messages, RLS, and Realtime.
+-- See supabase/migrations/009_message_reads.sql for last_read_at / unread DM badges.
 
 -- Furniture units (muebles) — before wines.cellar_id and signup trigger
 create table if not exists public.cellars (

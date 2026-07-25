@@ -27,6 +27,7 @@ export type ConversationPreview = {
   last_message_at: string;
   other: NetworkProfile | null;
   lastBody: string | null;
+  unreadCount: number;
 };
 
 const PROFILE_COLS =
@@ -180,6 +181,8 @@ export async function listMyConversations(
     }
   }
 
+  const unreadMap = await fetchMyUnreadCounts();
+
   const previews: ConversationPreview[] = [];
   for (const c of convos ?? []) {
     const otherId = otherByConv.get(c.id as string);
@@ -193,14 +196,60 @@ export async function listMyConversations(
       .maybeSingle();
     lastBody = (lastMsg?.body as string | undefined) ?? null;
 
+    const id = c.id as string;
     previews.push({
-      id: c.id as string,
+      id,
       last_message_at: c.last_message_at as string,
       other: otherId ? profileMap.get(otherId) ?? null : null,
       lastBody,
+      unreadCount: unreadMap[id] ?? 0,
     });
   }
   return previews;
+}
+
+/** Per-conversation unread counts. Empty if migration 009 not applied yet. */
+export async function fetchMyUnreadCounts(): Promise<Record<string, number>> {
+  if (!isSupabaseConfigured()) return {};
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("my_unread_counts");
+  if (error) return {};
+  const map: Record<string, number> = {};
+  for (const row of data ?? []) {
+    const id = (row as { conversation_id: string }).conversation_id;
+    const n = Number((row as { unread_count: number | string }).unread_count);
+    if (id && n > 0) map[id] = n;
+  }
+  return map;
+}
+
+export async function fetchTotalUnread(): Promise<number> {
+  const map = await fetchMyUnreadCounts();
+  return Object.values(map).reduce((sum, n) => sum + n, 0);
+}
+
+/** Mark conversation as read for the current user. No-op if migration missing. */
+export async function markConversationRead(
+  conversationId: string
+): Promise<{ error: string | null }> {
+  if (!isSupabaseConfigured()) return { error: null };
+  const supabase = createClient();
+  const { error } = await supabase.rpc("mark_conversation_read", {
+    conv_id: conversationId,
+  });
+  // Graceful if 009 not applied yet (function missing)
+  if (error) {
+    const msg = error.message.toLowerCase();
+    if (
+      msg.includes("could not find") ||
+      msg.includes("does not exist") ||
+      msg.includes("schema cache")
+    ) {
+      return { error: null };
+    }
+    return { error: error.message };
+  }
+  return { error: null };
 }
 
 export async function listMessages(

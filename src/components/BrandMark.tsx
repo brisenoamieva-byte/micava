@@ -15,6 +15,7 @@ const sizes = {
   lg: { px: 44 },
 };
 
+/** Canonical Cavatale mark: wine bottle + conversation bubble. Do not replace. */
 export function BrandMark({
   href = "/",
   size = "md",
@@ -25,7 +26,7 @@ export function BrandMark({
   const inner = (
     <span className={`inline-flex items-center gap-2.5 ${className}`}>
       <Image
-        src="/brand/cavatale-mark-v2.png"
+        src="/brand/cavatale-mark.png"
         alt=""
         width={s.px}
         height={s.px}

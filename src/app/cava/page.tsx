@@ -76,6 +76,9 @@ export default function CavaPage() {
     dismissImportOffer,
     syncError,
     clearSyncError,
+    syncOk,
+    clearSyncOk,
+    isOnline,
   } = useCellar();
   const { signOut, user, configured } = useAuth();
   const [filters, setFilters] = useState<Filters>(initialFilters);
@@ -331,7 +334,15 @@ export default function CavaPage() {
   return (
     <main className="grain relative min-h-screen min-h-[100dvh]">
       <div className="relative z-10 mx-auto max-w-[1400px] px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))] md:px-8 xl:pb-10">
-        {syncError ? (
+        {!isOnline ? (
+          <div
+            role="status"
+            className="mb-4 rounded-[10px] border border-[rgba(110,31,44,0.22)] bg-[rgba(110,31,44,0.06)] px-3 py-2.5 text-sm text-ink"
+          >
+            Sin conexión — los cambios se quedan en este dispositivo hasta que
+            vuelvas a la red.
+          </div>
+        ) : syncError ? (
           <div
             role="alert"
             className="mb-4 flex items-start justify-between gap-3 rounded-[10px] border border-[rgba(110,31,44,0.35)] bg-[rgba(110,31,44,0.08)] px-3 py-2.5 text-sm text-ink"
@@ -341,6 +352,20 @@ export default function CavaPage() {
               type="button"
               className="shrink-0 text-xs text-ink-soft underline-offset-2 hover:text-ink hover:underline"
               onClick={clearSyncError}
+            >
+              Cerrar
+            </button>
+          </div>
+        ) : syncOk ? (
+          <div
+            role="status"
+            className="mb-4 flex items-start justify-between gap-3 rounded-[10px] border border-[rgba(62,92,58,0.28)] bg-[rgba(62,92,58,0.08)] px-3 py-2.5 text-sm text-ink"
+          >
+            <p className="min-w-0 flex-1">{syncOk}</p>
+            <button
+              type="button"
+              className="shrink-0 text-xs text-ink-soft underline-offset-2 hover:text-ink hover:underline"
+              onClick={clearSyncOk}
             >
               Cerrar
             </button>

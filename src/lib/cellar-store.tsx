@@ -81,6 +81,11 @@ type CellarContextValue = {
   /** Last cloud save failure (upsert/delete); null when ok or dismissed. */
   syncError: string | null;
   clearSyncError: () => void;
+  /** Brief success after a cloud write; auto-clears. */
+  syncOk: string | null;
+  clearSyncOk: () => void;
+  /** Live `navigator.onLine` (true until first client check if SSR). */
+  isOnline: boolean;
   addWine: (draft: WineDraft) => Wine;
   updateWine: (id: string, draft: WineDraft) => void;
   verifyWineRating: (
@@ -244,6 +249,8 @@ export function CellarProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [canImportLocal, setCanImportLocal] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncOk, setSyncOk] = useState<string | null>(null);
+  const [isOnline, setIsOnline] = useState(true);
   const userIdRef = useRef<string | null>(null);
   /** Bumps on vaciar / user switch so in-flight cloud loads can't restore deleted bottles. */
   const loadGenRef = useRef(0);
@@ -251,6 +258,9 @@ export function CellarProvider({ children }: { children: ReactNode }) {
   const multiCellarRef = useRef(false);
   /** False if kimi_* columns are missing in Supabase. */
   const kimiColumnsRef = useRef(true);
+  const syncOkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Skip success toasts until the initial cloud load finishes. */
+  const allowSyncOkRef = useRef(false);
 
   const activeCellar = useMemo(
     () => cellars.find((c) => c.id === activeCellarId) ?? cellars[0] ?? null,
@@ -258,14 +268,54 @@ export function CellarProvider({ children }: { children: ReactNode }) {
   );
 
   const clearSyncError = useCallback(() => setSyncError(null), []);
+  const clearSyncOk = useCallback(() => {
+    if (syncOkTimerRef.current) {
+      clearTimeout(syncOkTimerRef.current);
+      syncOkTimerRef.current = null;
+    }
+    setSyncOk(null);
+  }, []);
 
   const reportSyncError = useCallback((message: string) => {
     console.warn(message);
+    if (syncOkTimerRef.current) {
+      clearTimeout(syncOkTimerRef.current);
+      syncOkTimerRef.current = null;
+    }
+    setSyncOk(null);
     setSyncError(message);
+  }, []);
+
+  const reportSyncOk = useCallback(
+    (message = "Guardado en la nube") => {
+      setSyncError(null);
+      if (!allowSyncOkRef.current) return;
+      setSyncOk(message);
+      if (syncOkTimerRef.current) clearTimeout(syncOkTimerRef.current);
+      syncOkTimerRef.current = setTimeout(() => {
+        setSyncOk(null);
+        syncOkTimerRef.current = null;
+      }, 2200);
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const syncOnline = () => setIsOnline(navigator.onLine);
+    syncOnline();
+    window.addEventListener("online", syncOnline);
+    window.addEventListener("offline", syncOnline);
+    return () => {
+      window.removeEventListener("online", syncOnline);
+      window.removeEventListener("offline", syncOnline);
+      if (syncOkTimerRef.current) clearTimeout(syncOkTimerRef.current);
+    };
   }, []);
 
   const upsertWineRemote = useCallback(async (wine: Wine, userId: string) => {
     if (!isSupabaseConfigured()) return;
+    if (typeof navigator !== "undefined" && !navigator.onLine) return;
     const supabase = createClient();
     const tryUpsert = async (includeKimi: boolean, includePairings: boolean) => {
       const row = wineToRow(wine, userId, {
@@ -300,12 +350,13 @@ export function CellarProvider({ children }: { children: ReactNode }) {
         `No se pudo guardar en la nube: ${error.message}. Los cambios pueden perderse al recargar.`
       );
     } else {
-      setSyncError(null);
+      reportSyncOk();
     }
-  }, [reportSyncError]);
+  }, [reportSyncError, reportSyncOk]);
 
   const deleteWineRemote = useCallback(async (id: string, userId: string) => {
     if (!isSupabaseConfigured()) return;
+    if (typeof navigator !== "undefined" && !navigator.onLine) return;
     const supabase = createClient();
     const { error } = await supabase
       .from("wines")
@@ -316,12 +367,15 @@ export function CellarProvider({ children }: { children: ReactNode }) {
       reportSyncError(
         `No se pudo borrar en la nube: ${error.message}. Revisa al recargar.`
       );
+    } else {
+      reportSyncOk("Cambio guardado en la nube");
     }
-  }, [reportSyncError]);
+  }, [reportSyncError, reportSyncOk]);
 
   const insertHistoryRemote = useCallback(
     async (entry: CellarLogEntry, userId: string) => {
       if (!isSupabaseConfigured()) return;
+      if (typeof navigator !== "undefined" && !navigator.onLine) return;
       const supabase = createClient();
       const { error } = await supabase
         .from("cellar_history")
@@ -339,6 +393,7 @@ export function CellarProvider({ children }: { children: ReactNode }) {
 
   const persistWines = useCallback(async (list: Wine[], userId: string) => {
     if (!isSupabaseConfigured()) return;
+    if (typeof navigator !== "undefined" && !navigator.onLine) return;
     const supabase = createClient();
     const rows = list.map((w) =>
       wineToRow(w, userId, {
@@ -413,6 +468,8 @@ export function CellarProvider({ children }: { children: ReactNode }) {
       setActiveCellarId(null);
       setCanImportLocal(false);
       setSyncError(null);
+      setSyncOk(null);
+      allowSyncOkRef.current = false;
       setReady(true);
       userIdRef.current = null;
       multiCellarRef.current = false;
@@ -422,6 +479,7 @@ export function CellarProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     const gen = ++loadGenRef.current;
     userIdRef.current = user.id;
+    allowSyncOkRef.current = false;
     setReady(false);
 
     (async () => {
@@ -491,6 +549,7 @@ export function CellarProvider({ children }: { children: ReactNode }) {
         cloudWines.length === 0 && Boolean(local?.length) && !offered
       );
       setReady(true);
+      allowSyncOkRef.current = true;
     })();
 
     return () => {
@@ -962,6 +1021,9 @@ export function CellarProvider({ children }: { children: ReactNode }) {
       canImportLocal,
       syncError,
       clearSyncError,
+      syncOk,
+      clearSyncOk,
+      isOnline,
       addWine,
       updateWine,
       verifyWineRating,
@@ -988,6 +1050,9 @@ export function CellarProvider({ children }: { children: ReactNode }) {
       canImportLocal,
       syncError,
       clearSyncError,
+      syncOk,
+      clearSyncOk,
+      isOnline,
       addWine,
       updateWine,
       verifyWineRating,

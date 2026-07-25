@@ -150,6 +150,10 @@ export function sortWines(list: Wine[], sort: SortOption): Wine[] {
   copy.sort((a, b) => {
     if (sort === "vivino-desc") return compareNullable(a.vivino, b.vivino, "desc");
     if (sort === "vivino-asc") return compareNullable(a.vivino, b.vivino, "asc");
+    if (sort === "cavatale-desc")
+      return compareNullable(a.cavataleRating, b.cavataleRating, "desc");
+    if (sort === "cavatale-asc")
+      return compareNullable(a.cavataleRating, b.cavataleRating, "asc");
     if (sort === "price-desc") return compareNullable(a.price, b.price, "desc");
     if (sort === "price-asc") return compareNullable(a.price, b.price, "asc");
     return 0;
@@ -167,6 +171,16 @@ export function filterWines(list: Wine[], filters: Filters): Wine[] {
     if (filters.minVivino != null && (w.vivino == null || w.vivino < filters.minVivino))
       return false;
     if (filters.maxVivino != null && (w.vivino == null || w.vivino > filters.maxVivino))
+      return false;
+    if (
+      filters.minCavatale != null &&
+      (w.cavataleRating == null || w.cavataleRating < filters.minCavatale)
+    )
+      return false;
+    if (
+      filters.maxCavatale != null &&
+      (w.cavataleRating == null || w.cavataleRating > filters.maxCavatale)
+    )
       return false;
     if (filters.minPrice != null && (w.price == null || w.price < filters.minPrice))
       return false;

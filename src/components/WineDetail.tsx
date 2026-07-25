@@ -69,6 +69,10 @@ export function WineDetail({
   const [vivinoHint, setVivinoHint] = useState<string | null>(null);
   const [applyHint, setApplyHint] = useState<string | null>(null);
   const [labelSrc, setLabelSrc] = useState<string | null>(null);
+  const [vivinoOffer, setVivinoOffer] = useState<{
+    estimate: number;
+    current: number | null;
+  } | null>(null);
 
   useEffect(() => {
     setVerifyOpen(false);
@@ -83,6 +87,7 @@ export function WineDetail({
     setKimiError("");
     setVivinoHint(null);
     setApplyHint(null);
+    setVivinoOffer(null);
     setLabelSrc(null);
   }, [wine?.id]);
 
@@ -274,12 +279,25 @@ export function WineDetail({
       if (!res.ok || !payload.research) {
         throw new Error(payload.error || "No se pudo investigar este vino.");
       }
-      const applied = onSaveKimiResearch(wine, payload.research);
+      const research = payload.research;
+      const applied = onSaveKimiResearch(wine, research);
       const n = typeof applied === "number" ? applied : 1;
       setShareHint(
         n > 1 ? `Historia aplicada a ${n} botellas iguales` : "Historia lista"
       );
       window.setTimeout(() => setShareHint(null), 3500);
+
+      // Vivino: nunca auto-actualizar. Solo avisar si alta confianza y hay estimado distinto.
+      const est = research.kimiVivino;
+      const highConf = research.kimiConfidence === "confirmed";
+      const differs =
+        est != null &&
+        (wine.vivino == null || Math.abs(wine.vivino - est) >= 0.05);
+      if (highConf && differs && est != null) {
+        setVivinoOffer({ estimate: est, current: wine.vivino });
+      } else {
+        setVivinoOffer(null);
+      }
     } catch (e) {
       const msg =
         e instanceof Error ? e.message : "Error al consultar la IA.";
@@ -474,6 +492,65 @@ export function WineDetail({
               <p className="mt-1.5 text-xs text-ink-soft">
                 ~30% sabor · ~30% historia · ~25% mesa · ~15% originalidad.
               </p>
+            </div>
+          ) : null}
+
+          {vivinoOffer ? (
+            <div
+              className="mt-4 rounded-[10px] border border-[rgba(110,31,44,0.28)] bg-[rgba(110,31,44,0.07)] px-3 py-3"
+              role="status"
+            >
+              <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--wine)]">
+                Vivino encontrado
+              </p>
+              <p className="mt-1.5 text-sm leading-relaxed text-ink">
+                Con alta confianza la IA estima{" "}
+                <span className="font-medium">
+                  {formatVivino(vivinoOffer.estimate)}
+                </span>
+                {vivinoOffer.current != null ? (
+                  <>
+                    {" "}
+                    (en tu ficha tienes{" "}
+                    <span className="font-medium">
+                      {formatVivino(vivinoOffer.current)}
+                    </span>
+                    ).
+                  </>
+                ) : (
+                  <> y tu ficha aún no tiene Vivino.</>
+                )}{" "}
+                ¿Quieres actualizarlo?
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="btn btn-primary min-h-[40px] px-3 text-sm"
+                  onClick={() => {
+                    applyKimiToFicha({ vivino: true });
+                    setVivinoOffer(null);
+                  }}
+                >
+                  Actualizar a {formatVivino(vivinoOffer.estimate)}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost min-h-[40px] px-3 text-sm"
+                  onClick={() => {
+                    setVivinoOffer(null);
+                    setApplyHint(
+                      vivinoOffer.current != null
+                        ? `Se mantiene tu Vivino ${formatVivino(vivinoOffer.current)}`
+                        : "Se deja la ficha sin Vivino"
+                    );
+                    window.setTimeout(() => setApplyHint(null), 4000);
+                  }}
+                >
+                  {vivinoOffer.current != null
+                    ? "Dejar el mío"
+                    : "No actualizar"}
+                </button>
+              </div>
             </div>
           ) : null}
 

@@ -40,6 +40,8 @@ const initialFilters: Filters = {
   grape: "",
   minVivino: null,
   maxVivino: null,
+  minCavatale: null,
+  maxCavatale: null,
   minPrice: null,
   maxPrice: null,
   sort: "vivino-desc",

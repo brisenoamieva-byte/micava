@@ -45,9 +45,9 @@ cavataleRating, vivino, price, confidence, summary, curiosity, talkHook, pairing
 
 ## Estimaciones de referencia (secundarias)
 
-- vivino (number|null): estimación del score comunitario Vivino 1–5 si tienes buena certeza; si no, null. Independiente de cavataleRating.
+- vivino (number|null): REVISA el score comunitario Vivino 1–5 de ESTA botella (nombre + bodega + añada si aplica). Devuelve tu mejor estimación conocida del promedio comunitario; si no tienes buena señal, null. Independiente de cavataleRating. NUNCA inventes un Vivino “bonito”: mejor null.
 - price (number|null): precio menudeo de referencia en MXN (entero) si puedes estimar para México; si no, null.
-- confidence: "high" | "medium" | "low" según certeza de identificación, personas, cavataleRating y cifras.
+- confidence: "high" | "medium" | "low". Usa "high" SOLO si la identidad del vino es clara Y (si das vivino) tu estimación Vivino es fiable. Si el Vivino es dudoso, baja confidence o pon vivino null.
 
 ## Qué debe lograr cada campo narrativo
 

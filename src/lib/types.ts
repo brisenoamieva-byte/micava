@@ -74,6 +74,8 @@ export type SortOption =
   | "default"
   | "vivino-desc"
   | "vivino-asc"
+  | "cavatale-desc"
+  | "cavatale-asc"
   | "price-desc"
   | "price-asc";
 
@@ -84,6 +86,8 @@ export type Filters = {
   grape: string;
   minVivino: number | null;
   maxVivino: number | null;
+  minCavatale: number | null;
+  maxCavatale: number | null;
   minPrice: number | null;
   maxPrice: number | null;
   sort: SortOption;

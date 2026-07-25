@@ -2,6 +2,8 @@ import type { MatchConfidence, Wine } from "@/lib/types";
 import { extractJsonObject } from "@/lib/scan-label";
 
 export type KimiResearch = {
+  /** Official Cavatale rating 1–5 (primary). */
+  cavataleRating: number | null;
   kimiVivino: number | null;
   kimiPrice: number | null;
   kimiSummary: string | null;
@@ -16,6 +18,7 @@ export type KimiResearch = {
 };
 
 export const emptyKimiResearch: KimiResearch = {
+  cavataleRating: null,
   kimiVivino: null,
   kimiPrice: null,
   kimiSummary: null,
@@ -29,10 +32,15 @@ export const emptyKimiResearch: KimiResearch = {
 
 export function withKimiDefaults<T extends Partial<Wine>>(
   wine: T
-): T & KimiResearch & { labelImageUrl: string | null } {
+): T &
+  KimiResearch & {
+    labelImageUrl: string | null;
+    cavataleRating: number | null;
+  } {
   return {
     ...wine,
     labelImageUrl: wine.labelImageUrl ?? null,
+    cavataleRating: wine.cavataleRating ?? null,
     kimiVivino: wine.kimiVivino ?? null,
     kimiPrice: wine.kimiPrice ?? null,
     kimiSummary: wine.kimiSummary ?? null,
@@ -50,6 +58,13 @@ function asOptionalNumber(value: unknown): number | null {
   const n =
     typeof value === "number" ? value : Number(String(value).replace(",", "."));
   return Number.isFinite(n) ? n : null;
+}
+
+function clampScore(value: number | null): number | null {
+  if (value == null) return null;
+  const n = Math.round(value * 10) / 10;
+  if (n < 1 || n > 5) return null;
+  return n;
 }
 
 function asString(value: unknown): string {
@@ -121,11 +136,15 @@ export function parseKimiResearchPayload(raw: unknown): Omit<
   }
   const o = raw as Record<string, unknown>;
 
-  let kimiVivino = asOptionalNumber(o.vivino ?? o.kimiVivino);
-  if (kimiVivino != null) {
-    kimiVivino = Math.round(kimiVivino * 10) / 10;
-    if (kimiVivino < 1 || kimiVivino > 5) kimiVivino = null;
-  }
+  const cavataleRating = clampScore(
+    asOptionalNumber(
+      o.cavataleRating ?? o.cavatale_rating ?? o.ratingCavatale
+    )
+  );
+
+  let kimiVivino = clampScore(
+    asOptionalNumber(o.vivino ?? o.kimiVivino ?? o.vivinoEstimate)
+  );
 
   let kimiPrice = asOptionalNumber(o.price ?? o.kimiPrice);
   if (kimiPrice != null) {
@@ -144,6 +163,7 @@ export function parseKimiResearchPayload(raw: unknown): Omit<
           : null;
 
   return {
+    cavataleRating,
     kimiVivino,
     kimiPrice,
     kimiSummary: asString(o.summary ?? o.notes ?? o.kimiSummary) || null,
@@ -182,6 +202,7 @@ export function wineIdentityForResearch(wine: Pick<
   | "aging"
   | "vintage"
   | "vivino"
+  | "cavataleRating"
   | "price"
 >): string {
   return [
@@ -193,7 +214,8 @@ export function wineIdentityForResearch(wine: Pick<
     `Uva: ${wine.grape || "—"}`,
     `Añejamiento: ${wine.aging || "—"}`,
     `Año: ${wine.vintage ?? "—"}`,
-    `Vivino guardado en Cavatale: ${wine.vivino ?? "sin dato"}`,
+    `Vivino (comunidad) guardado: ${wine.vivino ?? "sin dato"}`,
+    `Rating Cavatale guardado: ${wine.cavataleRating ?? "sin dato"}`,
     `Precio guardado en Cavatale (MXN): ${wine.price ?? "sin dato"}`,
   ].join("\n");
 }

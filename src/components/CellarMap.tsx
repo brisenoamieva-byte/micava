@@ -8,10 +8,12 @@ import {
   type MutableRefObject,
   type PointerEvent as ReactPointerEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import type { Wine } from "@/lib/types";
 import { CountryFlag } from "@/components/CountryFlag";
 import {
   formatVivino,
+  getEmptySlots,
   getWineBySlot,
   typeAccent,
 } from "@/lib/wines";
@@ -23,6 +25,8 @@ type Props = {
   cellarId: string | null;
   highlightedIds: Set<string>;
   selectedId: string | null;
+  /** Shown in the fullscreen overlay header. */
+  title?: string;
   /** Wine currently being relocated (pick-and-place; survives mueble switch). */
   movingWineId?: string | null;
   onSelect: (wine: Wine) => void;
@@ -51,7 +55,8 @@ function cellLabel(wine: Wine): string {
 
 function cellMeta(wine: Wine): string {
   const bits: string[] = [];
-  if (wine.vivino != null) bits.push(formatVivino(wine.vivino));
+  if (wine.cavataleRating != null) bits.push(formatVivino(wine.cavataleRating));
+  else if (wine.vivino != null) bits.push(formatVivino(wine.vivino));
   else if (wine.vintage != null) bits.push(String(wine.vintage));
   else if (wine.type) bits.push(wine.type.slice(0, 3));
   return bits[0] ?? "";
@@ -87,6 +92,7 @@ export function CellarMap({
   cellarId,
   highlightedIds,
   selectedId,
+  title,
   movingWineId = null,
   onSelect,
   onEmptySlot,
@@ -97,9 +103,29 @@ export function CellarMap({
 }: Props) {
   const touchUi = useTouchMoveUi();
   const abajo = wines.filter((w) => !w.slot || w.slot === "abajo");
+  const [expanded, setExpanded] = useState(false);
+  const [portalReady, setPortalReady] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const [overTarget, setOverTarget] = useState<string | null>(null);
   const didDrag = useRef(false);
+
+  useEffect(() => {
+    setPortalReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setExpanded(false);
+    };
+    window.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [expanded]);
   const emptyTapRef = useRef<{
     slot: string;
     x: number;
@@ -118,6 +144,11 @@ export function CellarMap({
     ? wines.find((w) => w.id === activeMoveId) ?? null
     : null;
   const pickMode = Boolean(movingWineId);
+  const emptySlots =
+    pickMode && cellarId
+      ? getEmptySlots(wines, cols, rows, cellarId)
+      : [];
+  const firstEmptySlot = emptySlots[0] ?? null;
 
   function clearDesktopDrag() {
     setDragId(null);
@@ -185,6 +216,8 @@ export function CellarMap({
       return;
     }
     if (wineThere) {
+      // Leave fullscreen so mobile Detalle / desktop detail panel are visible.
+      setExpanded(false);
       onSelect(wineThere);
       return;
     }
@@ -200,26 +233,60 @@ export function CellarMap({
     !pickMode &&
     selectedWine.slot &&
     selectedWine.slot !== "abajo";
+  const mapTitle = title?.trim() || "Mapa del mueble";
 
-  return (
-    <div className={["space-y-4", dragId ? "map-is-dragging" : ""].join(" ")}>
+  const mapBody = (
+    <>
       {movingWine && pickMode ? (
         <div className="rounded-[10px] border border-[rgba(110,31,44,0.35)] bg-[rgba(250,249,245,0.96)] px-3 py-2">
           <p className="text-sm font-medium text-ink">
             Moviendo · {movingWine.name}
           </p>
           <p className="text-xs text-ink-soft">
-            Cambia de mueble arriba y toca un hueco (o Abajo / fuera).
+            {expanded
+              ? "Toca una casilla, ocupa el primer hueco libre, o cierra el mapa para cambiar de mueble."
+              : "Cambia de mueble arriba, toca una casilla, o ocupa el primer hueco libre."}
           </p>
-          {onCancelMove ? (
-            <button
-              type="button"
-              className="mt-2 text-xs font-medium text-[var(--wine)] underline-offset-2 hover:underline"
-              onClick={onCancelMove}
-            >
-              Cancelar
-            </button>
-          ) : null}
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {onPlaceAt ? (
+              <button
+                type="button"
+                className="btn btn-primary min-h-[36px] px-3 text-xs disabled:opacity-50"
+                disabled={!firstEmptySlot}
+                title={
+                  firstEmptySlot
+                    ? `Colocar en ${firstEmptySlot}`
+                    : "Este mueble no tiene huecos libres"
+                }
+                onClick={() => {
+                  if (firstEmptySlot) onPlaceAt(firstEmptySlot);
+                }}
+              >
+                {firstEmptySlot
+                  ? "Ocupar espacio disponible"
+                  : "Sin huecos libres"}
+              </button>
+            ) : null}
+            {!expanded ? (
+              <button
+                type="button"
+                className="btn btn-ghost min-h-[44px] px-3 text-xs"
+                aria-label="Ampliar mapa"
+                onClick={() => setExpanded(true)}
+              >
+                Ampliar
+              </button>
+            ) : null}
+            {onCancelMove ? (
+              <button
+                type="button"
+                className="text-xs font-medium text-[var(--wine)] underline-offset-2 hover:underline"
+                onClick={onCancelMove}
+              >
+                Cancelar
+              </button>
+            ) : null}
+          </div>
         </div>
       ) : movingWine && dragId ? (
         <div className="sticky top-0 z-10 rounded-[10px] border border-[rgba(110,31,44,0.35)] bg-[rgba(250,249,245,0.96)] px-3 py-2 shadow-sm backdrop-blur-sm">
@@ -237,24 +304,36 @@ export function CellarMap({
               ? "Toca para ver · mantén para mover · + para agregar"
               : "Arrastra al hueco o a Abajo · clic para ver · + para agregar"}
           </p>
-          {canSendAbajo && selectedWine ? (
-            <button
-              type="button"
-              className="btn btn-ghost min-h-[36px] px-3 text-xs"
-              onClick={() => onMoveWine?.(selectedWine.id, "abajo")}
-            >
-              Enviar abajo / fuera
-            </button>
-          ) : null}
-          {!pickMode && selectedWine && onPickForMove ? (
-            <button
-              type="button"
-              className="btn btn-ghost min-h-[36px] px-3 text-xs"
-              onClick={() => onPickForMove(selectedWine)}
-            >
-              Mover…
-            </button>
-          ) : null}
+          <div className="flex flex-wrap items-center gap-2">
+            {!expanded ? (
+              <button
+                type="button"
+                className="btn btn-ghost min-h-[44px] px-3 text-xs"
+                aria-label="Ampliar mapa"
+                onClick={() => setExpanded(true)}
+              >
+                Ampliar
+              </button>
+            ) : null}
+            {canSendAbajo && selectedWine ? (
+              <button
+                type="button"
+                className="btn btn-ghost min-h-[44px] px-3 text-xs"
+                onClick={() => onMoveWine?.(selectedWine.id, "abajo")}
+              >
+                Enviar abajo / fuera
+              </button>
+            ) : null}
+            {!pickMode && selectedWine && onPickForMove ? (
+              <button
+                type="button"
+                className="btn btn-ghost min-h-[44px] px-3 text-xs"
+                onClick={() => onPickForMove(selectedWine)}
+              >
+                Mover…
+              </button>
+            ) : null}
+          </div>
         </div>
       )}
 
@@ -420,8 +499,71 @@ export function CellarMap({
           </div>
         </div>
       </div>
+    </>
+  );
+
+  const mapShell = (
+    <div className={["space-y-4", dragId ? "map-is-dragging" : ""].join(" ")}>
+      {mapBody}
     </div>
   );
+
+  if (expanded && portalReady) {
+    return (
+      <>
+        <div className="space-y-3">
+          <p className="text-xs text-ink-soft">Mapa ampliado a pantalla completa.</p>
+          <button
+            type="button"
+            className="btn btn-ghost min-h-[44px] px-3 text-xs"
+            onClick={() => setExpanded(false)}
+          >
+            Cerrar
+          </button>
+        </div>
+        {createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cellar-map-expanded-title"
+            className="fixed inset-0 z-[45] flex flex-col bg-[var(--surface-solid)]"
+            style={{
+              paddingTop: "max(0.75rem, env(safe-area-inset-top))",
+              paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))",
+              paddingLeft: "max(0.75rem, env(safe-area-inset-left))",
+              paddingRight: "max(0.75rem, env(safe-area-inset-right))",
+            }}
+          >
+            <div className="mb-3 flex shrink-0 items-start justify-between gap-3 border-b border-[var(--line)] pb-3">
+              <h2
+                id="cellar-map-expanded-title"
+                className="display min-w-0 text-xl leading-tight text-ink sm:text-2xl"
+              >
+                {mapTitle}
+              </h2>
+              <button
+                type="button"
+                className="btn btn-ghost flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center gap-1.5 px-3 text-sm"
+                aria-label="Cerrar mapa ampliado"
+                onClick={() => setExpanded(false)}
+              >
+                <span aria-hidden className="text-lg leading-none">
+                  ×
+                </span>
+                <span>Cerrar</span>
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-2">
+              {mapShell}
+            </div>
+          </div>,
+          document.body
+        )}
+      </>
+    );
+  }
+
+  return mapShell;
 }
 
 function Row({
@@ -550,13 +692,28 @@ function Row({
                 onInteractSlot(slot, null);
               }}
               className={[
-                "map-cell flex min-h-[52px] items-center justify-center rounded-[6px] border border-dashed text-[11px] transition sm:min-h-[58px] sm:rounded-[8px]",
-                isOver || pickMode
-                  ? "border-[var(--wine)] bg-[rgba(122,36,48,0.14)] text-[var(--wine)] ring-2 ring-[var(--wine)]"
-                  : "border-[rgba(26,23,20,0.18)] bg-[rgba(255,252,247,0.25)] text-ink-soft hover:border-[var(--wine)] hover:bg-[rgba(122,36,48,0.06)]",
+                "map-cell flex min-h-[52px] flex-col items-center justify-center gap-0.5 rounded-[6px] border border-dashed text-[11px] transition sm:min-h-[58px] sm:rounded-[8px]",
+                pickMode
+                  ? "border-[var(--wine)] bg-[rgba(122,36,48,0.16)] text-[var(--wine)] ring-2 ring-[rgba(110,31,44,0.45)] ring-offset-1 ring-offset-[rgba(250,249,245,0.9)]"
+                  : isOver
+                    ? "border-[var(--wine)] bg-[rgba(122,36,48,0.14)] text-[var(--wine)] ring-2 ring-[var(--wine)]"
+                    : "border-[rgba(26,23,20,0.18)] bg-[rgba(255,252,247,0.25)] text-ink-soft hover:border-[var(--wine)] hover:bg-[rgba(122,36,48,0.06)]",
               ].join(" ")}
             >
-              {pickMode || isOver ? "↓" : "+"}
+              {pickMode ? (
+                <>
+                  <span className="text-[10px] font-semibold leading-none">
+                    {slot}
+                  </span>
+                  <span className="text-[9px] leading-none opacity-80">
+                    libre
+                  </span>
+                </>
+              ) : isOver ? (
+                "↓"
+              ) : (
+                "+"
+              )}
             </button>
           );
         }

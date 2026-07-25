@@ -147,6 +147,7 @@ function draftToWine(draft: WineDraft, id: string, existing?: Wine): Wine {
     grape: draft.grape.trim(),
     vintage: draft.vintage,
     vivino: draft.vivino,
+    cavataleRating: existing?.cavataleRating ?? null,
     price: draft.price,
     externalRating: existing?.externalRating ?? null,
     ratingSource: existing?.ratingSource ?? null,
@@ -522,6 +523,7 @@ export function CellarProvider({ children }: { children: ReactNode }) {
           if (w.id !== id) return w;
           nextWine = {
             ...w,
+            cavataleRating: research.cavataleRating,
             kimiVivino: research.kimiVivino,
             kimiPrice: research.kimiPrice,
             kimiSummary: research.kimiSummary,

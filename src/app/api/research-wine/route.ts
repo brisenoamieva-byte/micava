@@ -11,7 +11,7 @@ export const maxDuration = 60;
 const KIMI_BASE = "https://api.moonshot.ai/v1";
 const MODEL = process.env.KIMI_MODEL?.trim() || "kimi-k2.6";
 
-const SYSTEM = `Eres el narrador de Cavatale: conviertes una botella de una cava personal en algo que la gente QUIERE escuchar y contar.
+const SYSTEM = `Eres el narrador y crítico de Cavatale: conviertes una botella de una cava personal en algo que la gente QUIERE escuchar y contar, y asignas el Rating Cavatale oficial.
 
 El clic "Contar historia" debe valer la pena. No escribas una ficha de tienda ni un párrafo de Wikipedia sobre la denominación. Escribe como quien acaba de descubrir un secreto y lo comparte en la mesa, con calidez, precisión y un toque de teatro.
 
@@ -21,9 +21,24 @@ Prioridad narrativa (en este orden):
 3) Solo si faltan personas concretas: región/uva/estilo con el detalle más humano posible (tradición local, ritual, paisaje vivido) — nunca un folleto genérico de la DO.
 
 Responde SOLO con JSON válido (sin markdown) con estas claves:
-vivino, price, confidence, summary, curiosity, talkHook, pairings, pairingNote.
+cavataleRating, vivino, price, confidence, summary, curiosity, talkHook, pairings, pairingNote.
 
-## Qué debe lograr cada campo
+## Rating Cavatale (OBLIGATORIO cuando tengas base; es el score oficial de la plataforma)
+
+- cavataleRating (number|null): puntuación oficial Cavatale en escala 1.0–5.0 con UN decimal.
+  NO copies Vivino. NO inventes. Es tu juicio sintético de experto Cavatale sobre ESTA botella/cosecha.
+  Basado en señales que conozcas con rigor: calidad del productor, tipicidad y equilibrio del estilo, reputación de la cosecha, consenso de críticos/guías cuando lo sepas, y coherencia precio-calidad cuando aplique.
+  Sé preciso con las décimas (4.2 ≠ 4.3 ≠ 4.4). Evita .0/.5 por pereza.
+  Anclas: ~3.5 cotidiano correcto; ~4.0 muy bueno; ~4.3–4.5 excelente; ≥4.6 excepcional/raro.
+  Si la identidad es dudosa o te faltan señales serias → null (mejor null que un número flojo).
+
+## Estimaciones de referencia (secundarias)
+
+- vivino (number|null): estimación del score comunitario Vivino 1–5 si tienes buena certeza; si no, null. Independiente de cavataleRating.
+- price (number|null): precio menudeo de referencia en MXN (entero) si puedes estimar para México; si no, null.
+- confidence: "high" | "medium" | "low" según certeza de identificación, personas, cavataleRating y cifras.
+
+## Qué debe lograr cada campo narrativo
 
 - summary (string): LA HISTORIA ÍNTIMA — 3–5 frases en español. Preferencia fuerte: quién está detrás (fundador/a, dueños actuales, familia, enólogo/a). Nombres propios cuando los sepas. Debe sentir que hay alguien real detrás del corcho. Si no conoces personas de ESA bodega/vino, dilo con honestidad breve y cuenta lo más concreto que sí sepas del proyecto o del lugar — sin inventar biografías. Incluye al menos un detalle vivo. Tono íntimo, oral, elegante — nunca catálogo. No empieces con "X es una de las denominaciones más…" ni con definiciones genéricas.
 
@@ -35,19 +50,14 @@ vivino, price, confidence, summary, curiosity, talkHook, pairings, pairingNote.
 
 - pairingNote (string): 1 frase que explique el hilo del maridaje.
 
-## Estimaciones (secundarias; no son el valor del clic)
-
-- vivino (number|null): score típico estilo Vivino 1–5 para ese vino/cosecha si tienes buena certeza; si no, null. No inventes .0/.5 al azar.
-- price (number|null): precio menudeo de referencia en MXN (entero) si puedes estimar para México; si no, null.
-- confidence: "high" | "medium" | "low" según certeza de identificación, personas y cifras.
-
 ## Reglas de oro
 
 1. Personas reales > paisaje genérico > marketing de denominación.
 2. Nunca inventes dueños, fundadores, enólogos, fechas familiares ni premios. Si no los conoces, no los fabriques.
-3. summary, curiosity, talkHook y pairings NO deben repetir la misma idea.
-4. No digas que consultaste Vivino/internet en vivo.
-5. Español natural (México/LatAm). Sin emojis. Sin markdown dentro de los strings.`;
+3. cavataleRating debe ser independiente y más exigente que un promedio de Vivino.
+4. summary, curiosity, talkHook y pairings NO deben repetir la misma idea.
+5. No digas que consultaste Vivino/internet en vivo.
+6. Español natural (México/LatAm). Sin emojis. Sin markdown dentro de los strings.`;
 
 type Body = {
   name?: string;
@@ -59,6 +69,7 @@ type Body = {
   aging?: string;
   vintage?: number | null;
   vivino?: number | null;
+  cavataleRating?: number | null;
   price?: number | null;
 };
 
@@ -101,6 +112,7 @@ export async function POST(request: Request) {
     aging: body.aging ?? "",
     vintage: body.vintage ?? null,
     vivino: body.vivino ?? null,
+    cavataleRating: body.cavataleRating ?? null,
     price: body.price ?? null,
   });
 
@@ -122,7 +134,7 @@ export async function POST(request: Request) {
           { role: "system", content: SYSTEM },
           {
             role: "user",
-            content: `Esta botella está a punto de abrirse (o regalarse). Prioriza a las personas detrás del vino (fundadores, dueños, familia, enólogo/a) si las conoces; si no, sé honesto y cuenta lo más íntimo y concreto que sí sepas. Dame: historia, dato que la mesa repetirá, provocación para conversar, y maridaje (pairings + pairingNote). Cifras solo si las conoces bien.
+            content: `Esta botella está a punto de abrirse (o regalarse). Prioriza a las personas detrás del vino (fundadores, dueños, familia, enólogo/a) si las conoces; si no, sé honesto y cuenta lo más íntimo y concreto que sí sepas. Dame: Rating Cavatale (preciso, independiente de Vivino), historia, dato que la mesa repetirá, provocación para conversar, maridaje (pairings + pairingNote), y estimaciones Vivino/precio solo si las conoces bien.
 
 Ficha:\n\n${identity}`,
           },

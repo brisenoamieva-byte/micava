@@ -5,6 +5,11 @@ create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   display_name text,
   bottle_pledge boolean not null default false,
+  network_visible boolean not null default false,
+  country text,
+  city text,
+  bio text,
+  network_updated_at timestamptz,
   created_at timestamptz not null default now()
 );
 
@@ -22,6 +27,12 @@ create policy "profiles_update_own"
   on public.profiles for update
   using (auth.uid() = id)
   with check (auth.uid() = id);
+
+create policy "profiles_select_network_visible"
+  on public.profiles for select
+  using (network_visible = true);
+
+-- See supabase/migrations/006_user_network.sql for conversations, messages, RLS, and Realtime.
 
 -- Furniture units (muebles) — before wines.cellar_id and signup trigger
 create table if not exists public.cellars (
@@ -113,6 +124,7 @@ create table if not exists public.wines (
   grape text not null default '',
   vintage integer,
   vivino double precision,
+  cavatale_rating double precision,
   price double precision,
   external_rating double precision,
   rating_source text,
@@ -164,7 +176,8 @@ alter table public.wines
   add column if not exists kimi_confidence text,
   add column if not exists label_image_url text,
   add column if not exists kimi_curiosity text,
-  add column if not exists kimi_talk_hook text;
+  add column if not exists kimi_talk_hook text,
+  add column if not exists cavatale_rating double precision;
 
 create index if not exists wines_cellar_id_idx on public.wines (cellar_id);
 

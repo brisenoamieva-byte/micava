@@ -2,7 +2,7 @@
 
 import type { Wine } from "@/lib/types";
 import { CountryFlag } from "@/components/CountryFlag";
-import { formatPrice, formatVivino, typeAccent } from "@/lib/wines";
+import { formatCavataleRating, formatPrice, formatVivino, typeAccent } from "@/lib/wines";
 
 type Props = {
   wines: Wine[];
@@ -67,7 +67,11 @@ export function WineList({
               </span>
             </span>
             <span className="shrink-0 text-right text-xs text-ink-soft">
-              <span className="block font-medium text-ink">{formatVivino(wine.vivino)}</span>
+              <span className="block font-medium text-ink">
+                {wine.cavataleRating != null
+                  ? `C ${formatCavataleRating(wine.cavataleRating)}`
+                  : formatVivino(wine.vivino)}
+              </span>
               <span className="block">{formatPrice(wine.price)}</span>
             </span>
           </button>

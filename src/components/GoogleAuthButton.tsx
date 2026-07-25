@@ -52,7 +52,7 @@ export function GoogleAuthButton({
         type="button"
         onClick={() => void signInWithGoogle()}
         disabled={loading}
-        className="btn btn-ghost flex min-h-[48px] w-full items-center justify-center gap-2.5 text-sm"
+        className="btn btn-primary flex min-h-[48px] w-full items-center justify-center gap-2.5 text-sm"
       >
         <GoogleMark />
         {loading ? "Abriendo Google…" : label}

@@ -33,6 +33,7 @@ export function buildWineShareText(
     | "vintage"
     | "region"
     | "vivino"
+    | "cavataleRating"
     | "price"
     | "slot"
     | "kimiSummary"
@@ -45,10 +46,15 @@ export function buildWineShareText(
   const curiosity = discovery?.curiosity ?? wine.kimiCuriosity;
   const talkHook = discovery?.talkHook ?? wine.kimiTalkHook;
 
+  const ratingLine =
+    wine.cavataleRating != null
+      ? `Cavatale ${formatVivino(wine.cavataleRating)} · Vivino ${formatVivino(wine.vivino)} · ${formatPrice(wine.price)}`
+      : `Vivino ${formatVivino(wine.vivino)} · ${formatPrice(wine.price)}`;
+
   const lines = [
     wine.name,
     [wine.winery, wine.vintage, wine.region].filter(Boolean).join(" · "),
-    `Vivino ${formatVivino(wine.vivino)} · ${formatPrice(wine.price)}`,
+    ratingLine,
     wine.slot ? `Ubicación: ${wine.slot}` : null,
     story ? `\n${story}` : null,
     curiosity ? `\nDato curioso: ${curiosity}` : null,

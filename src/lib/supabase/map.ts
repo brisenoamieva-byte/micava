@@ -22,6 +22,7 @@ export type WineRow = {
   grape: string;
   vintage: number | null;
   vivino: number | null;
+  cavatale_rating: number | null;
   price: number | null;
   external_rating: number | null;
   rating_source: string | null;
@@ -77,6 +78,7 @@ export function wineFromRow(row: WineRow): Wine {
       grape: row.grape ?? "",
       vintage: row.vintage,
       vivino: row.vivino,
+      cavataleRating: row.cavatale_rating ?? null,
       price: row.price,
       externalRating: row.external_rating,
       ratingSource: row.rating_source as Wine["ratingSource"],
@@ -117,6 +119,7 @@ export function wineToRow(
     grape: wine.grape,
     vintage: wine.vintage,
     vivino: wine.vivino,
+    cavatale_rating: wine.cavataleRating,
     price: wine.price,
     external_rating: wine.externalRating,
     rating_source: wine.ratingSource,

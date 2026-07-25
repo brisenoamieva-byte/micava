@@ -16,7 +16,7 @@ import {
   vivinoTypeQuery,
   wineSearcherUrl,
 } from "@/lib/rating-verify";
-import { formatPrice, formatVivino, typeAccent } from "@/lib/wines";
+import { formatCavataleRating, formatPrice, formatVivino, typeAccent } from "@/lib/wines";
 import { buildWineShareText, shareOrCopyText } from "@/lib/share-wine";
 import { AiTheaterStatus } from "@/components/AiTheaterStatus";
 
@@ -250,6 +250,7 @@ export function WineDetail({
           aging: wine.aging,
           vintage: wine.vintage,
           vivino: wine.vivino,
+          cavataleRating: wine.cavataleRating,
           price: wine.price,
         }),
       });
@@ -289,6 +290,7 @@ export function WineDetail({
   const kimiDeltaVivino = ratingDelta(wine.vivino, wine.kimiVivino);
   const hasKimi =
     wine.kimiCheckedAt != null ||
+    wine.cavataleRating != null ||
     wine.kimiVivino != null ||
     wine.kimiPrice != null ||
     Boolean(wine.kimiSummary) ||
@@ -332,6 +334,9 @@ export function WineDetail({
             style={{ background: typeAccent(wine.type) }}
           />
           {wine.type}
+        </span>
+        <span className="rounded-[8px] border border-[rgba(110,31,44,0.35)] bg-[rgba(110,31,44,0.08)] px-2.5 py-1.5 text-xs font-medium text-ink">
+          Cavatale {formatCavataleRating(wine.cavataleRating)}
         </span>
         <span className="rounded-[8px] border border-[var(--line)] px-2.5 py-1.5 text-xs text-ink">
           Vivino {formatVivino(wine.vivino)}
@@ -452,11 +457,26 @@ export function WineDetail({
             </div>
           ) : null}
 
+          {hasKimi && wine.cavataleRating != null ? (
+            <div className="mt-4 rounded-[10px] border border-[rgba(110,31,44,0.22)] bg-[rgba(110,31,44,0.06)] px-3 py-2.5">
+              <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--wine)]">
+                Rating Cavatale
+              </p>
+              <p className="mt-1 display text-3xl leading-none text-ink">
+                {formatCavataleRating(wine.cavataleRating)}
+              </p>
+              <p className="mt-1.5 text-xs text-ink-soft">
+                Score propio de Cavatale (IA). Independiente del ranking Vivino
+                de la comunidad.
+              </p>
+            </div>
+          ) : null}
+
           {hasKimi &&
           (wine.kimiVivino != null || wine.kimiPrice != null) ? (
             <div className="mt-4 space-y-3 border-t border-[rgba(110,31,44,0.14)] pt-4">
               <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                Estimaciones
+                Referencias (Vivino / precio)
               </p>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>

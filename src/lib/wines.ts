@@ -27,6 +27,13 @@ export function formatVivino(value: number | null | undefined): string {
   return value.toFixed(1);
 }
 
+/** Same 1–5 display as Vivino; used for Rating Cavatale. */
+export function formatCavataleRating(
+  value: number | null | undefined
+): string {
+  return formatVivino(value);
+}
+
 export function getWineById(list: Wine[], id: string): Wine | undefined {
   return list.find((w) => w.id === id);
 }

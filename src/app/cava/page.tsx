@@ -10,6 +10,7 @@ import { FiltersBar } from "@/components/FiltersBar";
 import { FirstRunGuide } from "@/components/FirstRunGuide";
 import { InstallAppHint } from "@/components/InstallAppHint";
 import { MoveWineSheet } from "@/components/MoveWineSheet";
+import { NetworkPanel } from "@/components/NetworkPanel";
 import { RecentHistory } from "@/components/RecentHistory";
 import { ResizableDesktopPanels } from "@/components/ResizableDesktopPanels";
 import { StatsDashboard } from "@/components/StatsDashboard";
@@ -29,6 +30,7 @@ import {
   filterWines,
   formatPrice,
   formatVivino,
+  getEmptySlots,
 } from "@/lib/wines";
 
 const initialFilters: Filters = {
@@ -44,7 +46,7 @@ const initialFilters: Filters = {
 };
 
 type MobilePanel = "mapa" | "lista" | "detalle";
-type AppMode = "cava" | "stats";
+type AppMode = "cava" | "stats" | "network";
 
 export default function CavaPage() {
   const {
@@ -144,6 +146,18 @@ export default function CavaPage() {
     rows: activeCellar?.rows,
     cellarId: activeCellar?.id ?? null,
   });
+
+  const firstEmptyInActive = useMemo(() => {
+    if (!activeCellar) return null;
+    return (
+      getEmptySlots(
+        wines,
+        activeCellar.cols,
+        activeCellar.rows,
+        activeCellar.id
+      )[0] ?? null
+    );
+  }, [activeCellar, wines]);
 
   function selectWine(
     wine: Wine,
@@ -300,6 +314,18 @@ export default function CavaPage() {
               >
                 Pulso
               </button>
+              <button
+                type="button"
+                className={[
+                  "min-h-[36px] rounded-[8px] px-3 text-sm transition",
+                  mode === "network"
+                    ? "bg-[rgba(110,31,44,0.12)] font-medium text-ink"
+                    : "text-ink-soft",
+                ].join(" ")}
+                onClick={() => setMode("network")}
+              >
+                Red
+              </button>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-ink-soft">
@@ -362,25 +388,6 @@ export default function CavaPage() {
           </div>
         ) : null}
 
-        {wines.length >= 10 ? (
-          <div className="mt-4 rounded-[12px] border border-[var(--line)] bg-[rgba(255,252,247,0.72)] px-4 py-3 text-sm">
-            <p className="text-ink">
-              Tienes <strong>{wines.length}</strong> botellas en tu cuenta.
-            </p>
-            <p className="mt-1 text-ink-soft">
-              Si quieres empezar de cero (solo tu cava), vacíala aquí.
-            </p>
-            <button
-              type="button"
-              className="btn btn-ghost mt-2 min-h-[40px] px-3 text-sm"
-              disabled={clearing}
-              onClick={() => void handleVaciarCava()}
-            >
-              {clearing ? "Vaciando…" : "Vaciar mi cava"}
-            </button>
-          </div>
-        ) : null}
-
         {canImportLocal ? (
           <div className="mt-4 rounded-[12px] border border-[rgba(110,31,44,0.25)] bg-[rgba(110,31,44,0.06)] p-4 text-sm text-ink">
             <p className="font-medium">Hay botellas guardadas en este teléfono/navegador.</p>
@@ -414,7 +421,11 @@ export default function CavaPage() {
           </p>
         ) : null}
 
-        {mode === "stats" ? (
+        {mode === "network" ? (
+          <div className="mt-6">
+            <NetworkPanel />
+          </div>
+        ) : mode === "stats" ? (
           <div className="mt-6 space-y-5">
             <RecentHistory entries={history} />
             <StatsDashboard
@@ -476,15 +487,32 @@ export default function CavaPage() {
                 {wines.find((w) => w.id === movingWineId)?.name ?? "botella"}
               </p>
               <p className="text-xs text-ink-soft">
-                Elige otro mueble arriba y toca un hueco en el mapa.
+                Elige otro mueble arriba, toca una casilla en el mapa, o ocupa
+                el primer hueco libre.
               </p>
-              <button
-                type="button"
-                className="mt-1.5 text-xs font-medium text-[var(--wine)] underline-offset-2 hover:underline"
-                onClick={() => setMovingWineId(null)}
-              >
-                Cancelar
-              </button>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  className="btn btn-primary min-h-[36px] px-3 text-xs disabled:opacity-50"
+                  disabled={!firstEmptyInActive}
+                  onClick={() => {
+                    if (firstEmptyInActive) {
+                      handlePlaceMovingWine(firstEmptyInActive);
+                    }
+                  }}
+                >
+                  {firstEmptyInActive
+                    ? "Ocupar espacio disponible"
+                    : "Sin huecos libres"}
+                </button>
+                <button
+                  type="button"
+                  className="text-xs font-medium text-[var(--wine)] underline-offset-2 hover:underline"
+                  onClick={() => setMovingWineId(null)}
+                >
+                  Cancelar
+                </button>
+              </div>
             </div>
           ) : null}
           <FiltersBar
@@ -512,6 +540,7 @@ export default function CavaPage() {
                   cols={activeCellar.cols}
                   rows={activeCellar.rows}
                   cellarId={activeCellar.id}
+                  title={activeCellar.name}
                   highlightedIds={new Set(visible.map((w) => w.id))}
                   selectedId={selected?.id ?? null}
                   movingWineId={movingWineId}
@@ -571,6 +600,7 @@ export default function CavaPage() {
                   cols={activeCellar.cols}
                   rows={activeCellar.rows}
                   cellarId={activeCellar.id}
+                  title={activeCellar.name}
                   highlightedIds={new Set(visible.map((w) => w.id))}
                   selectedId={selected?.id ?? null}
                   movingWineId={movingWineId}
@@ -636,12 +666,13 @@ export default function CavaPage() {
         )}
 
         <nav className="mobile-nav" aria-label="Navegación de cava">
-          <div className="mx-auto grid max-w-lg grid-cols-4 gap-1">
+          <div className="mx-auto grid max-w-lg grid-cols-5 gap-0.5">
             {(
               [
                 ["lista", "Lista", "cava"],
                 ["mapa", "Mapa", "cava"],
                 ["detalle", "Detalle", "cava"],
+                ["network", "Red", "network"],
                 ["stats", "Pulso", "stats"],
               ] as const
             ).map(([id, label, targetMode]) => (
@@ -654,12 +685,17 @@ export default function CavaPage() {
                     ? mode === "stats"
                       ? "page"
                       : undefined
-                    : mode === "cava" && mobilePanel === id
-                      ? "page"
-                      : undefined
+                    : targetMode === "network"
+                      ? mode === "network"
+                        ? "page"
+                        : undefined
+                      : mode === "cava" && mobilePanel === id
+                        ? "page"
+                        : undefined
                 }
                 onClick={() => {
                   if (targetMode === "stats") setMode("stats");
+                  else if (targetMode === "network") setMode("network");
                   else {
                     setMode("cava");
                     setMobilePanel(id as MobilePanel);

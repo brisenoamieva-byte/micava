@@ -97,6 +97,7 @@ export function DepartTasteModal({
             aging: wineSnapshot.aging,
             vintage: wineSnapshot.vintage,
             vivino: wineSnapshot.vivino,
+            cavataleRating: wineSnapshot.cavataleRating,
             price: wineSnapshot.price,
           }),
         });

@@ -19,6 +19,8 @@ export type Wine = {
   grape: string;
   vintage: number | null;
   vivino: number | null;
+  /** Official Cavatale score (1–5) from Kimi research — not Vivino. */
+  cavataleRating: number | null;
   price: number | null;
   /** Score looked up on an external platform (manual for now). */
   externalRating: number | null;
@@ -28,7 +30,7 @@ export type Wine = {
   matchConfidence: MatchConfidence | null;
   /** Storage path for the user's scanned label photo ({userId}/{wineId}.jpg). */
   labelImageUrl: string | null;
-  /** Kimi estimate of Vivino-style score (1–5). */
+  /** Kimi estimate of community Vivino score (1–5), for reference. */
   kimiVivino: number | null;
   /** Kimi estimate of typical retail price in MXN. */
   kimiPrice: number | null;

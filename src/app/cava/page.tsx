@@ -88,6 +88,24 @@ export default function CavaPage() {
   const [inviteHint, setInviteHint] = useState<string | null>(null);
   const [guideDismissed, setGuideDismissed] = useState(false);
   const [showHowTo, setShowHowTo] = useState(false);
+  const [clearing, setClearing] = useState(false);
+
+  async function handleVaciarCava() {
+    if (clearing) return;
+    if (
+      !confirm(
+        "¿Vaciar SOLO tu cava?\nSe borran las botellas de tu cuenta. La cava de otros usuarios no se toca.\nEsta acción no se puede deshacer."
+      )
+    ) {
+      return;
+    }
+    setClearing(true);
+    try {
+      await resetCellar();
+    } finally {
+      setClearing(false);
+    }
+  }
 
   useEffect(() => {
     try {
@@ -344,6 +362,25 @@ export default function CavaPage() {
           </div>
         ) : null}
 
+        {wines.length >= 10 ? (
+          <div className="mt-4 rounded-[12px] border border-[var(--line)] bg-[rgba(255,252,247,0.72)] px-4 py-3 text-sm">
+            <p className="text-ink">
+              Tienes <strong>{wines.length}</strong> botellas en tu cuenta.
+            </p>
+            <p className="mt-1 text-ink-soft">
+              Si quieres empezar de cero (solo tu cava), vacíala aquí.
+            </p>
+            <button
+              type="button"
+              className="btn btn-ghost mt-2 min-h-[40px] px-3 text-sm"
+              disabled={clearing}
+              onClick={() => void handleVaciarCava()}
+            >
+              {clearing ? "Vaciando…" : "Vaciar mi cava"}
+            </button>
+          </div>
+        ) : null}
+
         {canImportLocal ? (
           <div className="mt-4 rounded-[12px] border border-[rgba(110,31,44,0.25)] bg-[rgba(110,31,44,0.06)] p-4 text-sm text-ink">
             <p className="font-medium">Hay botellas guardadas en este teléfono/navegador.</p>
@@ -582,18 +619,11 @@ export default function CavaPage() {
           {wines.length > 0 ? (
             <button
               type="button"
-              className="underline-offset-2 hover:text-ink hover:underline"
-              onClick={() => {
-                if (
-                  confirm(
-                    "¿Vaciar SOLO tu cava?\nSe borran las botellas de tu cuenta. La cava de otros usuarios no se toca.\nEsta acción no se puede deshacer."
-                  )
-                ) {
-                  void resetCellar();
-                }
-              }}
+              className="underline-offset-2 hover:text-ink hover:underline disabled:opacity-50"
+              disabled={clearing}
+              onClick={() => void handleVaciarCava()}
             >
-              Vaciar cava
+              {clearing ? "Vaciando…" : "Vaciar cava"}
             </button>
           ) : null}
           <span>

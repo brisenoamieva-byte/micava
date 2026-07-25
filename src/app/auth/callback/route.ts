@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { NextResponse, type NextRequest } from "next/server";
+import { createAuthRouteClient } from "@/lib/supabase/auth-route";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   const type = searchParams.get("type");
@@ -13,27 +13,32 @@ export async function GET(request: Request) {
         ? nextRaw
         : "/cava";
 
+  const dest = `${origin}${next}`;
+  const fail = `${origin}/login?error=auth`;
+
   if (code) {
-    const supabase = await createClient();
+    const response = NextResponse.redirect(dest);
+    const supabase = createAuthRouteClient(request, response);
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      return response;
     }
   }
 
-  // token_hash flow (some templates)
   const tokenHash = searchParams.get("token_hash");
   if (tokenHash && (type === "recovery" || type === "email")) {
-    const supabase = await createClient();
+    const response = NextResponse.redirect(
+      type === "recovery" ? `${origin}/nueva-contrasena` : dest
+    );
+    const supabase = createAuthRouteClient(request, response);
     const { error } = await supabase.auth.verifyOtp({
       type: type === "recovery" ? "recovery" : "email",
       token_hash: tokenHash,
     });
     if (!error) {
-      const dest = type === "recovery" ? "/nueva-contrasena" : next;
-      return NextResponse.redirect(`${origin}${dest}`);
+      return response;
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth`);
+  return NextResponse.redirect(fail);
 }

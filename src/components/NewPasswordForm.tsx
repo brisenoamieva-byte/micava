@@ -26,26 +26,27 @@ export function NewPasswordForm() {
     let cancelled = false;
 
     async function ensureSession() {
-      // PKCE: code may land directly on this page if redirect URL is /nueva-contrasena
+      // PKCE: code may land directly on this page
       const code = search.get("code");
       if (code) {
-        const { error: exchangeError } =
-          await supabase.auth.exchangeCodeForSession(code);
-        if (exchangeError && !cancelled) {
-          setError(exchangeError.message);
-        }
+        // Prefer full navigation to server exchange (reliable cookies)
+        window.location.replace(
+          `/auth/reset?code=${encodeURIComponent(code)}${
+            search.get("type")
+              ? `&type=${encodeURIComponent(search.get("type")!)}`
+              : ""
+          }`
+        );
+        return;
       }
 
       const tokenHash = search.get("token_hash");
       const type = search.get("type");
       if (tokenHash && type === "recovery") {
-        const { error: otpError } = await supabase.auth.verifyOtp({
-          type: "recovery",
-          token_hash: tokenHash,
-        });
-        if (otpError && !cancelled) {
-          setError(otpError.message);
-        }
+        window.location.replace(
+          `/auth/reset?token_hash=${encodeURIComponent(tokenHash)}&type=recovery`
+        );
+        return;
       }
 
       const { data } = await supabase.auth.getSession();

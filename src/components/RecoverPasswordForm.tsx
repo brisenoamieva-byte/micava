@@ -28,6 +28,8 @@ export function RecoverPasswordForm() {
       // Flag so if Supabase sends the user to Site URL (/?code=...) we still
       // route them into the new-password flow.
       sessionStorage.setItem(PASSWORD_RECOVERY_FLAG, "1");
+      // Land on /auth/reset so the server exchanges the code and redirects
+      // to /nueva-contrasena with session cookies on the response.
       const redirectTo = `${window.location.origin}/auth/reset`;
       const { error: err } = await supabase.auth.resetPasswordForEmail(
         email.trim(),

@@ -7,9 +7,8 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 export const PASSWORD_RECOVERY_FLAG = "micava.password_recovery";
 
 /**
- * Recovery emails often land on the Site URL (home) with ?code=...
- * instead of /auth/reset. Exchange that code and, if it's a recovery
- * session, send the user to set a new password.
+ * Recovery emails should hit /auth/reset or /nueva-contrasena.
+ * Fallback: Site URL (/, /login) with ?code= or hash tokens → force reset route.
  */
 export function PasswordRecoveryRedirect() {
   const router = useRouter();
@@ -44,7 +43,7 @@ export function PasswordRecoveryRedirect() {
       }
     });
 
-    // Explicit recovery → dedicated server route
+    // Any recovery signal + code → dedicated server exchange (cookies on redirect)
     if (code && !onResetFlow && expectingRecovery) {
       const q = new URLSearchParams({ code });
       if (type) q.set("type", type);
@@ -52,21 +51,33 @@ export function PasswordRecoveryRedirect() {
       return () => subscription.unsubscribe();
     }
 
-    // Bare ?code= on home (Site URL fallback): exchange and detect recovery
-    if (code && pathname === "/" && !expectingRecovery) {
+    // Bare ?code= on home/login: send through /auth/reset when flagged as recovery
+    // after PASSWORD_RECOVERY, or exchange and detect.
+    if (
+      code &&
+      !onResetFlow &&
+      (pathname === "/" || pathname === "/login")
+    ) {
       let cancelled = false;
       void (async () => {
-        let isRecovery = type === "recovery";
+        let isRecovery = type === "recovery" || expectingRecovery;
         const nested = supabase.auth.onAuthStateChange((event) => {
           if (event === "PASSWORD_RECOVERY") isRecovery = true;
         });
 
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        // Drop the used code from the URL
-        window.history.replaceState({}, "", "/");
+        // Prefer server exchange so cookies stick — only if we already know recovery
+        if (isRecovery) {
+          nested.data.subscription.unsubscribe();
+          const q = new URLSearchParams({ code });
+          if (type) q.set("type", type);
+          window.location.replace(`/auth/reset?${q.toString()}`);
+          return;
+        }
 
-        // Allow PASSWORD_RECOVERY to fire
-        await new Promise((r) => setTimeout(r, 600));
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        window.history.replaceState({}, "", pathname);
+
+        await new Promise((r) => setTimeout(r, 800));
         nested.data.subscription.unsubscribe();
 
         if (cancelled) return;
@@ -75,12 +86,9 @@ export function PasswordRecoveryRedirect() {
           router.replace("/nueva-contrasena");
           return;
         }
-        if (error) {
-          // Code may already be consumed; still try recovery page if flagged later
-          return;
+        if (!error) {
+          router.refresh();
         }
-        // Email confirm / magic link → stay home (now signed in)
-        router.refresh();
       })();
 
       return () => {
@@ -89,12 +97,12 @@ export function PasswordRecoveryRedirect() {
       };
     }
 
-    // Hash-style recovery tokens (older templates)
+    // Hash-style recovery tokens (implicit / older templates)
     const accessToken = hashParams.get("access_token");
     const refreshToken = hashParams.get("refresh_token");
     if (
       !onResetFlow &&
-      expectingRecovery &&
+      (type === "recovery" || expectingRecovery) &&
       accessToken &&
       refreshToken
     ) {

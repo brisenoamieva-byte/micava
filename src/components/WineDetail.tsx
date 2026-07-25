@@ -4,7 +4,10 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { MatchConfidence, RatingSource, Wine } from "@/lib/types";
 import { CountryFlag } from "@/components/CountryFlag";
 import { parseGrapes } from "@/lib/grapes";
-import type { KimiResearch } from "@/lib/kimi-research";
+import {
+  isThinKimiStory,
+  type KimiResearch,
+} from "@/lib/kimi-research";
 import { resolveLabelImageUrl } from "@/lib/label-image";
 import { resolvePairingsForWine } from "@/lib/pairings";
 import {
@@ -67,6 +70,7 @@ export function WineDetail({
   const [kimiLoading, setKimiLoading] = useState(false);
   const [kimiError, setKimiError] = useState("");
   const [researchJustDone, setResearchJustDone] = useState(false);
+  const [thinStoryHint, setThinStoryHint] = useState(false);
   const [vivinoHint, setVivinoHint] = useState<string | null>(null);
   const [applyHint, setApplyHint] = useState<string | null>(null);
   const [labelSrc, setLabelSrc] = useState<string | null>(null);
@@ -88,6 +92,7 @@ export function WineDetail({
     setKimiLoading(false);
     setKimiError("");
     setResearchJustDone(false);
+    setThinStoryHint(false);
     setVivinoHint(null);
     setApplyHint(null);
     setVivinoOffer(null);
@@ -255,6 +260,7 @@ export function WineDetail({
     setKimiLoading(true);
     setKimiError("");
     setResearchJustDone(false);
+    setThinStoryHint(false);
     setVivinoOffer(null);
     try {
       const res = await fetch("/api/research-wine", {
@@ -276,11 +282,16 @@ export function WineDetail({
         signal: abort.signal,
       });
       const raw = await res.text();
-      let payload: { error?: string; research?: KimiResearch } = {};
+      let payload: {
+        error?: string;
+        research?: KimiResearch;
+        thinStory?: boolean;
+      } = {};
       try {
         payload = JSON.parse(raw) as {
           error?: string;
           research?: KimiResearch;
+          thinStory?: boolean;
         };
       } catch {
         throw new Error(
@@ -301,6 +312,9 @@ export function WineDetail({
       const applied = onSaveKimiResearch(wine, research);
       const n = typeof applied === "number" ? applied : 1;
       setResearchJustDone(true);
+      const thin =
+        payload.thinStory === true || isThinKimiStory(research);
+      setThinStoryHint(thin);
       setShareHint(
         n > 1 ? `Historia aplicada a ${n} botellas iguales` : "Historia lista"
       );
@@ -525,6 +539,20 @@ export function WineDetail({
                     {wine.kimiTalkHook}
                   </p>
                 </div>
+              ) : null}
+              {thinStoryHint && researchJustDone && !kimiLoading ? (
+                <p className="text-xs leading-relaxed text-ink-soft">
+                  Si suena a ficha de tienda,{" "}
+                  <button
+                    type="button"
+                    className="underline underline-offset-2 hover:text-ink"
+                    disabled={kimiLoading}
+                    onClick={() => void handleKimiResearch()}
+                  >
+                    Actualizar
+                  </button>{" "}
+                  suele dar otra versión.
+                </p>
               ) : null}
               <button
                 type="button"

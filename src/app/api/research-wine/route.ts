@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { guardKimiApi } from "@/lib/api-guard";
 import {
+  assessKimiStoryQuality,
   parseKimiResearchFromModelText,
+  polishKimiResearchNarratives,
   wineIdentityForResearch,
+  type KimiResearch,
 } from "@/lib/kimi-research";
 
 export const runtime = "nodejs";
@@ -13,62 +16,84 @@ const MODEL = process.env.KIMI_MODEL?.trim() || "kimi-k2.6";
 
 const SYSTEM = `Eres el narrador y crítico de Cavatale: conviertes una botella de una cava personal en algo que la gente QUIERE escuchar y contar, y asignas el Rating Cavatale oficial.
 
-El clic "Contar historia" debe valer la pena. No escribas una ficha de tienda ni un párrafo de Wikipedia sobre la denominación. Escribe como quien acaba de descubrir un secreto y lo comparte en la mesa, con calidez, precisión y un toque de teatro.
+El clic "Contar historia" debe valer la pena. Prohibido sonar a ficha de tienda, catálogo Vivino o párrafo de Wikipedia sobre la denominación. Escribe como quien acaba de descubrir un secreto y lo comparte en la mesa: calidez, precisión, un toque de teatro.
 
 Prioridad narrativa (en este orden):
-1) LAS PERSONAS — dueños, fundadores, familia, enólogo/a, generaciones que cuidan el viñedo. Si conoces nombres, vínculos (padre/hijo, pareja, inmigrantes, herencia), decisiones humanas o anécdotas íntimas, PONLAS EN EL CENTRO de la historia.
-2) EL LUGAR Y LA BOTELLA — viñedo, cosecha, estilo, por qué importa ESTA botella.
-3) Solo si faltan personas concretas: región/uva/estilo con el detalle más humano posible (tradición local, ritual, paisaje vivido) — nunca un folleto genérico de la DO.
+1) LAS PERSONAS — dueños, fundadores, familia, enólogo/a, generaciones. Nombres propios, vínculos (padre/hijo, pareja, inmigrantes, herencia), decisiones humanas o anécdotas íntimas van AL CENTRO.
+2) EL LUGAR Y LA BOTELLA — viñedo concreto, cosecha/añada, estilo, por qué importa ESTA botella (no "la región en general").
+3) Solo si faltan personas concretas: un detalle humano del proyecto o del paisaje vivido — nunca un folleto genérico de la DO.
 
 Responde SOLO con JSON válido (sin markdown) con estas claves:
 cavataleRating, vivino, price, confidence, summary, curiosity, talkHook, pairings, pairingNote.
 
-## Rating Cavatale (OBLIGATORIO cuando tengas base; es el score oficial de la plataforma)
+## Rating Cavatale (OBLIGATORIO cuando tengas base; score oficial de la plataforma)
 
-- cavataleRating (number|null): puntuación oficial Cavatale en escala 1.0–5.0 con UN decimal.
-  NO copies Vivino. NO inventes. Juicio Cavatale: ¿qué tan vale la pena esta botella en la copa Y en la mesa?
+- cavataleRating (number|null): 1.0–5.0 con UN decimal. NO copies Vivino. NO inventes.
+  Juicio: ¿vale la pena en la copa Y en la mesa?
 
-  Ponderación (aprox.; sabor importa, pero no es lo único):
-  1) Sabor y calidad en copa (~30%): equilibrio, tipicidad, placer, corrección técnica. Un vino defectuoso o plano no debe ir alto aunque tenga gran historia.
-  2) Historia y autenticidad (~30%): personas, origen, honestidad del proyecto, coherencia con lugar/gente.
-  3) Experiencia de mesa (~25%): cómo abre conversación, ritual, emoción al descorchar, sentido de ocasión.
-  4) Originalidad e interés (~15%): lo memorable, el giro propio, el dato que se repite — evita premiar lo genérico.
+  Ponderación:
+  1) Sabor y calidad en copa (~30%)
+  2) Historia y autenticidad (~30%)
+  3) Experiencia de mesa (~25%)
+  4) Originalidad e interés (~15%)
 
-  Lectura práctica:
-  - Buen sabor + poca historia → sólido (~3.7–4.0), no estrella.
-  - Gran historia + sabor flojo → interesante, techo más bajo (~3.5–3.9).
-  - Buen sabor + historia + mesa → zona alta (~4.2–4.6).
-  - Excepcional en boca y relato → ≥4.7.
-
-  Sé preciso con las décimas (4.2 ≠ 4.3 ≠ 4.4). Evita .0/.5 por pereza.
-  Si la identidad es dudosa o no hay señales serias → null (mejor null que un número flojo).
+  Lectura: buen sabor + poca historia → ~3.7–4.0; gran historia + sabor flojo → techo ~3.5–3.9; buen sabor + historia + mesa → ~4.2–4.6; excepcional → ≥4.7.
+  Sé preciso con décimas. Evita .0/.5 por pereza.
+  Identidad dudosa o sin señales serias → null (mejor null que un número flojo).
+  NUNCA menciones Vivino ni el score comunitario dentro de summary/curiosity/talkHook/pairingNote. Vivino vive solo en el campo vivino.
 
 ## Estimaciones de referencia (secundarias)
 
-- vivino (number|null): REVISA el score comunitario Vivino 1–5 de ESTA botella (nombre + bodega + añada si aplica). Devuelve tu mejor estimación conocida del promedio comunitario; si no tienes buena señal, null. Independiente de cavataleRating. NUNCA inventes un Vivino “bonito”: mejor null.
-- price (number|null): precio menudeo de referencia en MXN (entero) si puedes estimar para México; si no, null.
-- confidence: "high" | "medium" | "low". Usa "high" SOLO si la identidad del vino es clara Y (si das vivino) tu estimación Vivino es fiable. Si el Vivino es dudoso, baja confidence o pon vivino null.
+- vivino (number|null): mejor estimación del promedio comunitario 1–5 de ESTA botella; si no hay señal, null. Independiente de cavataleRating. Nunca inventes un Vivino “bonito”.
+- price (number|null): menudeo de referencia en MXN (entero) para México si puedes; si no, null.
+- confidence: "high" | "medium" | "low". "high" SOLO si la identidad es clara Y (si das vivino) la estimación es fiable.
 
-## Qué debe lograr cada campo narrativo
+## Campos narrativos — coherencia de UNA sola botella
 
-- summary (string): LA HISTORIA ÍNTIMA — 3–5 frases en español. Preferencia fuerte: quién está detrás (fundador/a, dueños actuales, familia, enólogo/a). Nombres propios cuando los sepas. Debe sentir que hay alguien real detrás del corcho. Si no conoces personas de ESA bodega/vino, dilo con honestidad breve y cuenta lo más concreto que sí sepas del proyecto o del lugar — sin inventar biografías. Incluye al menos un detalle vivo. Tono íntimo, oral, elegante — nunca catálogo. No empieces con "X es una de las denominaciones más…" ni con definiciones genéricas.
+Los cuatro campos hablan del MISMO vino concreto. Misma bodega, misma gente, mismos hechos. No mezcles datos de otra etiqueta ni inventes para rellenar.
 
-- curiosity (string): EL DATO QUE SE REPITE — 1–2 frases. Idealmente una anécdota de personas (cómo empezaron, un riesgo, un nombre del vino, una rivalidad, una cosecha que marcaron). Si no hay dato humano fiable, un hecho sorprendente del lugar/bodega. Debe hacer decir "¿en serio?". Prohibido lo obvio.
+- summary (string): LA HISTORIA ÍNTIMA — 3–5 frases en español MX/LatAm.
+  Abre con persona, gesto o detalle vivo de ESTA botella/bodega — NUNCA con denominación, región o tipología ("X es una de las denominaciones más…", "Este tinto de Ribera…", "Se elabora en…").
+  Preferencia fuerte: fundador/a, dueños, familia, enólogo/a. Nombres cuando los sepas.
+  Si NO conoces personas de ESA bodega: 2–3 frases honestas con lo más concreto que sí sepas (lugar, proyecto, añada). Di la incertidumbre con naturalidad. NO inventes biografías.
+  Incluye al menos un detalle concreto (nombre, año, viñedo, decisión, anécdota).
+  Prohibido wine-speak vacío: "equilibrio perfecto", "expresión del terroir", "final largo y sedoso", "notas de fruta roja y especias" sin anclaje humano.
 
-- talkHook (string): EL GANCHO DE MESA — 1 frase (máx. 2). Preferible una provocación sobre la gente o la historia humana del vino ("¿quién crees que manda en esa bodega…?", "esta botella empezó por…"). Evita preguntas genéricas de cata ("¿notas fruta o madera?").
+- curiosity (string): EL DATO QUE SE REPITE — 1–2 frases. Anecdota de personas o hecho sorprendente del lugar/bodega. Debe hacer decir "¿en serio?". Distinto del summary (no parafrasear). Prohibido lo obvio ("es un tinto de la región").
 
-- pairings (string[]): 4–6 platillos o momentos de comida CONCRETOS para ESTA botella (México/LatAm cuando encaje). No listas genéricas de uva. Mejor: plato con detalle.
+- talkHook (string): EL GANCHO DE MESA — 1 frase (máx. 2). Provocación sobre gente/historia humana. Evita preguntas de cata ("¿notas fruta o madera?"). Distinto de summary y curiosity.
 
-- pairingNote (string): 1 frase que explique el hilo del maridaje.
+- pairings (string[]): 4–6 platillos o momentos CONCRETOS para ESTA botella (México/LatAm cuando encaje). No listas genéricas de uva.
+
+- pairingNote (string): 1 frase con el hilo del maridaje. Sin mencionar Vivino ni Cavatale.
+
+## Prohibiciones de apertura (summary)
+
+NO empieces con variantes de:
+- "es una de las denominaciones/regiones/bodegas más…"
+- "pertenece a la D.O. / denominación de origen…"
+- "se elabora en la región de…"
+- "conocido por sus vinos/uvas…"
+- "este vino es un tinto/blanco de…"
+- "representa la esencia/tradición de…"
 
 ## Reglas de oro
 
-1. Personas reales > paisaje genérico > marketing de denominación.
-2. Nunca inventes dueños, fundadores, enólogos, fechas familiares ni premios. Si no los conoces, no los fabriques.
-3. cavataleRating equilibra sabor/calidad en copa (~30%) con historia/autenticidad (~30%), experiencia de mesa (~25%) y originalidad/interés (~15%). Independiente de Vivino.
-4. summary, curiosity, talkHook y pairings NO deben repetir la misma idea.
+1. Personas reales > detalle de botella/lugar > marketing de denominación.
+2. Nunca inventes dueños, fundadores, enólogos, fechas familiares ni premios.
+3. Si la ficha es incompleta o la identidad es dudosa: confidence "low" o "medium", cavataleRating null si hace falta, summary corto y honesto — no rellenes con catálogo.
+4. summary, curiosity, talkHook y pairings NO repiten la misma idea.
 5. No digas que consultaste Vivino/internet en vivo.
 6. Español natural (México/LatAm). Sin emojis. Sin markdown dentro de los strings.`;
+
+const RETRY_USER_SUFFIX = `
+
+REESCRITURA OBLIGATORIA: tu borrador anterior sonaba a ficha de catálogo o era demasiado genérico/delgado.
+- Abre summary con una PERSONA o un DETALLE concreto de ESTA botella — nunca con DO/región/tipología.
+- curiosity y talkHook deben aportar hechos distintos (no parafrasear el summary).
+- Si no conoces gente de esa bodega, dilo en 2–3 frases honestas; no inventes.
+- Mantén coherencia: mismos hechos en todos los campos.
+- Devuelve SOLO el JSON completo otra vez.`;
 
 type Body = {
   name?: string;
@@ -88,6 +113,95 @@ type KimiChatResponse = {
   choices?: Array<{ message?: { content?: string | null } }>;
   error?: { message?: string };
 };
+
+function buildUserPrompt(identity: string): string {
+  return `Esta botella está a punto de abrirse (o regalarse). Prioriza a las personas detrás del vino (fundadores, dueños, familia, enólogo/a) si las conoces; si no, sé honesto y cuenta lo más íntimo y concreto que sí sepas — sin inventar.
+
+Dame JSON con: Rating Cavatale (~30% sabor/calidad en copa, ~30% historia/autenticidad, ~25% experiencia de mesa, ~15% originalidad/interés), summary (historia íntima; NUNCA abrir con denominación/región genérica), curiosity (dato que se repite), talkHook (provocación de mesa), pairings + pairingNote, y estimaciones vivino/price solo si las conoces bien. No metas Vivino en los textos narrativos.
+
+Ficha:\n\n${identity}`;
+}
+
+async function callKimi(
+  apiKey: string,
+  userContent: string
+): Promise<
+  | { ok: true; content: string }
+  | { ok: false; status: number; error: string; detail?: string }
+> {
+  let kimiRes: Response;
+  try {
+    kimiRes = await fetch(`${KIMI_BASE}/chat/completions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        // Instant mode: thinking defaults ON and often exceeds mobile/proxy timeouts.
+        thinking: { type: "disabled" },
+        response_format: { type: "json_object" },
+        max_tokens: 2048,
+        messages: [
+          { role: "system", content: SYSTEM },
+          { role: "user", content: userContent },
+        ],
+      }),
+    });
+  } catch {
+    return {
+      ok: false,
+      status: 502,
+      error: "No se pudo contactar a la IA. Revisa la conexión e intenta de nuevo.",
+    };
+  }
+
+  const rawText = await kimiRes.text();
+  let payload: KimiChatResponse;
+  try {
+    payload = JSON.parse(rawText) as KimiChatResponse;
+  } catch {
+    return {
+      ok: false,
+      status: 502,
+      error: "Respuesta inválida de Kimi.",
+      detail: rawText.slice(0, 200),
+    };
+  }
+
+  if (!kimiRes.ok) {
+    return {
+      ok: false,
+      status: 502,
+      error:
+        payload.error?.message ||
+        `Kimi respondió ${kimiRes.status}. Revisa créditos o la API key.`,
+    };
+  }
+
+  const content = payload.choices?.[0]?.message?.content?.trim();
+  if (!content) {
+    return { ok: false, status: 502, error: "Kimi no devolvió contenido." };
+  }
+  return { ok: true, content };
+}
+
+function finalizeResearch(content: string): {
+  research: Omit<KimiResearch, "kimiCheckedAt">;
+  thinStory: boolean;
+  shouldRetry: boolean;
+} {
+  const parsed = polishKimiResearchNarratives(
+    parseKimiResearchFromModelText(content)
+  );
+  const quality = assessKimiStoryQuality(parsed);
+  return {
+    research: parsed,
+    thinStory: quality.thin,
+    shouldRetry: quality.shouldRetry,
+  };
+}
 
 export async function POST(request: Request) {
   const guard = await guardKimiApi(request);
@@ -127,78 +241,18 @@ export async function POST(request: Request) {
     price: body.price ?? null,
   });
 
-  let kimiRes: Response;
+  const userPrompt = buildUserPrompt(identity);
+  const first = await callKimi(apiKey, userPrompt);
+  if (!first.ok) {
+    return NextResponse.json(
+      { error: first.error, detail: first.detail },
+      { status: first.status }
+    );
+  }
+
+  let finalized: ReturnType<typeof finalizeResearch>;
   try {
-    kimiRes = await fetch(`${KIMI_BASE}/chat/completions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        // Instant mode: thinking defaults ON and often exceeds mobile/proxy timeouts.
-        thinking: { type: "disabled" },
-        response_format: { type: "json_object" },
-        max_tokens: 2048,
-        messages: [
-          { role: "system", content: SYSTEM },
-          {
-            role: "user",
-            content: `Esta botella está a punto de abrirse (o regalarse). Prioriza a las personas detrás del vino (fundadores, dueños, familia, enólogo/a) si las conoces; si no, sé honesto y cuenta lo más íntimo y concreto que sí sepas. Dame: Rating Cavatale (~30% sabor/calidad en copa, ~30% historia/autenticidad, ~25% experiencia de mesa, ~15% originalidad/interés), más historia, dato que la mesa repetirá, provocación para conversar, maridaje (pairings + pairingNote), y estimaciones Vivino/precio solo si las conoces bien.
-
-Ficha:\n\n${identity}`,
-          },
-        ],
-      }),
-    });
-  } catch {
-    return NextResponse.json(
-      { error: "No se pudo contactar a la IA. Revisa la conexión e intenta de nuevo." },
-      { status: 502 }
-    );
-  }
-
-  const rawText = await kimiRes.text();
-  let payload: KimiChatResponse;
-  try {
-    payload = JSON.parse(rawText) as KimiChatResponse;
-  } catch {
-    return NextResponse.json(
-      {
-        error: "Respuesta inválida de Kimi.",
-        detail: rawText.slice(0, 200),
-      },
-      { status: 502 }
-    );
-  }
-
-  if (!kimiRes.ok) {
-    return NextResponse.json(
-      {
-        error:
-          payload.error?.message ||
-          `Kimi respondió ${kimiRes.status}. Revisa créditos o la API key.`,
-      },
-      { status: 502 }
-    );
-  }
-
-  const content = payload.choices?.[0]?.message?.content?.trim();
-  if (!content) {
-    return NextResponse.json(
-      { error: "Kimi no devolvió contenido." },
-      { status: 502 }
-    );
-  }
-
-  try {
-    const parsed = parseKimiResearchFromModelText(content);
-    const research = {
-      ...parsed,
-      kimiCheckedAt: new Date().toISOString(),
-    };
-    return NextResponse.json({ research });
+    finalized = finalizeResearch(first.content);
   } catch (e) {
     return NextResponse.json(
       {
@@ -206,9 +260,33 @@ Ficha:\n\n${identity}`,
           e instanceof Error
             ? e.message
             : "No se pudo interpretar la historia. Reintenta.",
-        detail: content.slice(0, 400),
+        detail: first.content.slice(0, 400),
       },
       { status: 502 }
     );
   }
+
+  if (finalized.shouldRetry) {
+    const second = await callKimi(apiKey, userPrompt + RETRY_USER_SUFFIX);
+    if (second.ok) {
+      try {
+        const retry = finalizeResearch(second.content);
+        // Prefer the less thin rewrite; fall back to first if retry is worse.
+        if (!retry.thinStory || finalized.thinStory) {
+          finalized = retry;
+        }
+      } catch {
+        /* keep first */
+      }
+    }
+  }
+
+  const research = {
+    ...finalized.research,
+    kimiCheckedAt: new Date().toISOString(),
+  };
+  return NextResponse.json({
+    research,
+    thinStory: finalized.thinStory,
+  });
 }

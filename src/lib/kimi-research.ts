@@ -219,3 +219,162 @@ export function wineIdentityForResearch(wine: Pick<
     `Precio guardado en Cavatale (MXN): ${wine.price ?? "sin dato"}`,
   ].join("\n");
 }
+
+/** Catalog / appellation filler openings — reject or retry. */
+const GENERIC_OPENING =
+  /^(esta\s+botella\s+es\s+|este\s+vino\s+es\s+|)?(.{0,40})?(es\s+una\s+de\s+las\s+(denominaciones|regiones|bodegas|zonas)\s+m[aá]s|pertenece\s+a\s+la\s+(d\.?\s?o\.?|denominaci[oó]n)|se\s+elabora\s+en\s+la\s+regi[oó]n|conocido\s+por\s+sus\s+(vinos|uvas|tintos)|la\s+denominaci[oó]n\s+de\s+origen|en\s+el\s+coraz[oó]n\s+de\s+(la\s+)?(rioja|ribera|burgundy|borgo[nñ]a|champagne|mendoza|napa)|es\s+un\s+vino\s+(tinto|blanco|rosado|espumoso)\s+(de|con|elaborado)|representa\s+(la|el)\s+(esencia|expresi[oó]n|tradici[oó]n)\s+de)/i;
+
+const EMPTY_WINE_SPEAK =
+  /\b(equilibrio\s+perfecto|excelente\s+relaci[oó]n\s+calidad[- ]precio|notas\s+de\s+(fruta\s+roja|frutos\s+rojos|cereza|vainilla)\s+y\s+(especias|roble|madera)|final\s+(largo|persistente|elegante)\s+y\s+(sedoso|aterciopelado)|tipicidad\s+(de\s+la\s+zona|varietal)|expresi[oó]n\s+pura\s+del\s+terroir|experiencia\s+sensorial\s+[uú]nica)\b/i;
+
+const FLUFF_PREFIX =
+  /^(vale\s+la\s+pena\s+saber\s+que\s+|lo\s+interesante\s+es\s+que\s+|hay\s+que\s+decir\s+que\s+|sin\s+duda\s+|en\s+definitiva\s+|como\s+es\s+bien\s+sabido\s+|tradicionalmente\s+se\s+dice\s+que\s+)/i;
+
+function significantTokens(text: string): Set<string> {
+  const stop = new Set([
+    "de",
+    "del",
+    "la",
+    "el",
+    "los",
+    "las",
+    "un",
+    "una",
+    "y",
+    "o",
+    "en",
+    "con",
+    "por",
+    "para",
+    "que",
+    "se",
+    "su",
+    "sus",
+    "al",
+    "es",
+    "este",
+    "esta",
+    "vino",
+    "botella",
+    "bodega",
+  ]);
+  return new Set(
+    text
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/\p{M}/gu, "")
+      .split(/[^a-z0-9áéíóúñü]+/i)
+      .map((t) => t.trim())
+      .filter((t) => t.length > 3 && !stop.has(t))
+  );
+}
+
+function overlapRatio(a: string, b: string): number {
+  const ta = significantTokens(a);
+  const tb = significantTokens(b);
+  if (ta.size === 0 || tb.size === 0) return 0;
+  let shared = 0;
+  for (const t of ta) if (tb.has(t)) shared += 1;
+  return shared / Math.min(ta.size, tb.size);
+}
+
+function trimNarrativeFluff(text: string | null): string | null {
+  if (!text) return null;
+  let t = text.trim().replace(/\s+/g, " ");
+  t = t.replace(FLUFF_PREFIX, "");
+  // Drop leading generic DO clause if followed by a real sentence.
+  t = t.replace(
+    /^(es\s+una\s+de\s+las\s+[^.!?]{10,80}[.!?]\s*)/i,
+    ""
+  );
+  t = t.trim();
+  return t || null;
+}
+
+export type StoryQuality = {
+  /** Thin or catalog-like; UI may hint to retry. */
+  thin: boolean;
+  /** Worth one model retry (generic opening / empty speak / missing core). */
+  shouldRetry: boolean;
+};
+
+/**
+ * Light quality gate for Contar historia narratives.
+ * Does not invent content — only flags / trims fluff.
+ */
+export function assessKimiStoryQuality(
+  research: Pick<
+    KimiResearch,
+    "kimiSummary" | "kimiCuriosity" | "kimiTalkHook" | "kimiConfidence"
+  >
+): StoryQuality {
+  const summary = research.kimiSummary?.trim() ?? "";
+  const curiosity = research.kimiCuriosity?.trim() ?? "";
+  const hook = research.kimiTalkHook?.trim() ?? "";
+
+  const missingCore = !summary || summary.length < 80;
+  const genericOpen = summary ? GENERIC_OPENING.test(summary) : false;
+  const wineSpeak = summary ? EMPTY_WINE_SPEAK.test(summary) : false;
+  const thinCuriosity = !curiosity || curiosity.length < 28;
+  const thinHook = !hook || hook.length < 18;
+  const repeated =
+    (summary && curiosity && overlapRatio(summary, curiosity) >= 0.55) ||
+    (summary && hook && overlapRatio(summary, hook) >= 0.55) ||
+    (curiosity && hook && overlapRatio(curiosity, hook) >= 0.6);
+
+  const shouldRetry =
+    missingCore || genericOpen || wineSpeak || (thinCuriosity && thinHook);
+
+  const thin =
+    shouldRetry ||
+    thinCuriosity ||
+    thinHook ||
+    repeated ||
+    research.kimiConfidence === "uncertain";
+
+  return { thin, shouldRetry };
+}
+
+/** Soft polish after parse — never invents facts. */
+export function polishKimiResearchNarratives<
+  T extends Pick<
+    KimiResearch,
+    | "kimiSummary"
+    | "kimiCuriosity"
+    | "kimiTalkHook"
+    | "kimiPairingNote"
+    | "kimiPairings"
+  >,
+>(research: T): T {
+  return {
+    ...research,
+    kimiSummary: trimNarrativeFluff(research.kimiSummary),
+    kimiCuriosity: trimNarrativeFluff(research.kimiCuriosity),
+    kimiTalkHook: trimNarrativeFluff(research.kimiTalkHook),
+    kimiPairingNote: trimNarrativeFluff(research.kimiPairingNote),
+    kimiPairings: research.kimiPairings
+      ? research.kimiPairings
+          .map((d) => d.trim().replace(/\s+/g, " "))
+          .filter(Boolean)
+          .slice(0, 8)
+      : null,
+  };
+}
+
+/** True when the bottle story is worth a quiet "Actualizar" nudge. */
+export function isThinKimiStory(
+  wine: Pick<
+    Wine,
+    "kimiSummary" | "kimiCuriosity" | "kimiTalkHook" | "kimiConfidence"
+  >
+): boolean {
+  if (!wine.kimiSummary && !wine.kimiCuriosity && !wine.kimiTalkHook) {
+    return false;
+  }
+  return assessKimiStoryQuality({
+    kimiSummary: wine.kimiSummary,
+    kimiCuriosity: wine.kimiCuriosity,
+    kimiTalkHook: wine.kimiTalkHook,
+    kimiConfidence: wine.kimiConfidence,
+  }).thin;
+}

@@ -479,13 +479,18 @@ select {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
-  touch-action: pan-x;
+  /* Allow horizontal map pan and vertical page scroll from the same area. */
+  touch-action: pan-x pan-y;
   scrollbar-width: thin;
 }
 
-/* Cells handle their own gestures so taps/drags aren't stolen by map pan. */
+/*
+ * Cells must not use `manipulation` alone — that blocks parent pan-x when the
+ * gesture starts on a bottle. pan-x/pan-y keeps scroll free; long-press still
+ * cancels once the finger moves past the move threshold.
+ */
 .map-cell {
-  touch-action: manipulation;
+  touch-action: pan-x pan-y;
   -webkit-user-select: none;
   user-select: none;
 }
@@ -501,6 +506,40 @@ select {
 
 .map-is-dragging .map-cell {
   touch-action: none;
+}
+
+/* Mobile detalle: sticky back bar aligned with sheet language (MoveWineSheet). */
+.mobile-detail-sheet {
+  display: flex;
+  flex-direction: column;
+  max-height: min(78dvh, 42rem);
+  overflow: hidden;
+}
+
+.mobile-detail-sheet__bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--line);
+  background: rgba(250, 249, 245, 0.96);
+  backdrop-filter: blur(8px);
+  padding: 0.65rem 0.85rem;
+}
+
+.mobile-detail-sheet__body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 1rem 0.85rem 1.15rem;
+}
+
+@media (min-width: 640px) {
+  .mobile-detail-sheet__body {
+    padding: 1.15rem 1.15rem 1.35rem;
+  }
 }
 
 .desktop-only {

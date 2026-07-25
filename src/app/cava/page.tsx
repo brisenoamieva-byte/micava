@@ -25,6 +25,11 @@ import {
   buildInviteFriendText,
   shareOrCopyText,
 } from "@/lib/share-wine";
+import {
+  downloadCellarJson,
+  downloadHistoryCsv,
+  downloadWinesCsv,
+} from "@/lib/export-cellar";
 import type { DepartAction, DepartExtras, Filters, MatchConfidence, RatingSource, Wine } from "@/lib/types";
 import {
   cellarStats,
@@ -103,6 +108,7 @@ export default function CavaPage() {
   const [storyHintDismissed, setStoryHintDismissed] = useState(false);
   const [showHowTo, setShowHowTo] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [exportHint, setExportHint] = useState<string | null>(null);
 
   async function handleVaciarCava() {
     if (clearing) return;
@@ -219,11 +225,40 @@ export default function CavaPage() {
     if (goToDetail) {
       setDetailReturn(from);
       setMobilePanel("detalle");
+      window.requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
     }
   }
 
   function leaveDetail() {
     setMobilePanel(detailReturn);
+  }
+
+  function flashExportHint(msg: string) {
+    setExportHint(msg);
+    window.setTimeout(() => setExportHint(null), 2500);
+  }
+
+  function handleExportCsv() {
+    if (wines.length === 0) return;
+    downloadWinesCsv(wines, cellars);
+    flashExportHint(`CSV · ${wines.length} botellas`);
+  }
+
+  function handleExportJson() {
+    if (wines.length === 0 && history.length === 0) return;
+    downloadCellarJson(wines, cellars, history);
+    flashExportHint(
+      `JSON · ${wines.length} botellas` +
+        (history.length ? ` · ${history.length} en historial` : "")
+    );
+  }
+
+  function handleExportHistoryCsv() {
+    if (history.length === 0) return;
+    downloadHistoryCsv(history);
+    flashExportHint(`Historial CSV · ${history.length}`);
   }
 
   function openAdd(slot = "", opts?: { step?: "pick" | "form" }) {
@@ -812,13 +847,63 @@ export default function CavaPage() {
           )}
 
           {mobilePanel === "detalle" && (
-            <section className="panel p-4 sm:p-5">
-              <WineDetail {...detailProps} />
+            <section
+              className="panel mobile-detail-sheet p-0"
+              aria-label="Detalle de botella"
+            >
+              <div className="mobile-detail-sheet__bar">
+                <button
+                  type="button"
+                  className="inline-flex min-h-[44px] min-w-[44px] items-center gap-1 rounded-[10px] px-2 text-sm font-medium text-ink"
+                  onClick={leaveDetail}
+                >
+                  <span aria-hidden className="text-base leading-none">
+                    ←
+                  </span>
+                  <span>
+                    {detailReturn === "mapa"
+                      ? "Volver al mapa"
+                      : "Volver a la lista"}
+                  </span>
+                </button>
+              </div>
+              <div className="mobile-detail-sheet__body">
+                <WineDetail {...detailProps} embeddedInSheet />
+              </div>
             </section>
           )}
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-ink-soft xl:mt-6">
+          {wines.length > 0 || history.length > 0 ? (
+            <>
+              {wines.length > 0 ? (
+                <button
+                  type="button"
+                  className="underline-offset-2 hover:text-ink hover:underline"
+                  onClick={handleExportCsv}
+                >
+                  Exportar CSV
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="underline-offset-2 hover:text-ink hover:underline"
+                onClick={handleExportJson}
+              >
+                Exportar JSON
+              </button>
+              {history.length > 0 ? (
+                <button
+                  type="button"
+                  className="underline-offset-2 hover:text-ink hover:underline"
+                  onClick={handleExportHistoryCsv}
+                >
+                  Historial CSV
+                </button>
+              ) : null}
+            </>
+          ) : null}
           {wines.length > 0 ? (
             <button
               type="button"
@@ -828,6 +913,11 @@ export default function CavaPage() {
             >
               {clearing ? "Vaciando…" : "Vaciar cava"}
             </button>
+          ) : null}
+          {exportHint ? (
+            <span className="text-[var(--wine)]" role="status">
+              {exportHint}
+            </span>
           ) : null}
           <span>
             {user?.email

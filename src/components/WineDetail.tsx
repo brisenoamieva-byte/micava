@@ -27,6 +27,8 @@ type Props = {
   wine: Wine | null;
   onBack?: () => void;
   backLabel?: string;
+  /** When true, skip internal back link (parent sticky bar handles it). */
+  embeddedInSheet?: boolean;
   onEdit?: (wine: Wine) => void;
   onRemove?: (wine: Wine) => void;
   onOpened?: (wine: Wine) => void;
@@ -52,6 +54,7 @@ export function WineDetail({
   wine,
   onBack,
   backLabel = "Volver",
+  embeddedInSheet = false,
   onEdit,
   onRemove,
   onOpened,
@@ -119,10 +122,10 @@ export function WineDetail({
   if (!wine) {
     return (
       <div>
-        {onBack ? (
+        {onBack && !embeddedInSheet ? (
           <button
             type="button"
-            className="mobile-only mb-3 text-sm text-ink-soft underline-offset-2 hover:text-ink hover:underline"
+            className="mobile-only mb-3 inline-flex min-h-[44px] items-center rounded-[10px] px-1 text-sm font-medium text-ink-soft underline-offset-2 hover:text-ink hover:underline"
             onClick={onBack}
           >
             ← {backLabel}
@@ -227,17 +230,46 @@ export function WineDetail({
     window.setTimeout(() => setApplyHint(null), 5000);
   }
 
-  async function openVivinoTypeahead() {
+  async function openVivinoTypeahead(opts?: { withVintage?: boolean }) {
     if (!wine) return;
-    const q = vivinoTypeQuery(wine);
+    const base = vivinoTypeQuery(wine);
+    const q =
+      opts?.withVintage && wine.vintage != null
+        ? `${base} ${wine.vintage}`
+        : base;
+
+    let copied = false;
     try {
       await navigator.clipboard.writeText(q);
-      setVivinoHint(`Texto copiado: “${q}”. Pégalo en el buscador de Vivino.`);
+      copied = true;
     } catch {
-      setVivinoHint(`Escribe en Vivino: “${q}”`);
+      copied = false;
     }
-    window.open(vivinoSearchHomeUrl(), "_blank", "noopener,noreferrer");
-    window.setTimeout(() => setVivinoHint(null), 8000);
+
+    // Keep hint until the user acts again; show selectable text if clipboard failed.
+    setVivinoHint(
+      copied
+        ? `Copiado: “${q}”. Pégalo (Ctrl/Cmd+V) en el buscador de Vivino.`
+        : `Copia este texto y pégalo en Vivino: “${q}”`
+    );
+
+    // Open after copy so mobile browsers don't clear the clipboard mid-write.
+    window.setTimeout(() => {
+      window.open(vivinoSearchHomeUrl(), "_blank", "noopener,noreferrer");
+    }, 60);
+  }
+
+  async function copyVivinoQueryAgain(withVintage = false) {
+    if (!wine) return;
+    const base = vivinoTypeQuery(wine);
+    const q =
+      withVintage && wine.vintage != null ? `${base} ${wine.vintage}` : base;
+    try {
+      await navigator.clipboard.writeText(q);
+      setVivinoHint(`Copiado de nuevo: “${q}”`);
+    } catch {
+      setVivinoHint(`Selecciona y copia: “${q}”`);
+    }
   }
 
   async function handleShare() {
@@ -380,10 +412,10 @@ export function WineDetail({
 
   return (
     <div className="min-w-0 overflow-hidden">
-      {onBack ? (
+      {onBack && !embeddedInSheet ? (
         <button
           type="button"
-          className="mobile-only mb-3 text-sm text-ink-soft underline-offset-2 hover:text-ink hover:underline"
+          className="mobile-only mb-3 inline-flex min-h-[44px] items-center rounded-[10px] px-1 text-sm font-medium text-ink-soft underline-offset-2 hover:text-ink hover:underline"
           onClick={onBack}
         >
           ← {backLabel}
@@ -847,9 +879,9 @@ export function WineDetail({
           {verifyOpen ? (
             <div className="mt-3 space-y-3 rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.55)] p-3">
               <p className="text-xs leading-relaxed text-ink-soft">
-                Vivino acierta más si escribes/pegas en su buscador (typeahead)
-                que si abres una URL con toda la consulta de golpe. Te abrimos
-                Vivino y copiamos el texto.
+                Vivino acierta más si pegas en su buscador (typeahead) que si
+                abres una URL con toda la consulta de golpe. Copiamos el texto y
+                abrimos Vivino para que lo pegues.
               </p>
               <div className="flex flex-wrap gap-2">
                 <button
@@ -859,6 +891,17 @@ export function WineDetail({
                 >
                   Buscar en Vivino ↗
                 </button>
+                {wine.vintage != null ? (
+                  <button
+                    type="button"
+                    className="btn btn-ghost min-h-[40px] px-3 text-sm"
+                    onClick={() =>
+                      void openVivinoTypeahead({ withVintage: true })
+                    }
+                  >
+                    Con añada ({wine.vintage}) ↗
+                  </button>
+                ) : null}
                 <a
                   href={wineSearcherUrl(wine)}
                   target="_blank"
@@ -869,7 +912,27 @@ export function WineDetail({
                 </a>
               </div>
               {vivinoHint ? (
-                <p className="text-xs text-ink">{vivinoHint}</p>
+                <div className="space-y-2 rounded-[8px] border border-[rgba(110,31,44,0.18)] bg-[rgba(110,31,44,0.05)] px-2.5 py-2">
+                  <p className="text-xs text-ink">{vivinoHint}</p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="text-xs font-medium text-[var(--wine)] underline-offset-2 hover:underline"
+                      onClick={() => void copyVivinoQueryAgain(false)}
+                    >
+                      Copiar otra vez
+                    </button>
+                    {wine.vintage != null ? (
+                      <button
+                        type="button"
+                        className="text-xs font-medium text-[var(--wine)] underline-offset-2 hover:underline"
+                        onClick={() => void copyVivinoQueryAgain(true)}
+                      >
+                        Copiar con añada
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
               ) : null}
 
               <label className="block">

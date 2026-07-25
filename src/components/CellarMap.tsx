@@ -138,6 +138,21 @@ export function CellarMap({
     pointerId: number;
     timer: ReturnType<typeof setTimeout> | null;
   } | null>(null);
+  const mapScrollRef = useRef<HTMLDivElement | null>(null);
+
+  /** Cancel long-press when the map itself is scrolling (avoids move vs pan fight). */
+  useEffect(() => {
+    const el = mapScrollRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const state = pressRef.current;
+      if (!state) return;
+      if (state.timer) clearTimeout(state.timer);
+      pressRef.current = null;
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [expanded, wines.length, cols, rows.join(",")]);
 
   const activeMoveId = movingWineId || dragId;
   const movingWine = activeMoveId
@@ -337,7 +352,7 @@ export function CellarMap({
         </div>
       )}
 
-      <div className="map-scroll pb-1">
+      <div ref={mapScrollRef} className="map-scroll pb-1">
         <div
           className="grid min-w-[640px] gap-1 sm:min-w-[760px] sm:gap-1.5"
           style={{

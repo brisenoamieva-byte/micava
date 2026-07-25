@@ -37,11 +37,11 @@ type Props = {
       syncVivino: boolean;
     }
   ) => void;
-  onSaveKimiResearch?: (wine: Wine, research: KimiResearch) => void;
+  onSaveKimiResearch?: (wine: Wine, research: KimiResearch) => number | void;
   onApplyKimiResearch?: (
     wine: Wine,
     fields: { vivino?: boolean; price?: boolean }
-  ) => void;
+  ) => number | void;
   onMove?: (wine: Wine) => void;
 };
 
@@ -204,8 +204,11 @@ export function WineDetail({
       return;
     }
 
-    onApplyKimiResearch(wine, fields);
-    setApplyHint(`Guardado en tu ficha · ${parts.join(" · ")}`);
+    const applied = onApplyKimiResearch(wine, fields);
+    const n = typeof applied === "number" ? applied : 1;
+    const twin =
+      n > 1 ? ` · ${n} botellas iguales` : "";
+    setApplyHint(`Guardado en tu ficha${twin} · ${parts.join(" · ")}`);
     window.setTimeout(() => setApplyHint(null), 5000);
   }
 
@@ -271,8 +274,11 @@ export function WineDetail({
       if (!res.ok || !payload.research) {
         throw new Error(payload.error || "No se pudo investigar este vino.");
       }
-      onSaveKimiResearch(wine, payload.research);
-      setShareHint("Historia lista");
+      const applied = onSaveKimiResearch(wine, payload.research);
+      const n = typeof applied === "number" ? applied : 1;
+      setShareHint(
+        n > 1 ? `Historia aplicada a ${n} botellas iguales` : "Historia lista"
+      );
       window.setTimeout(() => setShareHint(null), 3500);
     } catch (e) {
       const msg =
@@ -466,8 +472,8 @@ export function WineDetail({
                 {formatCavataleRating(wine.cavataleRating)}
               </p>
               <p className="mt-1.5 text-xs text-ink-soft">
-                Pondera historia, experiencia, originalidad y autenticidad —
-                no el ranking Vivino de la comunidad.
+                ~30% sabor · ~30% historia · ~25% mesa · ~15% originalidad.
+                Independiente de Vivino.
               </p>
             </div>
           ) : null}

@@ -10,6 +10,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { wineIdentityKey } from "@/lib/analytics";
 import { useAuth } from "@/lib/auth-store";
 import {
   withKimiDefaults,
@@ -84,12 +85,12 @@ type CellarContextValue = {
     verification: RatingVerification,
     options?: { syncVivino?: boolean }
   ) => void;
-  saveKimiResearch: (id: string, research: KimiResearch) => void;
+  saveKimiResearch: (id: string, research: KimiResearch) => number;
   setLabelImageUrl: (id: string, labelImageUrl: string | null) => void;
   applyKimiResearch: (
     id: string,
     fields: { vivino?: boolean; price?: boolean }
-  ) => void;
+  ) => number;
   moveWine: (
     wineId: string,
     targetLocation: string,
@@ -517,11 +518,14 @@ export function CellarProvider({ children }: { children: ReactNode }) {
 
   const saveKimiResearch = useCallback(
     (id: string, research: KimiResearch) => {
-      let nextWine: Wine | null = null;
-      setWines((prev) =>
-        prev.map((w) => {
-          if (w.id !== id) return w;
-          nextWine = {
+      let touched: Wine[] = [];
+      setWines((prev) => {
+        const source = prev.find((w) => w.id === id);
+        if (!source) return prev;
+        const key = wineIdentityKey(source);
+        const nextList = prev.map((w) => {
+          if (wineIdentityKey(w) !== key) return w;
+          return {
             ...w,
             cavataleRating: research.cavataleRating,
             kimiVivino: research.kimiVivino,
@@ -534,11 +538,15 @@ export function CellarProvider({ children }: { children: ReactNode }) {
             kimiCheckedAt: research.kimiCheckedAt,
             kimiConfidence: research.kimiConfidence,
           };
-          return nextWine;
-        })
-      );
+        });
+        touched = nextList.filter((w) => wineIdentityKey(w) === key);
+        return nextList;
+      });
       const uid = userIdRef.current;
-      if (uid && nextWine) void upsertWineRemote(nextWine, uid);
+      if (uid) {
+        for (const w of touched) void upsertWineRemote(w, uid);
+      }
+      return touched.length;
     },
     [upsertWineRemote]
   );
@@ -561,21 +569,28 @@ export function CellarProvider({ children }: { children: ReactNode }) {
 
   const applyKimiResearch = useCallback(
     (id: string, fields: { vivino?: boolean; price?: boolean }) => {
-      let nextWine: Wine | null = null;
-      setWines((prev) =>
-        prev.map((w) => {
-          if (w.id !== id) return w;
-          nextWine = {
+      let touched: Wine[] = [];
+      setWines((prev) => {
+        const source = prev.find((w) => w.id === id);
+        if (!source) return prev;
+        const key = wineIdentityKey(source);
+        const nextList = prev.map((w) => {
+          if (wineIdentityKey(w) !== key) return w;
+          return {
             ...w,
             vivino:
               fields.vivino && w.kimiVivino != null ? w.kimiVivino : w.vivino,
             price: fields.price && w.kimiPrice != null ? w.kimiPrice : w.price,
           };
-          return nextWine;
-        })
-      );
+        });
+        touched = nextList.filter((w) => wineIdentityKey(w) === key);
+        return nextList;
+      });
       const uid = userIdRef.current;
-      if (uid && nextWine) void upsertWineRemote(nextWine, uid);
+      if (uid) {
+        for (const w of touched) void upsertWineRemote(w, uid);
+      }
+      return touched.length;
     },
     [upsertWineRemote]
   );

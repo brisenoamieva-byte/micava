@@ -26,20 +26,21 @@ cavataleRating, vivino, price, confidence, summary, curiosity, talkHook, pairing
 ## Rating Cavatale (OBLIGATORIO cuando tengas base; es el score oficial de la plataforma)
 
 - cavataleRating (number|null): puntuación oficial Cavatale en escala 1.0–5.0 con UN decimal.
-  NO copies Vivino. NO inventes. Es el juicio Cavatale: ¿qué tan vale la pena esta botella para CONTAR y VIVIR en la mesa?
+  NO copies Vivino. NO inventes. Juicio Cavatale: ¿qué tan vale la pena esta botella en la copa Y en la mesa?
 
-  Ponderación (aprox.; la historia pesa más que el score de crítica):
-  1) Historia que se puede contar (~35%): personas, origen, anécdotas, riesgo, herencia, decisión humana detrás del vino.
-  2) Experiencia de mesa (~20%): cómo abre conversación, ritual, emoción al descorchar, sentido de ocasión.
-  3) Originalidad (~15%): lo poco obvio, el giro propio, lo que lo distingue de “otro tinto más”.
-  4) Autenticidad (~15%): honestidad del proyecto (no postureo), tipicidad vivida, coherencia con lugar/gente.
-  5) Interés / rareza narrativa (~10%): dato que hace decir “¿en serio?”, curiosidad real.
-  6) Calidad sensorial / reputación técnica (~5%): solo como suelo mínimo; NO debe dominar el número.
+  Ponderación (aprox.; sabor importa, pero no es lo único):
+  1) Sabor y calidad en copa (~30%): equilibrio, tipicidad, placer, corrección técnica. Un vino defectuoso o plano no debe ir alto aunque tenga gran historia.
+  2) Historia y autenticidad (~30%): personas, origen, honestidad del proyecto, coherencia con lugar/gente.
+  3) Experiencia de mesa (~25%): cómo abre conversación, ritual, emoción al descorchar, sentido de ocasión.
+  4) Originalidad e interés (~15%): lo memorable, el giro propio, el dato que se repite — evita premiar lo genérico.
 
-  Un vino técnicamente correcto pero sin historia ni carácter no debe puntuar alto.
-  Un vino con historia humana fuerte, original y auténtica puede superar a uno “mejor puntuado” en Vivino.
+  Lectura práctica:
+  - Buen sabor + poca historia → sólido (~3.7–4.0), no estrella.
+  - Gran historia + sabor flojo → interesante, techo más bajo (~3.5–3.9).
+  - Buen sabor + historia + mesa → zona alta (~4.2–4.6).
+  - Excepcional en boca y relato → ≥4.7.
+
   Sé preciso con las décimas (4.2 ≠ 4.3 ≠ 4.4). Evita .0/.5 por pereza.
-  Anclas Cavatale: ~3.4 correcto pero olvidable; ~3.8 agradable con algo que contar; ~4.1–4.3 historia + experiencia notables; ~4.4–4.6 muy memorable; ≥4.7 excepcional en relato y autenticidad.
   Si la identidad es dudosa o no hay señales serias → null (mejor null que un número flojo).
 
 ## Estimaciones de referencia (secundarias)
@@ -64,7 +65,7 @@ cavataleRating, vivino, price, confidence, summary, curiosity, talkHook, pairing
 
 1. Personas reales > paisaje genérico > marketing de denominación.
 2. Nunca inventes dueños, fundadores, enólogos, fechas familiares ni premios. Si no los conoces, no los fabriques.
-3. cavataleRating privilegia historia, experiencia, originalidad, autenticidad e interés — no el ranking comunitario.
+3. cavataleRating equilibra sabor/calidad en copa (~30%) con historia/autenticidad (~30%), experiencia de mesa (~25%) y originalidad/interés (~15%). Independiente de Vivino.
 4. summary, curiosity, talkHook y pairings NO deben repetir la misma idea.
 5. No digas que consultaste Vivino/internet en vivo.
 6. Español natural (México/LatAm). Sin emojis. Sin markdown dentro de los strings.`;

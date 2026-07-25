@@ -150,6 +150,12 @@ export default function HomePage() {
             >
               Privacidad
             </Link>
+            <Link
+              href="/terminos"
+              className="underline-offset-2 hover:text-ink hover:underline"
+            >
+              Condiciones
+            </Link>
             <p>cavatale.com</p>
           </div>
         </div>

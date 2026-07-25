@@ -20,10 +20,17 @@ export default function LoginPage() {
           </div>
           <p className="mt-6 text-center text-xs text-ink-soft">
             <Link
+              href="/terminos"
+              className="text-ink underline-offset-2 hover:underline"
+            >
+              Condiciones
+            </Link>
+            {" · "}
+            <Link
               href="/privacidad"
               className="text-ink underline-offset-2 hover:underline"
             >
-              Política de privacidad
+              Privacidad
             </Link>
           </p>
         </div>

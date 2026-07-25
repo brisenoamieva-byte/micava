@@ -25,7 +25,7 @@ export function BrandMark({
   const inner = (
     <span className={`inline-flex items-center gap-2.5 ${className}`}>
       <Image
-        src="/brand/cavatale-mark.png"
+        src="/brand/cavatale-mark-v2.png"
         alt=""
         width={s.px}
         height={s.px}

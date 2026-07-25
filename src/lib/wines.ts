@@ -225,39 +225,15 @@ export function winesForFacet(
   return filterWines(list, next);
 }
 
-export const countryCode: Record<string, string> = {
-  España: "ES",
-  México: "MX",
-  Argentina: "AR",
-  Chile: "CL",
-  Francia: "FR",
-  Italia: "IT",
-  USA: "US",
-  Australia: "AU",
-};
-
-/** ISO 3166-1 alpha-2 for flagcdn */
-export const countryIso: Record<string, string> = {
-  España: "es",
-  México: "mx",
-  Argentina: "ar",
-  Chile: "cl",
-  Francia: "fr",
-  Italia: "it",
-  USA: "us",
-  Australia: "au",
-};
-
-export const countryFlagEmoji: Record<string, string> = {
-  España: "🇪🇸",
-  México: "🇲🇽",
-  Argentina: "🇦🇷",
-  Chile: "🇨🇱",
-  Francia: "🇫🇷",
-  Italia: "🇮🇹",
-  USA: "🇺🇸",
-  Australia: "🇦🇺",
-};
+export {
+  countryCode,
+  countryFlagEmoji,
+  countryIso,
+  normalizeCountry,
+  WINE_COUNTRIES,
+  WINE_COUNTRY_NAMES,
+  wineCountriesForPrompt,
+} from "@/lib/wine-countries";
 
 export function typeAccent(type: string): string {
   const t = type.toLowerCase();

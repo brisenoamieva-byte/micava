@@ -6,6 +6,7 @@ import {
   parseScanLabelResult,
   type ScanLabelFields,
 } from "@/lib/scan-label";
+import { wineCountriesForPrompt } from "@/lib/wine-countries";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -13,6 +14,8 @@ export const maxDuration = 60;
 const KIMI_BASE = "https://api.moonshot.ai/v1";
 const MODEL = process.env.KIMI_MODEL?.trim() || "kimi-k2.6";
 const MAX_BYTES = 6 * 1024 * 1024;
+
+const COUNTRY_PROMPT = wineCountriesForPrompt();
 
 /**
  * Pass 1: vision. Not OCR-only — identify wines from artwork when text is missing.
@@ -32,7 +35,7 @@ name, winery, country, region, type, grape, aging, vintage, vivino, price, confi
 Definiciones:
 - name (string): nombre comercial del vino. Si la etiqueta no tiene texto pero reconoces el vino por la imagen, PON el nombre comercial real. Si no puedes identificarlo, "".
 - winery (string): bodega / productor.
-- country (string): España, México, Argentina, Chile, Francia, Italia, USA, Australia u Otro.
+- country (string): exactamente uno de: ${COUNTRY_PROMPT}. Usa el nombre en español de la lista (ej. Croacia, no Croatia/Hrvatska). No inventes otro país de la lista si no corresponde.
 - region (string): DO / valle / appellation. "" si no sabes.
 - type (string): exactamente Tinto | Blanco | Rosado | Espumoso.
 - grape (string): uva(s) si se leen o son conocidas para ESE vino; si no, "".
@@ -54,10 +57,11 @@ name, winery, country, region, type, grape, aging, vintage, vivino, price, confi
 
 Reglas:
 - Busca primero en Vivino / sitios de vino / tiendas MX (La Europea, Vinoteca, Amazon MX, etc.).
+- country: exactamente uno de: ${COUNTRY_PROMPT}. Usa el nombre en español de la lista.
 - vivino: número 1–5 (un decimal ok) del vino/cosecha si aparece; si solo hay rango, toma el más citado; si no hay dato fiable, null.
 - price: entero MXN de menudeo típico actual o reciente; si solo USD/EUR, convierte aprox. a MXN; si no hay, null.
 - No inventes ratings ni precios. Prefiere null a inventar.
-- Si la búsqueda corrige el nombre/bodega, actualízalos.
+- Si la búsqueda corrige el nombre/bodega/país, actualízalos.
 - notes: qué fuentes usaste en una frase corta (sin URLs largas).`;
 
 type KimiChatResponse = {

@@ -537,6 +537,11 @@ export function CellarProvider({ children }: { children: ReactNode }) {
             kimiPairingNote: research.kimiPairingNote,
             kimiCheckedAt: research.kimiCheckedAt,
             kimiConfidence: research.kimiConfidence,
+            // Prefill empty ficha price from Kimi; never overwrite a user value.
+            price:
+              w.price == null && research.kimiPrice != null
+                ? research.kimiPrice
+                : w.price,
           };
         });
         touched = nextList.filter((w) => wineIdentityKey(w) === key);

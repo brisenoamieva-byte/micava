@@ -1,4 +1,7 @@
 import type { WineDraft, WineType } from "@/lib/types";
+import { normalizeCountry } from "@/lib/wine-countries";
+
+export { normalizeCountry } from "@/lib/wine-countries";
 
 /** Catalog fields from a wine label (mirrors WineDraft except cellar placement). */
 export type ScanLabelFields = {
@@ -30,50 +33,7 @@ export const SCAN_CATALOG_KEYS = [
   "price",
 ] as const satisfies ReadonlyArray<keyof WineDraft>;
 
-/** Keep in sync with `countryFlagEmoji` in wines.ts — listed here to avoid import cycles. */
-const KNOWN_COUNTRIES = [
-  "España",
-  "México",
-  "Argentina",
-  "Chile",
-  "Francia",
-  "Italia",
-  "USA",
-  "Australia",
-] as const;
-
-const COUNTRY_ALIASES: Record<string, string> = {
-  spain: "España",
-  españa: "España",
-  espana: "España",
-  mexico: "México",
-  méxico: "México",
-  argentina: "Argentina",
-  chile: "Chile",
-  france: "Francia",
-  francia: "Francia",
-  italy: "Italia",
-  italia: "Italia",
-  "united states": "USA",
-  "estados unidos": "USA",
-  usa: "USA",
-  us: "USA",
-  australia: "Australia",
-};
-
 const WINE_TYPES = ["Tinto", "Blanco", "Rosado", "Espumoso"] as const;
-
-export function normalizeCountry(raw: string): string {
-  const trimmed = raw.trim();
-  if (!trimmed) return "Otro";
-  const exact = KNOWN_COUNTRIES.find(
-    (c) => c.toLowerCase() === trimmed.toLowerCase()
-  );
-  if (exact) return exact;
-  const alias = COUNTRY_ALIASES[trimmed.toLowerCase()];
-  if (alias) return alias;
-  return "Otro";
-}
 
 export function normalizeType(raw: string): WineType {
   const t = raw.trim().toLowerCase();
@@ -178,6 +138,22 @@ export function scanFieldsToDraftPatch(
     vintage: fields.vintage,
     vivino: fields.vivino,
     price: fields.price,
+  };
+}
+
+/**
+ * Apply scan/AI catalog fields onto a draft.
+ * Never overwrite a price (or Vivino) the user already typed with null or a new estimate.
+ */
+export function mergeScanPatchIntoDraft(
+  prev: WineDraft,
+  patch: Pick<WineDraft, (typeof SCAN_CATALOG_KEYS)[number]>
+): WineDraft {
+  return {
+    ...prev,
+    ...patch,
+    vivino: prev.vivino != null ? prev.vivino : patch.vivino,
+    price: prev.price != null ? prev.price : patch.price,
   };
 }
 

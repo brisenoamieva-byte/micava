@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { Wine, WineDraft } from "@/lib/types";
 import {
   countryFlagEmoji,
+  formatPrice,
   formatVivino,
   getEmptySlots,
   getWineBySlot,
@@ -12,6 +13,7 @@ import {
 import { wineToDraft } from "@/lib/cellar-store";
 import {
   imageFileToDataUrl,
+  mergeScanPatchIntoDraft,
   missingScanFieldLabels,
   scanFieldsToDraftPatch,
   type ScanLabelFields,
@@ -229,12 +231,17 @@ export function WineFormModal({
         throw new Error(payload.error || "No se pudo leer la etiqueta.");
       }
       const patch = scanFieldsToDraftPatch(payload.fields);
-      setDraft((prev) => ({
-        ...prev,
-        ...patch,
-        cellarId: prev.cellarId ?? activeCellarId,
-        location: prev.location || initialSlot || "",
-      }));
+      let proposedPrice: number | null = null;
+      setDraft((prev) => {
+        const merged = mergeScanPatchIntoDraft(prev, patch);
+        proposedPrice =
+          prev.price == null && patch.price != null ? patch.price : null;
+        return {
+          ...merged,
+          cellarId: prev.cellarId ?? activeCellarId,
+          location: prev.location || initialSlot || "",
+        };
+      });
       setLabelImageDataUrl(dataUrl);
       setFromExisting(false);
       setStep("form");
@@ -248,6 +255,9 @@ export function WineFormModal({
       setScanHint(
         [
           conf,
+          proposedPrice != null
+            ? `Precio propuesto ${formatPrice(proposedPrice)} (editable)`
+            : null,
           missing.length
             ? `Falta completar: ${missing.join(", ")}`
             : "Ficha completa (revisa igual)",
@@ -623,7 +633,7 @@ export function WineFormModal({
                   onChange={(e) =>
                     patch("price", parseOptionalNumber(e.target.value))
                   }
-                  placeholder="450"
+                  placeholder="Propuesto por Kimi si hay dato"
                 />
               </label>
 

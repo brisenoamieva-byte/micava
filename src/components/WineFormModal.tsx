@@ -109,7 +109,9 @@ export function WineFormModal({
   const [labelImageDataUrl, setLabelImageDataUrl] = useState<string | null>(
     null
   );
+  const [lastScanFile, setLastScanFile] = useState<File | null>(null);
   const scanInputRef = useRef<HTMLInputElement>(null);
+  const scanAbortRef = useRef<AbortController | null>(null);
 
   const catalog = useMemo(() => buildCatalog(wines), [wines]);
 
@@ -159,6 +161,9 @@ export function WineFormModal({
     setScanning(false);
     setScanHint("");
     setLabelImageDataUrl(null);
+    setLastScanFile(null);
+    scanAbortRef.current?.abort();
+    scanAbortRef.current = null;
     if (editing) {
       setStep("form");
       setDraft(wineToDraft(editing));
@@ -167,6 +172,12 @@ export function WineFormModal({
       setStep(catalog.length > 0 ? "pick" : "form");
     }
   }, [open, editing, initialSlot, activeCellarId, catalog.length]);
+
+  useEffect(() => {
+    return () => {
+      scanAbortRef.current?.abort();
+    };
+  }, []);
 
   if (!open) return null;
 
@@ -203,15 +214,24 @@ export function WineFormModal({
 
   async function handleScanFile(file: File | undefined) {
     if (!file || scanning) return;
+    setLastScanFile(file);
     setScanning(true);
     setError("");
     setScanHint("");
+    scanAbortRef.current?.abort();
+    const abort = new AbortController();
+    scanAbortRef.current = abort;
+    const timeoutId = window.setTimeout(() => abort.abort(), 55_000);
+
     try {
       const { dataUrl } = await imageFileToDataUrl(file);
+      if (abort.signal.aborted) throw new DOMException("Aborted", "AbortError");
+
       const res = await fetch("/api/scan-label", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imageDataUrl: dataUrl }),
+        signal: abort.signal,
       });
       const raw = await res.text();
       let payload: { error?: string; fields?: ScanLabelFields } = {};
@@ -222,14 +242,59 @@ export function WineFormModal({
         };
       } catch {
         throw new Error(
-          res.ok
-            ? "La IA respondió en un formato inesperado."
-            : "El servidor tardó demasiado o falló. Intenta de nuevo."
+          res.status === 504 || res.status === 408
+            ? "El escaneo tardó demasiado. Intenta de nuevo con mejor luz."
+            : res.ok
+              ? "La IA respondió en un formato inesperado. Reintenta."
+              : "El servidor falló al escanear. Reintenta en un momento."
         );
       }
-      if (!res.ok || !payload.fields) {
-        throw new Error(payload.error || "No se pudo leer la etiqueta.");
+
+      // Partial identity: apply what we got without wiping typed fields; warn.
+      if (res.status === 422 && payload.fields) {
+        const patch = scanFieldsToDraftPatch(payload.fields);
+        setDraft((prev) => {
+          const merged = mergeScanPatchIntoDraft(prev, {
+            ...patch,
+            name: patch.name || prev.name,
+            winery: patch.winery || prev.winery,
+          });
+          return {
+            ...merged,
+            cellarId: prev.cellarId ?? activeCellarId,
+            location: prev.location || initialSlot || "",
+          };
+        });
+        setLabelImageDataUrl(dataUrl);
+        setFromExisting(false);
+        setStep("form");
+        setError(
+          payload.error ||
+            "No identifiqué el vino con certeza. Completa o corrige a mano."
+        );
+        setScanHint(
+          payload.fields.notes
+            ? `Baja confianza · ${payload.fields.notes}`
+            : "Baja confianza — revisa y completa los campos"
+        );
+        return;
       }
+
+      if (!res.ok || !payload.fields) {
+        const msg = payload.error || "No se pudo leer la etiqueta.";
+        if (res.status === 429) {
+          throw new Error("Demasiadas consultas. Espera un momento y reintenta.");
+        }
+        if (res.status >= 500) {
+          throw new Error(
+            msg.includes("Kimi") || msg.includes("API")
+              ? msg
+              : "Error del servidor al escanear. Reintenta."
+          );
+        }
+        throw new Error(msg);
+      }
+
       const patch = scanFieldsToDraftPatch(payload.fields);
       let proposedPrice: number | null = null;
       setDraft((prev) => {
@@ -267,11 +332,30 @@ export function WineFormModal({
           .join(" · ")
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Error al escanear.");
+      if (e instanceof DOMException && e.name === "AbortError") {
+        setError(
+          "El escaneo se canceló o tardó demasiado. Reintenta con otra foto."
+        );
+      } else if (e instanceof TypeError) {
+        setError("Sin conexión al escanear. Revisa internet y reintenta.");
+      } else {
+        setError(e instanceof Error ? e.message : "Error al escanear.");
+      }
+      // Do not mutate draft on hard failure — keep what the user already typed.
     } finally {
+      window.clearTimeout(timeoutId);
+      if (scanAbortRef.current === abort) scanAbortRef.current = null;
       setScanning(false);
       if (scanInputRef.current) scanInputRef.current.value = "";
     }
+  }
+
+  function retryLastScan() {
+    if (lastScanFile && !scanning) {
+      void handleScanFile(lastScanFile);
+      return;
+    }
+    scanInputRef.current?.click();
   }
 
   function handleSubmit(e: FormEvent) {
@@ -447,7 +531,19 @@ export function WineFormModal({
               </button>
             </div>
             {error && showingPick ? (
-              <p className="text-sm text-[var(--wine)]">{error}</p>
+              <div className="space-y-2">
+                <p className="text-sm text-[var(--wine)]" role="alert">
+                  {error}
+                </p>
+                <button
+                  type="button"
+                  className="btn btn-ghost min-h-[40px] w-full border border-[var(--line)] text-sm disabled:opacity-60"
+                  disabled={scanning}
+                  onClick={() => retryLastScan()}
+                >
+                  Reintentar escaneo
+                </button>
+              </div>
             ) : null}
           </div>
         ) : (
@@ -481,6 +577,16 @@ export function WineFormModal({
               </button>
               {scanHint ? (
                 <p className="text-xs text-ink-soft">{scanHint}</p>
+              ) : null}
+              {error ? (
+                <button
+                  type="button"
+                  className="text-xs text-ink-soft underline-offset-2 hover:text-ink hover:underline disabled:opacity-60"
+                  disabled={scanning}
+                  onClick={() => retryLastScan()}
+                >
+                  Reintentar escaneo
+                </button>
               ) : null}
               {labelImageDataUrl ? (
                 <div className="flex items-center gap-3">
@@ -699,7 +805,9 @@ export function WineFormModal({
             </div>
 
             {error ? (
-              <p className="mt-3 text-sm text-[var(--wine)]">{error}</p>
+              <p className="mt-3 text-sm text-[var(--wine)]" role="alert">
+                {error}
+              </p>
             ) : null}
 
             <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -707,10 +815,15 @@ export function WineFormModal({
                 type="button"
                 className="btn btn-ghost min-h-[44px]"
                 onClick={onClose}
+                disabled={scanning}
               >
                 Cancelar
               </button>
-              <button type="submit" className="btn btn-primary min-h-[44px]">
+              <button
+                type="submit"
+                className="btn btn-primary min-h-[44px]"
+                disabled={scanning}
+              >
                 {editing ? "Guardar cambios" : "Agregar a la cava"}
               </button>
             </div>

@@ -21,6 +21,7 @@ import {
 import { isMexicoCountry, MEXICO_STATES } from "@/lib/mexico-states";
 
 type Tab = "presencia" | "directorio" | "chats";
+type RealtimeMode = "connecting" | "live" | "polling" | "off";
 
 const COUNTRY_SUGGESTIONS = [
   "México",
@@ -33,6 +34,8 @@ const COUNTRY_SUGGESTIONS = [
   "Francia",
   "Italia",
 ];
+
+const POLL_MS = 8000;
 
 export function NetworkPanel() {
   const { user, displayName, refreshProfile } = useAuth();
@@ -54,8 +57,12 @@ export function NetworkPanel() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [directoryLoading, setDirectoryLoading] = useState(false);
+  const [chatsLoading, setChatsLoading] = useState(false);
+  const [messagesLoading, setMessagesLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
+  const [realtimeMode, setRealtimeMode] = useState<RealtimeMode>("off");
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const [formVisible, setFormVisible] = useState(false);
@@ -85,6 +92,7 @@ export function NetworkPanel() {
 
   const loadDirectory = useCallback(async () => {
     if (!user) return;
+    setDirectoryLoading(true);
     try {
       const list = await listNetworkProfiles({
         excludeUserId: user.id,
@@ -97,11 +105,14 @@ export function NetworkPanel() {
       setError(
         e instanceof Error ? e.message : "No se pudo cargar el directorio."
       );
+    } finally {
+      setDirectoryLoading(false);
     }
   }, [user, filterCountry, filterCity, filterQuery]);
 
   const loadConversations = useCallback(async () => {
     if (!user) return;
+    setChatsLoading(true);
     try {
       const list = await listMyConversations(user.id);
       setConversations(list);
@@ -109,8 +120,29 @@ export function NetworkPanel() {
       setError(
         e instanceof Error ? e.message : "No se pudieron cargar los chats."
       );
+    } finally {
+      setChatsLoading(false);
     }
   }, [user]);
+
+  const refreshMessages = useCallback(
+    async (conversationId: string, opts?: { quiet?: boolean }) => {
+      if (!opts?.quiet) setMessagesLoading(true);
+      try {
+        const msgs = await listMessages(conversationId);
+        setMessages(msgs);
+      } catch (e) {
+        if (!opts?.quiet) {
+          setError(
+            e instanceof Error ? e.message : "No se pudieron cargar mensajes."
+          );
+        }
+      } finally {
+        if (!opts?.quiet) setMessagesLoading(false);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     if (!user) return;
@@ -132,34 +164,38 @@ export function NetworkPanel() {
   }, [tab, loadDirectory, loadConversations, activeConversationId]);
 
   useEffect(() => {
-    if (!activeConversationId || !user) return;
+    if (!activeConversationId || !user) {
+      setRealtimeMode("off");
+      return;
+    }
     let cancelled = false;
+    let pollId: number | null = null;
+    const conversationId = activeConversationId;
 
-    (async () => {
-      try {
-        const msgs = await listMessages(activeConversationId);
-        if (!cancelled) setMessages(msgs);
-      } catch (e) {
-        if (!cancelled) {
-          setError(
-            e instanceof Error ? e.message : "No se pudieron cargar mensajes."
-          );
-        }
-      }
-    })();
+    void refreshMessages(conversationId);
 
-    if (!isSupabaseConfigured()) return;
+    if (!isSupabaseConfigured()) {
+      setRealtimeMode("polling");
+      pollId = window.setInterval(() => {
+        if (!cancelled) void refreshMessages(conversationId, { quiet: true });
+      }, POLL_MS);
+      return () => {
+        cancelled = true;
+        if (pollId != null) window.clearInterval(pollId);
+      };
+    }
 
+    setRealtimeMode("connecting");
     const supabase = createClient();
     const channel = supabase
-      .channel(`dm:${activeConversationId}`)
+      .channel(`dm:${conversationId}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "messages",
-          filter: `conversation_id=eq.${activeConversationId}`,
+          filter: `conversation_id=eq.${conversationId}`,
         },
         (payload) => {
           const row = payload.new as ChatMessage;
@@ -169,13 +205,56 @@ export function NetworkPanel() {
           });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (cancelled) return;
+        if (status === "SUBSCRIBED") {
+          setRealtimeMode("live");
+          if (pollId != null) {
+            window.clearInterval(pollId);
+            pollId = null;
+          }
+          return;
+        }
+        if (
+          status === "CHANNEL_ERROR" ||
+          status === "TIMED_OUT" ||
+          status === "CLOSED"
+        ) {
+          setRealtimeMode("polling");
+          if (pollId == null) {
+            pollId = window.setInterval(() => {
+              if (!cancelled) {
+                void refreshMessages(conversationId, { quiet: true });
+              }
+            }, POLL_MS);
+          }
+        }
+      });
+
+    // If Realtime never confirms, fall back to polling after a short wait.
+    const fallbackId = window.setTimeout(() => {
+      if (cancelled) return;
+      setRealtimeMode((mode) => {
+        if (mode === "live") return mode;
+        if (pollId == null) {
+          pollId = window.setInterval(() => {
+            if (!cancelled) {
+              void refreshMessages(conversationId, { quiet: true });
+            }
+          }, POLL_MS);
+        }
+        return "polling";
+      });
+    }, 6000);
 
     return () => {
       cancelled = true;
+      window.clearTimeout(fallbackId);
+      if (pollId != null) window.clearInterval(pollId);
       void supabase.removeChannel(channel);
+      setRealtimeMode("off");
     };
-  }, [activeConversationId, user]);
+  }, [activeConversationId, user, refreshMessages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -272,8 +351,8 @@ export function NetworkPanel() {
       <div className="panel p-5">
         <h2 className="display text-3xl text-ink">Red</h2>
         <p className="mt-1 text-sm text-ink-soft">
-          Encuentra a otros coleccionistas y escribe en privado. Solo quien
-          activa “aparecer en la red” es visible.
+          Un directorio opt-in entre coleccionistas. Tú eliges si apareces;
+          chats 1:1 privados. No compartimos tu cava ni tu email.
         </p>
 
         <div className="mt-4 flex flex-wrap gap-2">
@@ -302,13 +381,31 @@ export function NetworkPanel() {
         </div>
 
         {error ? (
-          <p className="mt-3 text-sm text-[var(--wine-deep)]">{error}</p>
+          <p className="mt-3 text-sm text-[var(--wine-deep)]" role="alert">
+            {error}
+          </p>
         ) : null}
-        {info ? <p className="mt-3 text-sm text-ink-soft">{info}</p> : null}
+        {info ? (
+          <p className="mt-3 text-sm text-ink-soft" role="status">
+            {info}
+          </p>
+        ) : null}
       </div>
 
       {tab === "presencia" ? (
         <div className="panel space-y-4 p-5">
+          <div className="rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.55)] px-3 py-3 text-sm text-ink-soft">
+            <p className="font-medium text-ink">Qué ven los demás</p>
+            <ul className="mt-1.5 list-disc space-y-1 pl-4 text-xs leading-relaxed">
+              <li>Nombre público, país/ciudad y bio (si los escribes).</li>
+              <li>Nunca tu email, cava, botellas ni ubicación exacta.</li>
+              <li>
+                Si desactivas “Aparecer en la red”, desapareces del directorio;
+                los chats ya abiertos siguen.
+              </li>
+            </ul>
+          </div>
+
           <DisplayNameEditor />
           <label className="flex items-start gap-3 text-sm text-ink">
             <input
@@ -320,7 +417,7 @@ export function NetworkPanel() {
             <span>
               <span className="font-medium">Aparecer en la red</span>
               <span className="mt-0.5 block text-xs text-ink-soft">
-                Otros podrán verte y escribirte. Tu email no se muestra.
+                Opt-in. Solo entonces otros te ven y pueden escribirte.
               </span>
             </span>
           </label>
@@ -408,7 +505,11 @@ export function NetworkPanel() {
 
           {own && !own.network_visible ? (
             <p className="text-xs text-ink-soft">
-              Ahora mismo estás oculto en el directorio.
+              Ahora estás oculto: no apareces en el directorio.
+            </p>
+          ) : own?.network_visible ? (
+            <p className="text-xs text-ink-soft">
+              Estás visible. Puedes ocultarte cuando quieras.
             </p>
           ) : null}
         </div>
@@ -418,8 +519,8 @@ export function NetworkPanel() {
         <div className="panel space-y-4 p-5">
           {!own?.network_visible ? (
             <p className="rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.5)] px-3 py-2 text-sm text-ink-soft">
-              Tip: activa “Aparecer en la red” en Mi presencia para que otros
-              también puedan encontrarte.
+              Puedes explorar el directorio sin aparecer. Para que otros te
+              encuentren, activa “Aparecer en la red” en Mi presencia.
             </p>
           ) : null}
 
@@ -481,10 +582,12 @@ export function NetworkPanel() {
           </div>
 
           <ul className="divide-y divide-[var(--line)]">
-            {profiles.length === 0 ? (
+            {directoryLoading ? (
+              <li className="py-6 text-sm text-ink-soft">Cargando directorio…</li>
+            ) : profiles.length === 0 ? (
               <li className="py-6 text-sm text-ink-soft">
-                Nadie visible todavía con esos filtros. Sé el primero en
-                activar tu presencia.
+                Nadie visible con esos filtros. Sé el primero en activar tu
+                presencia, o amplía la búsqueda.
               </li>
             ) : (
               profiles.map((p) => (
@@ -535,11 +638,36 @@ export function NetworkPanel() {
                 <p className="min-w-0 flex-1 truncate font-medium text-ink">
                   {peerLabel}
                 </p>
+                <button
+                  type="button"
+                  className="shrink-0 text-xs text-ink-soft underline-offset-2 hover:text-ink hover:underline"
+                  onClick={() => void refreshMessages(activeConversationId)}
+                >
+                  Actualizar
+                </button>
               </div>
+              {realtimeMode === "polling" ? (
+                <p
+                  className="border-b border-[var(--line)] bg-[rgba(255,252,247,0.7)] px-4 py-2 text-xs text-ink-soft"
+                  role="status"
+                >
+                  Mensajes en vivo no disponibles (Realtime off o falló).
+                  Actualizamos cada pocos segundos — o toca Actualizar.
+                </p>
+              ) : realtimeMode === "connecting" ? (
+                <p
+                  className="border-b border-[var(--line)] px-4 py-2 text-xs text-ink-soft"
+                  role="status"
+                >
+                  Conectando chat en vivo…
+                </p>
+              ) : null}
               <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 py-3">
-                {messages.length === 0 ? (
+                {messagesLoading && messages.length === 0 ? (
+                  <p className="text-sm text-ink-soft">Cargando mensajes…</p>
+                ) : messages.length === 0 ? (
                   <p className="text-sm text-ink-soft">
-                    Di hola. Los mensajes llegan en vivo.
+                    Di hola. Los mensajes son privados entre ustedes dos.
                   </p>
                 ) : (
                   messages.map((m) => {
@@ -581,54 +709,59 @@ export function NetworkPanel() {
                   onChange={(e) => setDraft(e.target.value)}
                   placeholder="Escribe un mensaje…"
                   maxLength={2000}
+                  disabled={sending}
                 />
                 <button
                   type="submit"
                   className="btn btn-primary min-h-[44px] px-4"
                   disabled={sending || !draft.trim()}
                 >
-                  Enviar
+                  {sending ? "…" : "Enviar"}
                 </button>
               </form>
             </div>
           ) : (
             <div className="p-5">
               <p className="text-sm text-ink-soft">
-                Tus conversaciones. Abre una desde el directorio con
+                Conversaciones privadas. Abre una desde el directorio con
                 “Escribir”.
               </p>
-              <ul className="mt-3 divide-y divide-[var(--line)]">
-                {conversations.length === 0 ? (
-                  <li className="py-6 text-sm text-ink-soft">
-                    Aún no hay chats.
-                  </li>
-                ) : (
-                  conversations.map((c) => (
-                    <li key={c.id}>
-                      <button
-                        type="button"
-                        className="flex w-full items-start justify-between gap-3 py-3 text-left"
-                        onClick={() => void openConversation(c)}
-                      >
-                        <span className="min-w-0">
-                          <span className="block font-medium text-ink">
-                            {c.other?.display_name?.trim() || "Coleccionista"}
-                          </span>
-                          <span className="mt-0.5 block truncate text-xs text-ink-soft">
-                            {c.lastBody || "Sin mensajes aún"}
-                          </span>
-                        </span>
-                        <span className="shrink-0 text-[10px] text-ink-soft">
-                          {new Date(c.last_message_at).toLocaleDateString(
-                            "es",
-                            { day: "numeric", month: "short" }
-                          )}
-                        </span>
-                      </button>
+              {chatsLoading ? (
+                <p className="mt-4 text-sm text-ink-soft">Cargando chats…</p>
+              ) : (
+                <ul className="mt-3 divide-y divide-[var(--line)]">
+                  {conversations.length === 0 ? (
+                    <li className="py-6 text-sm text-ink-soft">
+                      Aún no hay chats. Busca a alguien en el directorio.
                     </li>
-                  ))
-                )}
-              </ul>
+                  ) : (
+                    conversations.map((c) => (
+                      <li key={c.id}>
+                        <button
+                          type="button"
+                          className="flex w-full items-start justify-between gap-3 py-3 text-left"
+                          onClick={() => void openConversation(c)}
+                        >
+                          <span className="min-w-0">
+                            <span className="block font-medium text-ink">
+                              {c.other?.display_name?.trim() || "Coleccionista"}
+                            </span>
+                            <span className="mt-0.5 block truncate text-xs text-ink-soft">
+                              {c.lastBody || "Sin mensajes aún"}
+                            </span>
+                          </span>
+                          <span className="shrink-0 text-[10px] text-ink-soft">
+                            {new Date(c.last_message_at).toLocaleDateString(
+                              "es",
+                              { day: "numeric", month: "short" }
+                            )}
+                          </span>
+                        </button>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              )}
             </div>
           )}
         </div>

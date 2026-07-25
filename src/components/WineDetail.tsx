@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { MatchConfidence, RatingSource, Wine } from "@/lib/types";
 import { CountryFlag } from "@/components/CountryFlag";
 import { parseGrapes } from "@/lib/grapes";
@@ -66,6 +66,7 @@ export function WineDetail({
   const [shareHint, setShareHint] = useState<string | null>(null);
   const [kimiLoading, setKimiLoading] = useState(false);
   const [kimiError, setKimiError] = useState("");
+  const [researchJustDone, setResearchJustDone] = useState(false);
   const [vivinoHint, setVivinoHint] = useState<string | null>(null);
   const [applyHint, setApplyHint] = useState<string | null>(null);
   const [labelSrc, setLabelSrc] = useState<string | null>(null);
@@ -73,6 +74,7 @@ export function WineDetail({
     estimate: number;
     current: number | null;
   } | null>(null);
+  const researchAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     setVerifyOpen(false);
@@ -85,10 +87,13 @@ export function WineDetail({
     setShareHint(null);
     setKimiLoading(false);
     setKimiError("");
+    setResearchJustDone(false);
     setVivinoHint(null);
     setApplyHint(null);
     setVivinoOffer(null);
     setLabelSrc(null);
+    researchAbortRef.current?.abort();
+    researchAbortRef.current = null;
   }, [wine?.id]);
 
   useEffect(() => {
@@ -242,8 +247,15 @@ export function WineDetail({
 
   async function handleKimiResearch() {
     if (!wine || !onSaveKimiResearch || kimiLoading) return;
+    researchAbortRef.current?.abort();
+    const abort = new AbortController();
+    researchAbortRef.current = abort;
+    const timeoutId = window.setTimeout(() => abort.abort(), 55_000);
+
     setKimiLoading(true);
     setKimiError("");
+    setResearchJustDone(false);
+    setVivinoOffer(null);
     try {
       const res = await fetch("/api/research-wine", {
         method: "POST",
@@ -261,6 +273,7 @@ export function WineDetail({
           cavataleRating: wine.cavataleRating,
           price: wine.price,
         }),
+        signal: abort.signal,
       });
       const raw = await res.text();
       let payload: { error?: string; research?: KimiResearch } = {};
@@ -271,23 +284,29 @@ export function WineDetail({
         };
       } catch {
         throw new Error(
-          res.ok
-            ? "La IA respondió en un formato inesperado."
-            : "El servidor tardó demasiado o falló. Intenta de nuevo."
+          res.status === 504 || res.status === 408
+            ? "La historia tardó demasiado. Reintenta en un momento."
+            : res.ok
+              ? "La IA respondió en un formato inesperado. Reintenta."
+              : "El servidor falló al contar la historia. Reintenta."
         );
       }
       if (!res.ok || !payload.research) {
+        if (res.status === 429) {
+          throw new Error("Demasiadas consultas. Espera un momento y reintenta.");
+        }
         throw new Error(payload.error || "No se pudo investigar este vino.");
       }
       const research = payload.research;
       const applied = onSaveKimiResearch(wine, research);
       const n = typeof applied === "number" ? applied : 1;
+      setResearchJustDone(true);
       setShareHint(
         n > 1 ? `Historia aplicada a ${n} botellas iguales` : "Historia lista"
       );
       window.setTimeout(() => setShareHint(null), 3500);
 
-      // Vivino: nunca auto-actualizar. Solo avisar si alta confianza y hay estimado distinto.
+      // Vivino: never auto-update. Offer only if high-conf and estimate differs.
       const est = research.kimiVivino;
       const highConf = research.kimiConfidence === "confirmed";
       const differs =
@@ -299,14 +318,24 @@ export function WineDetail({
         setVivinoOffer(null);
       }
     } catch (e) {
-      const msg =
-        e instanceof Error ? e.message : "Error al consultar la IA.";
-      setKimiError(
-        msg === "Failed to fetch"
-          ? "No hubo respuesta a tiempo. Revisa la conexión e intenta de nuevo."
-          : msg
-      );
+      if (e instanceof DOMException && e.name === "AbortError") {
+        setKimiError(
+          "La consulta se canceló o tardó demasiado. Puedes reintentar."
+        );
+      } else if (e instanceof TypeError) {
+        setKimiError("Sin conexión. Revisa internet e intenta de nuevo.");
+      } else {
+        const msg =
+          e instanceof Error ? e.message : "Error al consultar la IA.";
+        setKimiError(
+          msg === "Failed to fetch"
+            ? "No hubo respuesta a tiempo. Revisa la conexión e intenta de nuevo."
+            : msg
+        );
+      }
     } finally {
+      window.clearTimeout(timeoutId);
+      if (researchAbortRef.current === abort) researchAbortRef.current = null;
       setKimiLoading(false);
     }
   }
@@ -369,10 +398,10 @@ export function WineDetail({
           />
           {wine.type}
         </span>
-        <span className="rounded-[8px] border border-[rgba(110,31,44,0.35)] bg-[rgba(110,31,44,0.08)] px-2.5 py-1.5 text-xs font-medium text-ink">
+        <span className="rounded-[8px] border border-[rgba(110,31,44,0.4)] bg-[rgba(110,31,44,0.1)] px-2.5 py-1.5 text-xs font-semibold text-ink">
           Cavatale {formatCavataleRating(wine.cavataleRating)}
         </span>
-        <span className="rounded-[8px] border border-[var(--line)] px-2.5 py-1.5 text-xs text-ink">
+        <span className="rounded-[8px] border border-[var(--line)] px-2.5 py-1.5 text-xs text-ink-soft">
           Vivino {formatVivino(wine.vivino)}
         </span>
         <span className="rounded-[8px] border border-[var(--line)] px-2.5 py-1.5 text-xs text-ink">
@@ -412,7 +441,7 @@ export function WineDetail({
                 </h3>
               )}
             </div>
-            {hasKimi ? (
+            {hasDiscoveryStory ? (
               <button
                 type="button"
                 className="btn btn-ghost min-h-[40px] shrink-0 px-3 text-sm disabled:opacity-60"
@@ -425,16 +454,34 @@ export function WineDetail({
           </div>
 
           {kimiError ? (
-            <p className="mt-2 text-sm text-[var(--wine)]">{kimiError}</p>
+            <div className="mt-2 space-y-2" role="alert">
+              <p className="text-sm text-[var(--wine)]">{kimiError}</p>
+              <button
+                type="button"
+                className="btn btn-ghost min-h-[40px] px-3 text-sm disabled:opacity-60"
+                disabled={kimiLoading}
+                onClick={() => void handleKimiResearch()}
+              >
+                Reintentar
+              </button>
+            </div>
           ) : null}
 
           <AiTheaterStatus active={kimiLoading} className="mt-2" />
 
-          {!hasKimi ? (
+          {researchJustDone && !kimiLoading && !kimiError ? (
+            <p className="mt-2 text-sm text-[var(--wine-deep)]" role="status">
+              {vivinoOffer
+                ? "Historia lista. Abajo puedes aceptar o rechazar el Vivino estimado."
+                : "Historia lista. Rating Cavatale y relato actualizados."}
+            </p>
+          ) : null}
+
+          {!hasDiscoveryStory && !kimiLoading ? (
             <div className="mt-3">
               <p className="max-w-md text-sm leading-relaxed text-ink-soft">
-                Historia, dato curioso y un gancho para la mesa — lo que hace
-                distinta a Cavatale.
+                Historia, dato curioso, gancho de mesa y Rating Cavatale — lo
+                que hace distinta a esta botella.
               </p>
               <button
                 type="button"
@@ -442,9 +489,7 @@ export function WineDetail({
                 disabled={kimiLoading}
                 onClick={() => void handleKimiResearch()}
               >
-                {kimiLoading
-                  ? "Contando la historia…"
-                  : "Contar la historia de este vino"}
+                Contar la historia de este vino
               </button>
             </div>
           ) : null}
@@ -492,7 +537,7 @@ export function WineDetail({
           ) : null}
 
           {hasKimi && wine.cavataleRating != null ? (
-            <div className="mt-4 rounded-[10px] border border-[rgba(110,31,44,0.22)] bg-[rgba(110,31,44,0.06)] px-3 py-2.5">
+            <div className="mt-4 rounded-[10px] border border-[rgba(110,31,44,0.28)] bg-[rgba(110,31,44,0.08)] px-3 py-3">
               <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--wine)]">
                 Rating Cavatale
               </p>
@@ -500,18 +545,19 @@ export function WineDetail({
                 {formatCavataleRating(wine.cavataleRating)}
               </p>
               <p className="mt-1.5 text-xs text-ink-soft">
-                ~30% sabor · ~30% historia · ~25% mesa · ~15% originalidad.
+                Oficial Cavatale · ~30% sabor · ~30% historia · ~25% mesa ·
+                ~15% originalidad. Independiente de Vivino.
               </p>
             </div>
           ) : null}
 
           {vivinoOffer ? (
             <div
-              className="mt-4 rounded-[10px] border border-[rgba(110,31,44,0.28)] bg-[rgba(110,31,44,0.07)] px-3 py-3"
+              className="mt-4 rounded-[10px] border border-[rgba(110,31,44,0.28)] bg-[rgba(255,252,247,0.75)] px-3 py-3"
               role="status"
             >
-              <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--wine)]">
-                Vivino encontrado
+              <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                ¿Actualizar Vivino (comunidad)?
               </p>
               <p className="mt-1.5 text-sm leading-relaxed text-ink">
                 Con alta confianza la IA estima{" "}
@@ -530,7 +576,7 @@ export function WineDetail({
                 ) : (
                   <> y tu ficha aún no tiene Vivino.</>
                 )}{" "}
-                ¿Quieres actualizarlo?
+                El Rating Cavatale no cambia con esto.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
@@ -949,8 +995,9 @@ export function WineDetail({
       )}
 
       <p className="mt-6 text-xs leading-relaxed text-ink-soft sm:mt-8">
-        Precio y calificación son referencia. La IA estima; la verificación
-        manual con Vivino / Wine-Searcher sigue disponible abajo.
+        Rating Cavatale es el score oficial de la plataforma. Vivino y precio
+        son referencia de comunidad/mercado. La verificación manual sigue
+        disponible abajo.
       </p>
     </div>
   );

@@ -154,7 +154,7 @@ Ficha:\n\n${identity}`,
     });
   } catch {
     return NextResponse.json(
-      { error: "No se pudo contactar a Kimi." },
+      { error: "No se pudo contactar a la IA. Revisa la conexión e intenta de nuevo." },
       { status: 502 }
     );
   }
@@ -205,7 +205,7 @@ Ficha:\n\n${identity}`,
         error:
           e instanceof Error
             ? e.message
-            : "No se pudo interpretar la investigación.",
+            : "No se pudo interpretar la historia. Reintenta.",
         detail: content.slice(0, 400),
       },
       { status: 502 }

@@ -56,7 +56,9 @@ export async function updateOwnNetworkProfile(
     display_name?: string | null;
   }
 ): Promise<{ error: string | null }> {
-  if (!isSupabaseConfigured()) return { error: "Supabase no configurado." };
+  if (!isSupabaseConfigured()) {
+    return { error: "La red no está disponible (Supabase no configurado)." };
+  }
   const supabase = createClient();
 
   const country = patch.country?.trim() || null;
@@ -120,7 +122,10 @@ export async function getOrCreateDm(
   otherUserId: string
 ): Promise<{ conversationId: string | null; error: string | null }> {
   if (!isSupabaseConfigured()) {
-    return { conversationId: null, error: "Supabase no configurado." };
+    return {
+      conversationId: null,
+      error: "La red no está disponible (Supabase no configurado).",
+    };
   }
   const supabase = createClient();
   const { data, error } = await supabase.rpc("get_or_create_dm", {
@@ -221,7 +226,9 @@ export async function sendMessage(
   const trimmed = body.trim();
   if (!trimmed) return { error: "Escribe un mensaje." };
   if (trimmed.length > 2000) return { error: "Máximo 2000 caracteres." };
-  if (!isSupabaseConfigured()) return { error: "Supabase no configurado." };
+  if (!isSupabaseConfigured()) {
+    return { error: "No se puede enviar: la red no está disponible." };
+  }
 
   const supabase = createClient();
   const { data, error } = await supabase

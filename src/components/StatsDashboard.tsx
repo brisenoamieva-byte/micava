@@ -93,7 +93,11 @@ export function StatsDashboard({
         <Kpi
           label="Media Cavatale"
           value={formatCavataleRating(insights.avgCavatale)}
-          hint={`${insights.regions} regiones`}
+          hint={
+            insights.avgCavatale != null
+              ? "solo botellas con Rating Cavatale"
+              : "cuenta la historia de un vino"
+          }
         />
         <div className="panel col-span-2 flex items-center gap-4 p-4 lg:col-span-1">
           <OccupancyRing value={insights.occupancy} />
@@ -195,11 +199,16 @@ export function StatsDashboard({
 
         {/* Tipo donut + bands */}
         <section className="panel p-4 sm:p-5">
-          <Header title="Perfil" subtitle="Tipo, Cavatale y rangos de precio" />
+          <Header title="Perfil" subtitle="Tipo, Rating Cavatale y rangos de precio" />
           <div className="mt-5 flex flex-col items-center gap-6 sm:flex-row sm:items-start">
             <TypeDonut items={insights.byType} total={insights.bottles} />
             <div className="w-full flex-1 space-y-5">
-              <BandBlock title="Clasificación Cavatale" bands={insights.cavataleBands} color="var(--wine)" />
+              <BandBlock
+                title="Clasificación Cavatale"
+                emptyHint="Cuenta la historia de un vino para ver bandas"
+                bands={insights.cavataleBands}
+                color="var(--wine)"
+              />
               <BandBlock title="Precio" bands={insights.priceBands} color="var(--oak)" />
             </div>
           </div>
@@ -277,12 +286,12 @@ export function StatsDashboard({
       <div className="grid gap-5 lg:grid-cols-2">
         <RankList
           title="Mejor calificados"
-          subtitle="Rating Cavatale (o Vivino si aún no hay Cavatale)"
+          subtitle="Rating Cavatale primero; si falta, Vivino comunidad"
           wines={insights.topByCavatale}
           metric={(w) =>
             w.cavataleRating != null
-              ? formatCavataleRating(w.cavataleRating)
-              : formatVivino(w.vivino)
+              ? `C ${formatCavataleRating(w.cavataleRating)}`
+              : `V ${formatVivino(w.vivino)}`
           }
           onSelect={onSelectWine}
         />
@@ -441,8 +450,8 @@ function DrilldownList({
               </span>
               <span className="shrink-0 text-right text-xs font-medium text-ink">
                 {w.cavataleRating != null
-                  ? formatCavataleRating(w.cavataleRating)
-                  : formatVivino(w.vivino)}
+                  ? `C ${formatCavataleRating(w.cavataleRating)}`
+                  : `V ${formatVivino(w.vivino)}`}
                 <span className="mt-0.5 block font-normal text-ink-soft">
                   {formatPrice(w.price)}
                 </span>
@@ -588,30 +597,37 @@ function BandBlock({
   title,
   bands,
   color,
+  emptyHint,
 }: {
   title: string;
   bands: { label: string; count: number; share: number }[];
   color: string;
+  emptyHint?: string;
 }) {
+  const total = bands.reduce((s, b) => s + b.count, 0);
   return (
     <div>
       <p className="mb-2 text-[11px] uppercase tracking-[0.14em] text-ink-soft">{title}</p>
-      <div className="space-y-2">
-        {bands.map((b) => (
-          <div key={b.label}>
-            <div className="mb-0.5 flex justify-between text-xs">
-              <span className="text-ink">{b.label}</span>
-              <span className="text-ink-soft">{b.count}</span>
+      {total === 0 && emptyHint ? (
+        <p className="text-xs text-ink-soft">{emptyHint}</p>
+      ) : (
+        <div className="space-y-2">
+          {bands.map((b) => (
+            <div key={b.label}>
+              <div className="mb-0.5 flex justify-between text-xs">
+                <span className="text-ink">{b.label}</span>
+                <span className="text-ink-soft">{b.count}</span>
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-[rgba(26,23,20,0.08)]">
+                <div
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{ width: `${b.share * 100}%`, background: color }}
+                />
+              </div>
             </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-[rgba(26,23,20,0.08)]">
-              <div
-                className="h-full rounded-full transition-all duration-700"
-                style={{ width: `${b.share * 100}%`, background: color }}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -217,12 +217,7 @@ export function buildInsights(
       ? `${units[0].cols}×${units[0].rows.length}`
       : `${units.length} muebles`;
 
-  const bandSource = withCavatale.length > 0 ? withCavatale : withQuality;
-  const bandScore = (w: Wine) =>
-    withCavatale.length > 0
-      ? (w.cavataleRating ?? 0)
-      : (qualityScore(w) ?? 0);
-
+  // Classification bands: only bottles with a real Cavatale rating.
   const scoreDefs = [
     { label: "4.2+", test: (v: number) => v >= 4.2 },
     { label: "4.0–4.1", test: (v: number) => v >= 4.0 && v < 4.2 },
@@ -230,11 +225,13 @@ export function buildInsights(
     { label: "< 3.7", test: (v: number) => v < 3.7 },
   ];
   const cavataleBands: BandCount[] = scoreDefs.map((b) => {
-    const count = bandSource.filter((w) => b.test(bandScore(w))).length;
+    const count = withCavatale.filter((w) =>
+      b.test(w.cavataleRating ?? 0)
+    ).length;
     return {
       label: b.label,
       count,
-      share: bandSource.length ? count / bandSource.length : 0,
+      share: withCavatale.length ? count / withCavatale.length : 0,
     };
   });
 
@@ -274,12 +271,12 @@ export function buildInsights(
     .sort((a, b) => (b.price ?? 0) - (a.price ?? 0))
     .slice(0, 5);
 
+  // Only real Cavatale scores — never blend Vivino into “Media Cavatale”.
   const avgCavatale =
     withCavatale.length > 0
-      ? sum(withCavatale.map((w) => w.cavataleRating ?? 0)) / withCavatale.length
-      : withQuality.length > 0
-        ? sum(withQuality.map((w) => qualityScore(w) ?? 0)) / withQuality.length
-        : null;
+      ? sum(withCavatale.map((w) => w.cavataleRating ?? 0)) /
+        withCavatale.length
+      : null;
 
   return {
     bottles: wines.length,

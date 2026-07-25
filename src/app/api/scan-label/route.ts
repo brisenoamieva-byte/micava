@@ -309,7 +309,7 @@ export async function POST(request: Request) {
         error:
           e instanceof Error
             ? e.message
-            : "No se pudo contactar a Kimi. Revisa tu conexión.",
+            : "No se pudo contactar a la IA. Revisa tu conexión e intenta de nuevo.",
       },
       { status: 502 }
     );
@@ -322,7 +322,7 @@ export async function POST(request: Request) {
       {
         error:
           fields.notes ||
-          "No pude identificar el vino en esa foto (ni por texto ni por diseño). Prueba con más luz, de frente, o contraetiqueta.",
+          "No pude identificar el vino (ni por texto ni por diseño). Prueba más luz, de frente, o la contraetiqueta.",
         fields,
       },
       { status: 422 }

@@ -89,10 +89,11 @@ function DualRangeField({
 
   return (
     <label className="flex min-w-0 flex-col">
-      {/* Reserved 2-line title slot so short labels (Precio) match wrapped ones */}
-      <span className="mb-1 grid min-h-[2.5rem] grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:min-h-[2.75rem] sm:text-xs">
+      {/* Reserved 2-line slot keeps Vivino/Cavatale/Precio cards aligned; items-end
+          pins the title to the bottom so it reads with its slider, not the block above. */}
+      <span className="mb-0.5 grid min-h-[2.5rem] grid-cols-[minmax(0,1fr)_auto] items-end gap-x-2 text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:min-h-[2.75rem] sm:text-xs">
         <span className="leading-snug">{label}</span>
-        <span className="shrink-0 self-start pt-px normal-case tracking-normal text-ink">
+        <span className="shrink-0 normal-case tracking-normal text-ink">
           {displayLabel}
         </span>
       </span>
@@ -417,7 +418,7 @@ export function FiltersBar({ filters, onChange, total, wines }: Props) {
         </div>
 
         {/* Tres rangos: Calificación Vivino · Calificación Cavatale · Precio */}
-        <div className="grid grid-cols-1 items-stretch gap-2.5 sm:grid-cols-3">
+        <div className="grid grid-cols-1 items-stretch gap-x-2.5 gap-y-4 sm:grid-cols-3 sm:gap-y-2.5">
           <DualRangeField
             label={<ScoreRangeTitle name="Vivino" />}
             bounds={vivinoBounds}

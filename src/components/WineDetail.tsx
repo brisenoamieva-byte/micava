@@ -473,7 +473,6 @@ export function WineDetail({
               </p>
               <p className="mt-1.5 text-xs text-ink-soft">
                 ~30% sabor · ~30% historia · ~25% mesa · ~15% originalidad.
-                Independiente de Vivino.
               </p>
             </div>
           ) : null}

@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { PENDING_PASSWORD_COOKIE } from "@/lib/pending-password";
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -35,6 +36,25 @@ export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isAuthPage = path === "/login" || path === "/registro";
   const isProtected = path.startsWith("/cava");
+  const mustSetPassword =
+    request.cookies.get(PENDING_PASSWORD_COOKIE)?.value === "1";
+
+  // Recovery link signed them in — they MUST choose a new password first.
+  if (
+    mustSetPassword &&
+    user &&
+    path !== "/nueva-contrasena" &&
+    !path.startsWith("/auth/")
+  ) {
+    const redirect = request.nextUrl.clone();
+    redirect.pathname = "/nueva-contrasena";
+    redirect.search = "";
+    const res = NextResponse.redirect(redirect);
+    supabaseResponse.cookies.getAll().forEach((c) => {
+      res.cookies.set(c.name, c.value);
+    });
+    return res;
+  }
 
   if (isProtected && !user) {
     const redirect = request.nextUrl.clone();
@@ -45,7 +65,7 @@ export async function updateSession(request: NextRequest) {
 
   if (isAuthPage && user) {
     const redirect = request.nextUrl.clone();
-    redirect.pathname = "/cava";
+    redirect.pathname = mustSetPassword ? "/nueva-contrasena" : "/cava";
     redirect.search = "";
     return NextResponse.redirect(redirect);
   }

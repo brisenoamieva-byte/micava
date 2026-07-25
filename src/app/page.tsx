@@ -66,9 +66,10 @@ export default function HomePage() {
             <h1 className="fade-up leading-none text-[#141210]">
               <BrandWordmark size="hero" />
             </h1>
-            <p className="fade-up-delay mt-5 max-w-md text-base leading-relaxed text-[#4f4a43] sm:mt-6 sm:text-lg md:text-xl">
-              Tu cava en la nube — con historias que abren conversación al
-              descorchar. Gratis para quienes cuidan sus botellas.
+            <p className="fade-up-delay mt-5 max-w-lg text-base leading-relaxed text-[#4f4a43] sm:mt-6 sm:text-lg md:text-[1.25rem] md:leading-snug">
+              Cada botella guarda un lugar, unas manos, una decisión. Cavatale
+              deja que el vino hable: cuida tu cava y, al descorchar, te entrega
+              la historia que enciende la mesa.
             </p>
 
             <div className="fade-up-delay-2 mt-8 flex flex-col items-start gap-3 sm:mt-10 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
@@ -91,11 +92,6 @@ export default function HomePage() {
                 </p>
               )}
             </div>
-
-            <p className="fade-up-delay-2 mt-8 max-w-sm text-sm leading-relaxed text-[#4f4a43]">
-              Sin suscripciones. Si un día te gusta, regálame una botella —
-              trato entre amigos del vino.
-            </p>
           </div>
         </section>
       </div>

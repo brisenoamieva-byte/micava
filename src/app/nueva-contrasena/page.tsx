@@ -8,9 +8,10 @@ export default function NuevaContrasenaPage() {
       <div className="relative z-10 mx-auto flex min-h-[100dvh] max-w-md flex-col px-5 pb-10 pt-[max(2rem,env(safe-area-inset-top))]">
         <BrandMark size="sm" />
         <div className="mt-10 flex flex-1 flex-col justify-center">
-          <h1 className="display text-4xl text-ink">Nueva contraseña</h1>
+          <h1 className="display text-4xl text-ink">Elige tu contraseña</h1>
           <p className="mt-2 text-sm text-ink-soft">
-            Elige una contraseña nueva para tu cuenta en Cavatale.
+            Último paso del enlace del correo. Después entras a tu cava con
+            esta clave.
           </p>
           <div className="mt-8">
             <Suspense

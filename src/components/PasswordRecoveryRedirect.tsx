@@ -2,13 +2,19 @@
 
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { PENDING_PASSWORD_COOKIE } from "@/lib/pending-password";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 export const PASSWORD_RECOVERY_FLAG = "micava.password_recovery";
 
+function setPendingPasswordCookie() {
+  document.cookie = `${PENDING_PASSWORD_COOKIE}=1; Max-Age=3600; path=/; SameSite=Lax`;
+}
+
 /**
- * Recovery emails should hit /auth/reset or /nueva-contrasena.
- * Fallback: Site URL (/, /login) with ?code= or hash tokens → force reset route.
+ * Recovery emails should hit /auth/reset → /nueva-contrasena.
+ * Fallback: Site URL with ?code= / hash → force reset route.
+ * PASSWORD_RECOVERY always blocks /cava until a new password is saved.
  */
 export function PasswordRecoveryRedirect() {
   const router = useRouter();
@@ -32,18 +38,33 @@ export function PasswordRecoveryRedirect() {
     const onResetFlow =
       pathname === "/nueva-contrasena" || pathname.startsWith("/auth/");
 
+    const goSetPassword = () => {
+      sessionStorage.removeItem(PASSWORD_RECOVERY_FLAG);
+      setPendingPasswordCookie();
+      if (pathname !== "/nueva-contrasena") {
+        router.replace("/nueva-contrasena");
+      }
+    };
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
-        sessionStorage.removeItem(PASSWORD_RECOVERY_FLAG);
-        if (pathname !== "/nueva-contrasena") {
-          router.replace("/nueva-contrasena");
-        }
+        goSetPassword();
       }
     });
 
-    // Any recovery signal + code → dedicated server exchange (cookies on redirect)
+    // Pending cookie already set (from /auth/reset) but user landed elsewhere
+    const pending =
+      document.cookie
+        .split("; ")
+        .find((row) => row.startsWith(`${PENDING_PASSWORD_COOKIE}=`))
+        ?.split("=")[1] === "1";
+    if (pending && pathname !== "/nueva-contrasena" && !pathname.startsWith("/auth/")) {
+      router.replace("/nueva-contrasena");
+      return () => subscription.unsubscribe();
+    }
+
     if (code && !onResetFlow && expectingRecovery) {
       const q = new URLSearchParams({ code });
       if (type) q.set("type", type);
@@ -51,8 +72,6 @@ export function PasswordRecoveryRedirect() {
       return () => subscription.unsubscribe();
     }
 
-    // Bare ?code= on home/login: send through /auth/reset when flagged as recovery
-    // after PASSWORD_RECOVERY, or exchange and detect.
     if (
       code &&
       !onResetFlow &&
@@ -65,7 +84,6 @@ export function PasswordRecoveryRedirect() {
           if (event === "PASSWORD_RECOVERY") isRecovery = true;
         });
 
-        // Prefer server exchange so cookies stick — only if we already know recovery
         if (isRecovery) {
           nested.data.subscription.unsubscribe();
           const q = new URLSearchParams({ code });
@@ -82,8 +100,7 @@ export function PasswordRecoveryRedirect() {
 
         if (cancelled) return;
         if (isRecovery) {
-          sessionStorage.removeItem(PASSWORD_RECOVERY_FLAG);
-          router.replace("/nueva-contrasena");
+          goSetPassword();
           return;
         }
         if (!error) {
@@ -97,7 +114,6 @@ export function PasswordRecoveryRedirect() {
       };
     }
 
-    // Hash-style recovery tokens (implicit / older templates)
     const accessToken = hashParams.get("access_token");
     const refreshToken = hashParams.get("refresh_token");
     if (
@@ -111,9 +127,8 @@ export function PasswordRecoveryRedirect() {
           access_token: accessToken,
           refresh_token: refreshToken,
         });
-        sessionStorage.removeItem(PASSWORD_RECOVERY_FLAG);
         window.history.replaceState({}, "", pathname);
-        if (!error) router.replace("/nueva-contrasena");
+        if (!error) goSetPassword();
       })();
     }
 

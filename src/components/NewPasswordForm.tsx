@@ -4,7 +4,16 @@ import { type FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PasswordInput } from "@/components/PasswordInput";
+import { PENDING_PASSWORD_COOKIE } from "@/lib/pending-password";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+
+function clearPendingPasswordCookie() {
+  document.cookie = `${PENDING_PASSWORD_COOKIE}=; Max-Age=0; path=/; SameSite=Lax`;
+}
+
+function setPendingPasswordCookie() {
+  document.cookie = `${PENDING_PASSWORD_COOKIE}=1; Max-Age=3600; path=/; SameSite=Lax`;
+}
 
 export function NewPasswordForm() {
   const router = useRouter();
@@ -26,10 +35,8 @@ export function NewPasswordForm() {
     let cancelled = false;
 
     async function ensureSession() {
-      // PKCE: code may land directly on this page
       const code = search.get("code");
       if (code) {
-        // Prefer full navigation to server exchange (reliable cookies)
         window.location.replace(
           `/auth/reset?code=${encodeURIComponent(code)}${
             search.get("type")
@@ -51,7 +58,9 @@ export function NewPasswordForm() {
 
       const { data } = await supabase.auth.getSession();
       if (!cancelled) {
-        setHasSession(Boolean(data.session));
+        const ok = Boolean(data.session);
+        setHasSession(ok);
+        if (ok) setPendingPasswordCookie();
         setReady(true);
       }
     }
@@ -63,6 +72,7 @@ export function NewPasswordForm() {
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
         setHasSession(Boolean(session));
+        if (session) setPendingPasswordCookie();
         setReady(true);
       }
     });
@@ -117,6 +127,7 @@ export function NewPasswordForm() {
         setError(err.message);
         return;
       }
+      clearPendingPasswordCookie();
       router.replace("/cava");
       router.refresh();
     } catch (err) {
@@ -130,8 +141,10 @@ export function NewPasswordForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <p className="text-sm text-ink-soft">
-        Elige una contraseña nueva para tu cuenta.
+      <p className="text-sm leading-relaxed text-ink">
+        El enlace del correo solo confirmó que eres tú.{" "}
+        <strong>Aquí eliges la contraseña nueva</strong> — sin este paso no
+        podrás entrar después con email y clave.
       </p>
       <PasswordInput
         label="Nueva contraseña"
@@ -157,7 +170,7 @@ export function NewPasswordForm() {
         disabled={loading}
         className="btn btn-primary min-h-[48px] w-full"
       >
-        {loading ? "Guardando…" : "Guardar contraseña"}
+        {loading ? "Guardando…" : "Guardar y entrar a mi cava"}
       </button>
     </form>
   );

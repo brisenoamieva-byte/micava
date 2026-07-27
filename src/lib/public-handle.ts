@@ -60,8 +60,3 @@ export function buildPublicCellarUrl(
   );
   return `${base}${path}`;
 }
-
-/** Normalize directory search: optional leading @. */
-export function normalizeDirectoryQuery(query: string): string {
-  return normalizePublicHandle(query);
-}

@@ -87,29 +87,27 @@ export default function TerminosPage() {
             </h2>
             <p className="text-ink-soft">
               Conservas los derechos sobre el contenido que subes (fotos de
-              etiquetas, notas, perfil de red, cava pública si la activas). Nos
+              etiquetas, notas, perfil público y cava pública si la activas). Nos
               concedes una licencia limitada para alojarlo, mostrártelo y
               operar el servicio (incluida la generación de historias/ratings
               con IA a partir de los datos de botella que indiques).
             </p>
             <p className="text-ink-soft">
               No subas contenido ilegal, ofensivo, que infrinja derechos de
-              terceros, ni uses la red para acoso, spam o fraude.
+              terceros, ni uses el servicio para acoso, spam o fraude.
             </p>
           </section>
 
           <section className="space-y-2">
             <h2 className="text-lg font-medium text-ink">
-              5. Red de usuarios y cava pública
+              5. Cava pública
             </h2>
             <p className="text-ink-soft">
-              Aparecer en el directorio y compartir tu cava son voluntarios
-              (“Aparecer en la red” / “Cava pública”). Con cava pública eliges
-              un handle (@…) para el link `/u/tu-handle` y para que te busquen
-              en el directorio. Otros usuarios pueden ver tus vinos y
-              calificaciones, nunca precios ni el mapa de botellas. El correo
-              no forma parte del directorio. Cavatale no garantiza la conducta
-              de terceros; reporta abusos a{" "}
+              Hacer pública tu cava es voluntario (“Cava pública”). Eliges un
+              handle (@…) para el link `/u/tu-handle`. Quien tenga el link puede
+              ver tus vinos y calificaciones, nunca precios ni el mapa de
+              botellas. El correo no se publica. Cavatale no garantiza la
+              conducta de terceros; reporta abusos a{" "}
               <a
                 href="mailto:hello@lumien.org"
                 className="text-ink underline-offset-2 hover:underline"

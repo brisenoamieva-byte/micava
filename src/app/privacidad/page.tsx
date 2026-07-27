@@ -63,11 +63,10 @@ export default function PrivacidadPage() {
                 descorches/movimientos que registres.
               </li>
               <li>
-                <strong className="text-ink">Red (opt-in):</strong> si activas
-                “Aparecer en la red” o “Cava pública”, el nombre, país, ciudad y
-                bio que indiques pueden ser visibles a otros usuarios. Si
-                activas “Cava pública”, también se muestran tus vinos (sin
-                precios ni mapa de botellas).
+                <strong className="text-ink">Cava pública (opt-in):</strong> si
+                activas “Cava pública”, el nombre, handle (@…), país, ciudad y
+                bio que indiques, y tus vinos (sin precios ni mapa), pueden ser
+                visibles para quien tenga tu link `/u/tu-handle`.
               </li>
               <li>
                 <strong className="text-ink">Uso técnico:</strong> datos
@@ -89,10 +88,9 @@ export default function PrivacidadPage() {
                 vino).
               </li>
               <li>
-                Mostrarte en el directorio y, si activaste “Cava pública”,
-                permitir que otros te encuentren por tu handle (@…) y vean tus
-                vinos (sin precios). Tu correo no se muestra ni se busca en la
-                Red.
+                Si activaste “Cava pública”, permitir que quien tenga tu link
+                `/u/tu-handle` vea tu perfil público y tus vinos (sin precios).
+                Tu correo no se muestra.
               </li>
               <li>Mejorar la seguridad, estabilidad y experiencia del producto.</li>
               <li>
@@ -141,15 +139,14 @@ export default function PrivacidadPage() {
             <h2 className="text-lg font-medium text-ink">6. Compartición</h2>
             <p className="text-ink-soft">
               No vendemos datos personales. Compartimos información solo: (a)
-              contigo, dentro de tu cuenta; (b) con otros usuarios de Cavatale
-              si activaste la red o hiciste pública tu cava (perfil y, en ese
-              caso, vinos sin precios); (c) con proveedores que nos ayudan a
-              operar el servicio, bajo obligaciones de confidencialidad; (d)
-              cuando la ley lo exija.
+              contigo, dentro de tu cuenta; (b) con quien tenga tu link si
+              hiciste pública tu cava (perfil y vinos sin precios); (c) con
+              proveedores que nos ayudan a operar el servicio, bajo
+              obligaciones de confidencialidad; (d) cuando la ley lo exija.
             </p>
             <p className="text-ink-soft">
-              El mapa de botellas, precios y datos de compra no se publican en
-              la red. Solo compartes vinos si activas “Cava pública”.
+              El mapa de botellas, precios y datos de compra no se publican.
+              Solo compartes vinos si activas “Cava pública”.
             </p>
           </section>
 

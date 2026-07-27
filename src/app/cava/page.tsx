@@ -13,9 +13,9 @@ import { FirstRunGuide } from "@/components/FirstRunGuide";
 import { InstallAppHint } from "@/components/InstallAppHint";
 import { KimiUsageHint } from "@/components/KimiUsageHint";
 import { MoveWineSheet } from "@/components/MoveWineSheet";
-import { NetworkPanel } from "@/components/NetworkPanel";
 import { RecentHistory } from "@/components/RecentHistory";
 import { ResizableDesktopPanels } from "@/components/ResizableDesktopPanels";
+import { ShareCavaModal } from "@/components/ShareCavaModal";
 import { StatsDashboard } from "@/components/StatsDashboard";
 import { WineDetail } from "@/components/WineDetail";
 import { WineFormModal } from "@/components/WineFormModal";
@@ -58,7 +58,7 @@ const initialFilters: Filters = {
 };
 
 type MobilePanel = "mapa" | "lista" | "detalle";
-type AppMode = "cava" | "stats" | "network";
+type AppMode = "cava" | "stats";
 
 export default function CavaPage() {
   const {
@@ -117,6 +117,7 @@ export default function CavaPage() {
   const [guideDismissed, setGuideDismissed] = useState(false);
   const [storyHintDismissed, setStoryHintDismissed] = useState(false);
   const [showHowTo, setShowHowTo] = useState(false);
+  const [shareCavaOpen, setShareCavaOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
 
   async function handleVaciarCava() {
@@ -401,7 +402,7 @@ export default function CavaPage() {
           <div className="min-w-0">
             <BrandMark size="md" />
             <DisplayNameEditor />
-            {/* Desktop only — mobile uses bottom nav for Cava/Pulso/Red */}
+            {/* Desktop only — mobile uses bottom nav for Cava/Pulso */}
             <div className="mt-3 hidden xl:inline-flex rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.55)] p-1">
               <button
                 type="button"
@@ -426,18 +427,6 @@ export default function CavaPage() {
                 onClick={() => setMode("stats")}
               >
                 Pulso
-              </button>
-              <button
-                type="button"
-                className={[
-                  "min-h-[36px] rounded-[8px] px-3 text-sm transition",
-                  mode === "network"
-                    ? "bg-[rgba(110,31,44,0.12)] font-medium text-ink"
-                    : "text-ink-soft",
-                ].join(" ")}
-                onClick={() => setMode("network")}
-              >
-                Red
               </button>
             </div>
           </div>
@@ -489,6 +478,13 @@ export default function CavaPage() {
                     }}
                   >
                     Bitácora
+                  </button>
+                  <button
+                    type="button"
+                    className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
+                    onClick={() => setShareCavaOpen(true)}
+                  >
+                    Compartir cava
                   </button>
                   <button
                     type="button"
@@ -569,11 +565,7 @@ export default function CavaPage() {
           </p>
         ) : null}
 
-        {mode === "network" ? (
-          <div className="mt-6">
-            <NetworkPanel />
-          </div>
-        ) : mode === "stats" ? (
+        {mode === "stats" ? (
           <div className="mt-6 space-y-5">
             <div id="bitacora">
               <BitacoraPanel
@@ -939,13 +931,12 @@ export default function CavaPage() {
         )}
 
         <nav className="mobile-nav" aria-label="Navegación de cava">
-          <div className="mx-auto grid max-w-lg grid-cols-5 gap-0.5">
+          <div className="mx-auto grid max-w-lg grid-cols-4 gap-0.5">
             {(
               [
                 ["lista", "Lista", "cava"],
                 ["mapa", "Mapa", "cava"],
                 ["detalle", "Detalle", "cava"],
-                ["network", "Red", "network"],
                 ["stats", "Pulso", "stats"],
               ] as const
             ).map(([id, label, targetMode]) => (
@@ -958,17 +949,12 @@ export default function CavaPage() {
                     ? mode === "stats"
                       ? "page"
                       : undefined
-                    : targetMode === "network"
-                      ? mode === "network"
-                        ? "page"
-                        : undefined
-                      : mode === "cava" && mobilePanel === id
-                        ? "page"
-                        : undefined
+                    : mode === "cava" && mobilePanel === id
+                      ? "page"
+                      : undefined
                 }
                 onClick={() => {
                   if (targetMode === "stats") setMode("stats");
-                  else if (targetMode === "network") setMode("network");
                   else if (wines.length === 0) {
                     setMode("cava");
                     if (id === "detalle") openAdd();
@@ -1038,6 +1024,11 @@ export default function CavaPage() {
           setEncuentroOpen(false);
           openAdd("", { step: "form", prefill: draft });
         }}
+      />
+
+      <ShareCavaModal
+        open={shareCavaOpen}
+        onClose={() => setShareCavaOpen(false)}
       />
 
       <DepartTasteModal

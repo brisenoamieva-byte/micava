@@ -1,7 +1,6 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import {
   isValidPublicHandle,
-  normalizeDirectoryQuery,
   normalizePublicHandle,
   publicHandleValidationError,
 } from "@/lib/public-handle";
@@ -16,7 +15,6 @@ export type NetworkProfile = {
   network_visible: boolean;
   cava_public: boolean;
   network_updated_at: string | null;
-  /** Present on directory rows when bottle counts were loaded. */
   bottle_count?: number;
 };
 
@@ -73,7 +71,9 @@ export async function updateOwnNetworkProfile(
   }
 ): Promise<{ error: string | null }> {
   if (!isSupabaseConfigured()) {
-    return { error: "La red no está disponible (Supabase no configurado)." };
+    return {
+      error: "Compartir cava no está disponible (Supabase no configurado).",
+    };
   }
   const supabase = createClient();
 
@@ -160,73 +160,6 @@ export async function checkPublicHandleAvailable(
   });
   if (error) return { available: false, error: error.message };
   return { available: Boolean(data), error: null };
-}
-
-/** Directory: people who made their cava pública. */
-export async function listPublicCavaProfiles(opts: {
-  excludeUserId?: string;
-  country?: string;
-  city?: string;
-  query?: string;
-}): Promise<NetworkProfile[]> {
-  if (!isSupabaseConfigured()) return [];
-  const supabase = createClient();
-
-  let q = supabase
-    .from("profiles")
-    .select(PROFILE_COLS)
-    .eq("cava_public", true)
-    .order("network_updated_at", { ascending: false, nullsFirst: false });
-
-  if (opts.excludeUserId) {
-    q = q.neq("id", opts.excludeUserId);
-  }
-  if (opts.country?.trim()) {
-    q = q.ilike("country", `%${opts.country.trim()}%`);
-  }
-  if (opts.city?.trim()) {
-    q = q.ilike("city", `%${opts.city.trim()}%`);
-  }
-  if (opts.query?.trim()) {
-    const raw = normalizeDirectoryQuery(opts.query);
-    // Escape PostgREST filter special chars in user input
-    const safe = raw.replace(/[,.()%_\\]/g, "");
-    if (safe) {
-      q = q.or(
-        `display_name.ilike.%${safe}%,public_handle.ilike.%${safe}%`
-      );
-    }
-  }
-
-  const { data, error } = await q.limit(100);
-  if (error) throw new Error(error.message);
-  const profiles = (data as NetworkProfile[]) ?? [];
-  if (profiles.length === 0) return [];
-
-  const ids = profiles.map((p) => p.id);
-  const counts = await fetchPublicCavaBottleCounts(ids);
-  return profiles.map((p) => ({
-    ...p,
-    bottle_count: counts[p.id] ?? 0,
-  }));
-}
-
-export async function fetchPublicCavaBottleCounts(
-  ownerIds: string[]
-): Promise<Record<string, number>> {
-  if (!isSupabaseConfigured() || ownerIds.length === 0) return {};
-  const supabase = createClient();
-  const { data, error } = await supabase.rpc("public_cava_bottle_counts", {
-    owner_ids: ownerIds,
-  });
-  if (error) return {};
-  const map: Record<string, number> = {};
-  for (const row of data ?? []) {
-    const id = (row as { user_id: string }).user_id;
-    const n = Number((row as { bottle_count: number | string }).bottle_count);
-    if (id) map[id] = Number.isFinite(n) ? n : 0;
-  }
-  return map;
 }
 
 export async function fetchPublicProfile(

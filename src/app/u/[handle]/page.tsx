@@ -34,7 +34,7 @@ export async function generateMetadata({ params }: PageProps) {
   }
   return {
     title: `@${handle} — Cava pública | Cavatale`,
-    description: `Cava pública de @${handle} en Cavatale.`,
+    description: `Explora la cava pública de @${handle} en Cavatale. Crea la tuya gratis.`,
   };
 }
 
@@ -52,7 +52,7 @@ export default async function PublicHandlePage({ params }: PageProps) {
         <div className="relative z-10 mx-auto max-w-2xl px-5 py-10">
           <BrandMark size="sm" />
           <p className="mt-8 text-sm text-ink-soft">
-            La red no está disponible en este momento.
+            Esta cava no está disponible en este momento.
           </p>
         </div>
       </main>
@@ -60,6 +60,10 @@ export default async function PublicHandlePage({ params }: PageProps) {
   }
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   const { data: profileRow, error: profileError } = await supabase
     .from("profiles")
     .select(PROFILE_COLS)
@@ -72,6 +76,8 @@ export default async function PublicHandlePage({ params }: PageProps) {
   }
 
   const profile = profileRow as NetworkProfile;
+  const isOwnCava = Boolean(user && user.id === profile.id);
+  const showSignupCta = !user;
 
   const { data: wineRows } = await supabase
     .from("public_wines")
@@ -87,18 +93,28 @@ export default async function PublicHandlePage({ params }: PageProps) {
       <div className="relative z-10 mx-auto max-w-2xl px-5 pb-12 pt-[max(1.5rem,env(safe-area-inset-top))]">
         <header className="mb-6 flex items-center justify-between gap-3">
           <BrandMark size="sm" />
-          <Link
-            href="/cava"
-            className="btn btn-ghost min-h-[40px] px-3 text-sm"
-          >
-            Mi cava
-          </Link>
+          {user ? (
+            <Link
+              href="/cava"
+              className="btn btn-ghost min-h-[40px] px-3 text-sm"
+            >
+              {isOwnCava ? "Editar mi cava" : "Mi cava"}
+            </Link>
+          ) : (
+            <Link
+              href="/registro"
+              className="btn btn-primary min-h-[40px] px-3 text-sm"
+            >
+              Crear mi cava
+            </Link>
+          )}
         </header>
         <PublicCellarView
           profile={profile}
           wines={wines}
           backHref="/"
           backLabel="← Cavatale"
+          showSignupCta={showSignupCta}
         />
       </div>
     </main>

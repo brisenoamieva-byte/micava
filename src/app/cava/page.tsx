@@ -118,6 +118,7 @@ export default function CavaPage() {
   const [storyHintDismissed, setStoryHintDismissed] = useState(false);
   const [showHowTo, setShowHowTo] = useState(false);
   const [shareCavaOpen, setShareCavaOpen] = useState(false);
+  const [shareNudgeDismissed, setShareNudgeDismissed] = useState(true);
   const [clearing, setClearing] = useState(false);
 
   async function handleVaciarCava() {
@@ -143,6 +144,9 @@ export default function CavaPage() {
       setStoryHintDismissed(
         localStorage.getItem("micava.story.hint.v1") === "1"
       );
+      setShareNudgeDismissed(
+        localStorage.getItem("micava.share.nudge.v1") === "1"
+      );
     } catch {
       /* ignore */
     }
@@ -165,6 +169,20 @@ export default function CavaPage() {
     } catch {
       /* ignore */
     }
+  }
+
+  function dismissShareNudge() {
+    setShareNudgeDismissed(true);
+    try {
+      localStorage.setItem("micava.share.nudge.v1", "1");
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function openShareCava() {
+    dismissShareNudge();
+    setShareCavaOpen(true);
   }
 
   useEffect(() => {
@@ -194,6 +212,14 @@ export default function CavaPage() {
     !storyHintDismissed &&
     Boolean(selected) &&
     !selectedHasStory;
+
+  /** Soft prompt once the cava has a few bottles — share lives outside Más. */
+  const showShareNudge =
+    ready &&
+    Boolean(user) &&
+    wines.length >= 3 &&
+    !shareNudgeDismissed &&
+    !showStoryNext;
 
   // Persist dismissal once they already have a story for the focus wine.
   useEffect(() => {
@@ -460,6 +486,16 @@ export default function CavaPage() {
               >
                 Encuentro
               </button>
+              {user ? (
+                <button
+                  type="button"
+                  className="btn btn-ghost min-h-[40px] px-3 text-sm"
+                  onClick={openShareCava}
+                  title="Link público de tu cava"
+                >
+                  Compartir
+                </button>
+              ) : null}
               <details className="relative">
                 <summary className="flex min-h-[40px] cursor-pointer list-none items-center px-1 text-sm underline-offset-2 hover:text-ink hover:underline [&::-webkit-details-marker]:hidden">
                   Más
@@ -482,9 +518,9 @@ export default function CavaPage() {
                   <button
                     type="button"
                     className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
-                    onClick={() => setShareCavaOpen(true)}
+                    onClick={openShareCava}
                   >
-                    Compartir cava
+                    Link de mi cava
                   </button>
                   <button
                     type="button"
@@ -518,6 +554,32 @@ export default function CavaPage() {
         </header>
 
         <InstallAppHint />
+
+        {showShareNudge ? (
+          <div className="mt-4 rounded-[12px] border border-[rgba(110,31,44,0.22)] bg-[rgba(110,31,44,0.06)] p-4 text-sm text-ink">
+            <p className="font-medium">¿Compartes tu cava?</p>
+            <p className="mt-1 text-ink-soft">
+              Activa un link público para que alguien vea tus vinos — sin
+              precios ni mapa.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="btn btn-primary min-h-[40px] px-3 text-sm"
+                onClick={openShareCava}
+              >
+                Compartir cava
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost min-h-[40px] px-3 text-sm"
+                onClick={dismissShareNudge}
+              >
+                Ahora no
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         {!configured ? (
           <div className="mt-4 rounded-[12px] border border-[var(--line)] bg-[rgba(255,252,247,0.7)] p-4 text-sm text-ink">

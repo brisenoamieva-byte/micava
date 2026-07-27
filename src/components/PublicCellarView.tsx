@@ -24,6 +24,8 @@ type Props = {
   onBack?: () => void;
   backHref?: string;
   backLabel?: string;
+  /** Guest growth CTA — “Crear mi cava”. */
+  showSignupCta?: boolean;
 };
 
 function wineSearchHaystack(w: PublicWine): string {
@@ -56,6 +58,7 @@ export function PublicCellarView({
   onBack,
   backHref = "/",
   backLabel = "← Cavatale",
+  showSignupCta = false,
 }: Props) {
   const [mode, setMode] = useState<BrowseMode>("pais");
   const [query, setQuery] = useState("");
@@ -142,7 +145,7 @@ export function PublicCellarView({
             className="text-sm text-[var(--wine)] underline-offset-2 hover:underline"
             onClick={onBack}
           >
-            ← Directorio
+            ← Volver
           </button>
         ) : (
           <Link
@@ -164,6 +167,24 @@ export function PublicCellarView({
             <p className="mt-2 text-sm text-ink-soft">{profile.bio}</p>
           ) : null}
         </div>
+
+        {showSignupCta ? (
+          <div className="rounded-[12px] border border-[rgba(110,31,44,0.22)] bg-[rgba(110,31,44,0.06)] px-4 py-3">
+            <p className="text-sm font-medium text-ink">
+              ¿Te gusta esta cava?
+            </p>
+            <p className="mt-1 text-xs text-ink-soft">
+              Crea la tuya gratis: foto de etiqueta, mapa y historias para la
+              mesa.
+            </p>
+            <Link
+              href="/registro"
+              className="btn btn-primary mt-3 inline-flex min-h-[44px] items-center px-4 text-sm"
+            >
+              Crear mi cava
+            </Link>
+          </div>
+        ) : null}
 
         {loading ? (
           <div className="space-y-3 py-2">
@@ -290,6 +311,23 @@ export function PublicCellarView({
       <p className="px-1 text-xs text-ink-soft">
         Solo vinos y calificaciones (no precios).
       </p>
+
+      {showSignupCta ? (
+        <div className="sticky bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-10 rounded-[14px] border border-[var(--line)] bg-[rgba(255,252,247,0.96)] p-4 shadow-sm backdrop-blur-sm">
+          <p className="text-sm font-medium text-ink">
+            Así se ve una cava compartida
+          </p>
+          <p className="mt-1 text-xs text-ink-soft">
+            Guarda botellas, pide la historia y comparte la tuya con un link.
+          </p>
+          <Link
+            href="/registro"
+            className="btn btn-primary mt-3 flex min-h-[44px] w-full items-center justify-center text-sm"
+          >
+            Crear mi cava — es gratis
+          </Link>
+        </div>
+      ) : null}
     </div>
   );
 }

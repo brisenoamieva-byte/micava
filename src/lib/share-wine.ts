@@ -65,6 +65,11 @@ export function buildWineShareText(
   return lines.join("\n");
 }
 
+/** Short WhatsApp-friendly invite to a public cellar link. */
+export function buildPublicCellarShareText(url: string): string {
+  return [`Te comparto mi cava en Cavatale.`, "", url].join("\n");
+}
+
 export async function shareOrCopyText(
   text: string,
   title?: string

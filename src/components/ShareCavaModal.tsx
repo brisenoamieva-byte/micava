@@ -16,6 +16,10 @@ import {
   normalizePublicHandle,
   publicHandleValidationError,
 } from "@/lib/public-handle";
+import {
+  buildPublicCellarShareText,
+  shareOrCopyText,
+} from "@/lib/share-wine";
 
 const COUNTRY_SUGGESTIONS = [
   "México",
@@ -192,18 +196,37 @@ export function ShareCavaModal({ open, onClose }: Props) {
     }
     setInfo(
       formCavaPublic
-        ? `Tu cava es pública como @${handleNormalized}. Copia el link y compártelo.`
+        ? `Tu cava es pública como @${handleNormalized}. Ya puedes compartir el link.`
         : "Tu cava volvió a ser privada."
     );
     await loadOwn();
     await refreshProfile();
   }
 
-  async function copyMyCellarLink() {
-    if (!shareableHandle) return;
+  function cellarUrlFor(handle: string): string {
     const origin =
       typeof window !== "undefined" ? window.location.origin : null;
-    const url = buildPublicCellarUrl(shareableHandle, origin);
+    return buildPublicCellarUrl(handle, origin);
+  }
+
+  async function shareMyCellarLink() {
+    if (!shareableHandle) return;
+    const url = cellarUrlFor(shareableHandle);
+    const result = await shareOrCopyText(
+      buildPublicCellarShareText(url),
+      "Mi cava · Cavatale"
+    );
+    setInfo(null);
+    if (result === "shared") {
+      setCopyStatus("Listo — elige a quién enviársela.");
+    } else if (result === "copied") {
+      setCopyStatus("Link copiado. Ya puedes pegarlo en un mensaje.");
+    }
+  }
+
+  async function copyMyCellarLink() {
+    if (!shareableHandle) return;
+    const url = cellarUrlFor(shareableHandle);
     try {
       await navigator.clipboard.writeText(url);
       setCopyStatus("Link copiado. Ya puedes pegarlo en un mensaje.");
@@ -415,20 +438,32 @@ export function ShareCavaModal({ open, onClose }: Props) {
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                className="btn btn-primary min-h-[44px]"
+                className={[
+                  "btn min-h-[44px]",
+                  shareableHandle ? "btn-ghost" : "btn-primary",
+                ].join(" ")}
                 disabled={saving}
                 onClick={() => void saveShareSettings()}
               >
                 {saving ? "Guardando…" : "Guardar"}
               </button>
               {shareableHandle ? (
-                <button
-                  type="button"
-                  className="btn btn-ghost min-h-[44px]"
-                  onClick={() => void copyMyCellarLink()}
-                >
-                  Copiar link
-                </button>
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-primary min-h-[44px]"
+                    onClick={() => void shareMyCellarLink()}
+                  >
+                    Compartir
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost min-h-[44px]"
+                    onClick={() => void copyMyCellarLink()}
+                  >
+                    Copiar link
+                  </button>
+                </>
               ) : null}
             </div>
 

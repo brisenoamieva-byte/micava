@@ -21,10 +21,26 @@ const cormorant = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://cavatale.com"),
   title: "Cavatale — Tu cava, con historias",
   description:
     "Tu cava de vinos en la nube: inventario, mapa e historias que abren conversación al descorchar.",
   applicationName: "Cavatale",
+  openGraph: {
+    type: "website",
+    locale: "es_MX",
+    siteName: "Cavatale",
+    title: "Cavatale — Tu cava, con historias",
+    description:
+      "Tu cava de vinos en la nube: inventario, mapa e historias que abren conversación al descorchar.",
+    url: "https://cavatale.com",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Cavatale — Tu cava, con historias",
+    description:
+      "Tu cava de vinos en la nube: inventario, mapa e historias que abren conversación al descorchar.",
+  },
   appleWebApp: {
     capable: true,
     title: "Cavatale",

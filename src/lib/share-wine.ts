@@ -14,6 +14,8 @@ export function buildInviteFriendText(): string {
     "2) Ver tu cava en un mapa (dónde está cada una).",
     "3) Pedir la historia del vino para contar en la mesa.",
     "",
+    "También puedes compartir el link de tu cava con alguien.",
+    "",
     `Crea tu cava aquí (1 minuto): ${CAVATALE_REGISTRO_URL}`,
   ].join("\n");
 }

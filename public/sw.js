@@ -1,5 +1,5 @@
 /* Cavatale — minimal service worker for installability */
-const CACHE = "cavatale-shell-v1";
+const CACHE = "cavatale-shell-v2";
 const PRECACHE = [
   "/",
   "/cava",

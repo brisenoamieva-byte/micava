@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BrandMark } from "@/components/BrandMark";
 import { PublicCellarView } from "@/components/PublicCellarView";
@@ -26,15 +27,68 @@ function supabaseEnvReady(): boolean {
   );
 }
 
-export async function generateMetadata({ params }: PageProps) {
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
   const { handle: raw } = await params;
   const handle = normalizePublicHandle(raw);
   if (!isValidPublicHandle(handle)) {
     return { title: "Cava no encontrada — Cavatale" };
   }
+
+  const url = `https://cavatale.com/u/${handle}`;
+  let displayName = `@${handle}`;
+  let bottleCount: number | null = null;
+
+  if (supabaseEnvReady()) {
+    try {
+      const supabase = await createClient();
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id, display_name")
+        .eq("public_handle", handle)
+        .eq("cava_public", true)
+        .maybeSingle();
+
+      if (profile) {
+        displayName =
+          (profile.display_name as string | null)?.trim() || `@${handle}`;
+        const { count } = await supabase
+          .from("public_wines")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", profile.id as string);
+        bottleCount = count ?? 0;
+      }
+    } catch {
+      /* metadata still falls back to handle-only copy */
+    }
+  }
+
+  const title = `${displayName} (@${handle}) — Cava en Cavatale`;
+  const description =
+    bottleCount == null
+      ? `Explora la cava pública de ${displayName} en Cavatale. Crea la tuya gratis.`
+      : bottleCount === 1
+        ? `1 botella en la cava pública de ${displayName}. Explórala y crea la tuya gratis en Cavatale.`
+        : `${bottleCount} botellas en la cava pública de ${displayName}. Explórala y crea la tuya gratis en Cavatale.`;
+
   return {
-    title: `@${handle} — Cava pública | Cavatale`,
-    description: `Explora la cava pública de @${handle} en Cavatale. Crea la tuya gratis.`,
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      type: "profile",
+      locale: "es_MX",
+      siteName: "Cavatale",
+      url,
+      title,
+      description,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
   };
 }
 

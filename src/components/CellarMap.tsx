@@ -92,11 +92,36 @@ function useTouchMoveUi() {
   return touchUi;
 }
 
-/** Visual viewport box for fullscreen map — survives iOS/Android rotate + chrome. */
+/** True when the device is in landscape (robust across iOS/Android/PWA). */
+function readIsLandscape(): boolean {
+  if (typeof window === "undefined") return false;
+  const type = window.screen?.orientation?.type;
+  if (typeof type === "string") {
+    if (type.startsWith("landscape")) return true;
+    if (type.startsWith("portrait")) return false;
+  }
+  try {
+    if (window.matchMedia("(orientation: landscape)").matches) return true;
+    if (window.matchMedia("(orientation: portrait)").matches) return false;
+  } catch {
+    /* ignore */
+  }
+  // Legacy iOS
+  const angle = (window as Window & { orientation?: number }).orientation;
+  if (angle === 90 || angle === -90) return true;
+  if (angle === 0 || angle === 180) return false;
+  const width = Math.round(
+    window.visualViewport?.width ?? window.innerWidth
+  );
+  const height = Math.round(
+    window.visualViewport?.height ?? window.innerHeight
+  );
+  return width > height;
+}
+
+/** Keep expanded map layout in sync with phone rotation. */
 function useExpandedViewport(active: boolean) {
   const [box, setBox] = useState(() => ({
-    top: 0,
-    left: 0,
     width: 0,
     height: 0,
     landscape: false,
@@ -105,32 +130,36 @@ function useExpandedViewport(active: boolean) {
   useEffect(() => {
     if (!active) return;
 
-    let settleTimer: ReturnType<typeof setTimeout> | null = null;
+    const timers: ReturnType<typeof setTimeout>[] = [];
 
     const sync = () => {
       const vv = window.visualViewport;
       const width = Math.round(vv?.width ?? window.innerWidth);
       const height = Math.round(vv?.height ?? window.innerHeight);
-      const landscape =
-        width > height ||
-        window.matchMedia("(orientation: landscape)").matches;
       setBox({
-        top: Math.round(vv?.offsetTop ?? 0),
-        left: Math.round(vv?.offsetLeft ?? 0),
         width,
         height,
-        landscape,
+        landscape: readIsLandscape(),
       });
     };
 
     const syncSoon = () => {
+      for (const t of timers) clearTimeout(t);
+      timers.length = 0;
       sync();
-      // iOS Safari often reports stale sizes mid-orientation animation.
-      if (settleTimer) clearTimeout(settleTimer);
-      settleTimer = setTimeout(sync, 320);
+      // iOS/Android report stale sizes mid-orientation animation.
+      for (const ms of [50, 150, 320, 600, 1000]) {
+        timers.push(setTimeout(sync, ms));
+      }
     };
 
     sync();
+    try {
+      window.screen?.orientation?.unlock?.();
+    } catch {
+      /* may require gesture / unsupported */
+    }
+
     const vv = window.visualViewport;
     vv?.addEventListener("resize", syncSoon);
     vv?.addEventListener("scroll", sync);
@@ -138,14 +167,23 @@ function useExpandedViewport(active: boolean) {
     window.addEventListener("orientationchange", syncSoon);
     const mq = window.matchMedia("(orientation: landscape)");
     mq.addEventListener("change", syncSoon);
+    const onScreenOrientation = () => syncSoon();
+    window.screen?.orientation?.addEventListener?.(
+      "change",
+      onScreenOrientation
+    );
 
     return () => {
-      if (settleTimer) clearTimeout(settleTimer);
+      for (const t of timers) clearTimeout(t);
       vv?.removeEventListener("resize", syncSoon);
       vv?.removeEventListener("scroll", sync);
       window.removeEventListener("resize", syncSoon);
       window.removeEventListener("orientationchange", syncSoon);
       mq.removeEventListener("change", syncSoon);
+      window.screen?.orientation?.removeEventListener?.(
+        "change",
+        onScreenOrientation
+      );
     };
   }, [active]);
 
@@ -167,30 +205,46 @@ function useContainScale(
       return;
     }
 
-    const stage = stageRef.current;
-    const content = contentRef.current;
-    if (!stage || !content) return;
+    let ro: ResizeObserver | null = null;
+    let raf = 0;
+    let tries = 0;
 
-    const measure = () => {
-      const cw = stage.clientWidth;
-      const ch = stage.clientHeight;
-      // offset*/scroll* ignore CSS transforms — natural layout size.
-      const nw = content.scrollWidth;
-      const nh = content.scrollHeight;
-      if (cw <= 0 || ch <= 0 || nw <= 0 || nh <= 0) return;
-      const next = Math.min(cw / nw, ch / nh);
-      setMetrics({
-        scale: Math.min(Math.max(next, 0.35), 1.45),
-        width: nw,
-        height: nh,
-      });
+    const attach = () => {
+      const stage = stageRef.current;
+      const content = contentRef.current;
+      if (!stage || !content) {
+        if (tries++ < 20) {
+          raf = window.requestAnimationFrame(attach);
+        }
+        return;
+      }
+
+      const measure = () => {
+        const cw = stage.clientWidth;
+        const ch = stage.clientHeight;
+        // offset*/scroll* ignore CSS transforms — natural layout size.
+        const nw = content.scrollWidth;
+        const nh = content.scrollHeight;
+        if (cw <= 0 || ch <= 0 || nw <= 0 || nh <= 0) return;
+        const next = Math.min(cw / nw, ch / nh);
+        setMetrics({
+          scale: Math.min(Math.max(next, 0.35), 1.45),
+          width: nw,
+          height: nh,
+        });
+      };
+
+      measure();
+      ro = new ResizeObserver(measure);
+      ro.observe(stage);
+      ro.observe(content);
     };
 
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(stage);
-    ro.observe(content);
-    return () => ro.disconnect();
+    attach();
+    return () => {
+      if (raf) window.cancelAnimationFrame(raf);
+      ro?.disconnect();
+    };
   }, [enabled, layoutKey, stageRef, contentRef]);
 
   return metrics;
@@ -714,24 +768,20 @@ export function CellarMap({
     </div>
   );
 
-  const overlayStyle =
-    viewport.width > 0
-      ? {
-          top: viewport.top,
-          left: viewport.left,
-          width: viewport.width,
-          height: viewport.height,
-          paddingTop: "max(0.5rem, env(safe-area-inset-top))",
-          paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))",
-          paddingLeft: "max(0.5rem, env(safe-area-inset-left))",
-          paddingRight: "max(0.5rem, env(safe-area-inset-right))",
-        }
-      : {
-          paddingTop: "max(0.75rem, env(safe-area-inset-top))",
-          paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))",
-          paddingLeft: "max(0.75rem, env(safe-area-inset-left))",
-          paddingRight: "max(0.75rem, env(safe-area-inset-right))",
-        };
+  const overlayStyle = {
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: "100%",
+    height: "100%",
+    maxWidth: "none",
+    maxHeight: "none",
+    paddingTop: "max(0.5rem, env(safe-area-inset-top))",
+    paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))",
+    paddingLeft: "max(0.5rem, env(safe-area-inset-left))",
+    paddingRight: "max(0.5rem, env(safe-area-inset-right))",
+  } as const;
 
   if (expanded && portalReady) {
     return (
@@ -752,8 +802,7 @@ export function CellarMap({
             aria-modal="true"
             aria-labelledby="cellar-map-expanded-title"
             className={[
-              "map-expanded-overlay fixed z-[45] flex flex-col bg-[var(--surface-solid)]",
-              viewport.width > 0 ? "" : "inset-0",
+              "map-expanded-overlay fixed inset-0 z-[45] flex flex-col bg-[var(--surface-solid)]",
               landscapeFit ? "map-expanded-overlay--landscape" : "",
               dragId ? "map-is-dragging" : "",
             ]

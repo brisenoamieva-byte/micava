@@ -86,6 +86,110 @@ function useTouchMoveUi() {
   return touchUi;
 }
 
+/** Visual viewport box for fullscreen map — survives iOS/Android rotate + chrome. */
+function useExpandedViewport(active: boolean) {
+  const [box, setBox] = useState(() => ({
+    top: 0,
+    left: 0,
+    width: 0,
+    height: 0,
+    landscape: false,
+  }));
+
+  useEffect(() => {
+    if (!active) return;
+
+    let settleTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const sync = () => {
+      const vv = window.visualViewport;
+      const width = Math.round(vv?.width ?? window.innerWidth);
+      const height = Math.round(vv?.height ?? window.innerHeight);
+      const landscape =
+        width > height ||
+        window.matchMedia("(orientation: landscape)").matches;
+      setBox({
+        top: Math.round(vv?.offsetTop ?? 0),
+        left: Math.round(vv?.offsetLeft ?? 0),
+        width,
+        height,
+        landscape,
+      });
+    };
+
+    const syncSoon = () => {
+      sync();
+      // iOS Safari often reports stale sizes mid-orientation animation.
+      if (settleTimer) clearTimeout(settleTimer);
+      settleTimer = setTimeout(sync, 320);
+    };
+
+    sync();
+    const vv = window.visualViewport;
+    vv?.addEventListener("resize", syncSoon);
+    vv?.addEventListener("scroll", sync);
+    window.addEventListener("resize", syncSoon);
+    window.addEventListener("orientationchange", syncSoon);
+    const mq = window.matchMedia("(orientation: landscape)");
+    mq.addEventListener("change", syncSoon);
+
+    return () => {
+      if (settleTimer) clearTimeout(settleTimer);
+      vv?.removeEventListener("resize", syncSoon);
+      vv?.removeEventListener("scroll", sync);
+      window.removeEventListener("resize", syncSoon);
+      window.removeEventListener("orientationchange", syncSoon);
+      mq.removeEventListener("change", syncSoon);
+    };
+  }, [active]);
+
+  return box;
+}
+
+/** Scale grid to contain inside its stage (landscape expanded). */
+function useContainScale(
+  stageRef: MutableRefObject<HTMLDivElement | null>,
+  contentRef: MutableRefObject<HTMLDivElement | null>,
+  enabled: boolean,
+  layoutKey: string
+) {
+  const [metrics, setMetrics] = useState({ scale: 1, width: 0, height: 0 });
+
+  useEffect(() => {
+    if (!enabled) {
+      setMetrics({ scale: 1, width: 0, height: 0 });
+      return;
+    }
+
+    const stage = stageRef.current;
+    const content = contentRef.current;
+    if (!stage || !content) return;
+
+    const measure = () => {
+      const cw = stage.clientWidth;
+      const ch = stage.clientHeight;
+      // offset*/scroll* ignore CSS transforms — natural layout size.
+      const nw = content.scrollWidth;
+      const nh = content.scrollHeight;
+      if (cw <= 0 || ch <= 0 || nw <= 0 || nh <= 0) return;
+      const next = Math.min(cw / nw, ch / nh);
+      setMetrics({
+        scale: Math.min(Math.max(next, 0.35), 1.45),
+        width: nw,
+        height: nh,
+      });
+    };
+
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(stage);
+    ro.observe(content);
+    return () => ro.disconnect();
+  }, [enabled, layoutKey, stageRef, contentRef]);
+
+  return metrics;
+}
+
 export function CellarMap({
   wines,
   cols,
@@ -110,6 +214,17 @@ export function CellarMap({
   const [overTarget, setOverTarget] = useState<string | null>(null);
   const [showMoveHint, setShowMoveHint] = useState(false);
   const didDrag = useRef(false);
+  const fitStageRef = useRef<HTMLDivElement | null>(null);
+  const fitGridRef = useRef<HTMLDivElement | null>(null);
+  const viewport = useExpandedViewport(expanded);
+  const landscapeFit = expanded && viewport.landscape;
+  const fitMetrics = useContainScale(
+    fitStageRef,
+    fitGridRef,
+    landscapeFit,
+    `${cols}x${rows.join(",")}:${viewport.width}x${viewport.height}`
+  );
+  const fitScale = fitMetrics.scale;
 
   useEffect(() => {
     setPortalReady(true);
@@ -269,6 +384,89 @@ export function CellarMap({
     selectedWine.slot !== "abajo";
   const mapTitle = title?.trim() || "Mapa del mueble";
 
+  const gridInner = (
+    <div
+      ref={landscapeFit ? fitGridRef : undefined}
+      className={
+        landscapeFit
+          ? "map-expanded-grid"
+          : "grid min-w-[640px] gap-1 sm:min-w-[760px] sm:gap-1.5"
+      }
+      style={
+        landscapeFit
+          ? {
+              gridTemplateColumns: `20px repeat(${cols}, minmax(48px, 1fr))`,
+              width: Math.max(cols * 56 + 28, 360),
+              transform: `scale(${fitScale})`,
+              transformOrigin: "top left",
+            }
+          : {
+              gridTemplateColumns: `20px repeat(${cols}, minmax(0, 1fr))`,
+            }
+      }
+    >
+      <div />
+      {Array.from({ length: cols }, (_, i) => (
+        <div
+          key={`col-${i + 1}`}
+          className="pb-1 text-center text-[10px] font-medium text-ink-soft sm:text-[11px]"
+        >
+          {i + 1}
+        </div>
+      ))}
+
+      {rows.map((row) => (
+        <Row
+          key={row}
+          row={row}
+          cols={cols}
+          cellarId={cellarId}
+          wines={wines}
+          highlightedIds={highlightedIds}
+          selectedId={selectedId}
+          activeMoveId={activeMoveId}
+          overTarget={overTarget}
+          didDrag={didDrag}
+          emptyTapRef={emptyTapRef}
+          touchUi={touchUi}
+          pickMode={pickMode}
+          onInteractSlot={interactSlot}
+          onMoveWine={handleDesktopMove}
+          setDragId={setDragId}
+          setOverTarget={setOverTarget}
+          clearDesktopDrag={clearDesktopDrag}
+          beginPress={beginPress}
+          updatePress={updatePress}
+          endPress={endPress}
+        />
+      ))}
+    </div>
+  );
+
+  const mapGrid = landscapeFit ? (
+    <div ref={fitStageRef} className="map-expanded-stage">
+      <div
+        className="map-expanded-scaler"
+        style={{
+          width:
+            fitMetrics.width > 0
+              ? fitMetrics.width * fitScale
+              : "100%",
+          height:
+            fitMetrics.height > 0
+              ? fitMetrics.height * fitScale
+              : "auto",
+        }}
+      >
+        {gridInner}
+      </div>
+    </div>
+  ) : (
+    <div ref={mapScrollRef} className="map-scroll pb-1">
+      {gridInner}
+    </div>
+  );
+
   const mapBody = (
     <>
       {movingWine && pickMode ? (
@@ -382,50 +580,7 @@ export function CellarMap({
         </div>
       )}
 
-      <div ref={mapScrollRef} className="map-scroll pb-1">
-        <div
-          className="grid min-w-[640px] gap-1 sm:min-w-[760px] sm:gap-1.5"
-          style={{
-            gridTemplateColumns: `20px repeat(${cols}, minmax(0, 1fr))`,
-          }}
-        >
-          <div />
-          {Array.from({ length: cols }, (_, i) => (
-            <div
-              key={`col-${i + 1}`}
-              className="pb-1 text-center text-[10px] font-medium text-ink-soft sm:text-[11px]"
-            >
-              {i + 1}
-            </div>
-          ))}
-
-          {rows.map((row) => (
-            <Row
-              key={row}
-              row={row}
-              cols={cols}
-              cellarId={cellarId}
-              wines={wines}
-              highlightedIds={highlightedIds}
-              selectedId={selectedId}
-              activeMoveId={activeMoveId}
-              overTarget={overTarget}
-              didDrag={didDrag}
-              emptyTapRef={emptyTapRef}
-              touchUi={touchUi}
-              pickMode={pickMode}
-              onInteractSlot={interactSlot}
-              onMoveWine={handleDesktopMove}
-              setDragId={setDragId}
-              setOverTarget={setOverTarget}
-              clearDesktopDrag={clearDesktopDrag}
-              beginPress={beginPress}
-              updatePress={updatePress}
-              endPress={endPress}
-            />
-          ))}
-        </div>
-      </div>
+      {mapGrid}
 
       <div className="border-t border-[var(--line)] pt-3">
         <div className="mb-2 flex items-center justify-between gap-2">
@@ -553,6 +708,25 @@ export function CellarMap({
     </div>
   );
 
+  const overlayStyle =
+    viewport.width > 0
+      ? {
+          top: viewport.top,
+          left: viewport.left,
+          width: viewport.width,
+          height: viewport.height,
+          paddingTop: "max(0.5rem, env(safe-area-inset-top))",
+          paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))",
+          paddingLeft: "max(0.5rem, env(safe-area-inset-left))",
+          paddingRight: "max(0.5rem, env(safe-area-inset-right))",
+        }
+      : {
+          paddingTop: "max(0.75rem, env(safe-area-inset-top))",
+          paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))",
+          paddingLeft: "max(0.75rem, env(safe-area-inset-left))",
+          paddingRight: "max(0.75rem, env(safe-area-inset-right))",
+        };
+
   if (expanded && portalReady) {
     return (
       <>
@@ -571,15 +745,18 @@ export function CellarMap({
             role="dialog"
             aria-modal="true"
             aria-labelledby="cellar-map-expanded-title"
-            className="fixed inset-0 z-[45] flex flex-col bg-[var(--surface-solid)]"
-            style={{
-              paddingTop: "max(0.75rem, env(safe-area-inset-top))",
-              paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))",
-              paddingLeft: "max(0.75rem, env(safe-area-inset-left))",
-              paddingRight: "max(0.75rem, env(safe-area-inset-right))",
-            }}
+            className={[
+              "map-expanded-overlay fixed z-[45] flex flex-col bg-[var(--surface-solid)]",
+              viewport.width > 0 ? "" : "inset-0",
+              landscapeFit ? "map-expanded-overlay--landscape" : "",
+              dragId ? "map-is-dragging" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            data-orientation={landscapeFit ? "landscape" : "portrait"}
+            style={overlayStyle}
           >
-            <div className="mb-3 flex shrink-0 items-start justify-between gap-3 border-b border-[var(--line)] pb-3">
+            <div className="map-expanded-header mb-2 flex shrink-0 items-start justify-between gap-3 border-b border-[var(--line)] pb-2 sm:mb-3 sm:pb-3">
               <h2
                 id="cellar-map-expanded-title"
                 className="display min-w-0 text-xl leading-tight text-ink sm:text-2xl"
@@ -598,8 +775,141 @@ export function CellarMap({
                 <span>Cerrar</span>
               </button>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-2">
-              {mapShell}
+            <div
+              className={[
+                "map-expanded-body min-h-0 flex-1",
+                landscapeFit
+                  ? "flex flex-col gap-2 overflow-hidden"
+                  : "overflow-y-auto overscroll-contain pb-2",
+              ].join(" ")}
+            >
+              {landscapeFit ? (
+                <>
+                  <div className="map-expanded-chrome shrink-0 space-y-2">
+                    {/* Reuse chrome only — grid/abajo handled below */}
+                    {movingWine && pickMode ? (
+                      <div className="rounded-[10px] border border-[rgba(110,31,44,0.35)] bg-[rgba(250,249,245,0.96)] px-3 py-1.5">
+                        <p className="text-sm font-medium text-ink">
+                          Moviendo · {movingWine.name}
+                        </p>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                          {onPlaceAt ? (
+                            <button
+                              type="button"
+                              className="btn btn-primary min-h-[36px] px-3 text-xs disabled:opacity-50"
+                              disabled={!firstEmptySlot}
+                              onClick={() => {
+                                if (firstEmptySlot) onPlaceAt(firstEmptySlot);
+                              }}
+                            >
+                              {firstEmptySlot
+                                ? "Ocupar espacio disponible"
+                                : "Sin huecos libres"}
+                            </button>
+                          ) : null}
+                          {onCancelMove ? (
+                            <button
+                              type="button"
+                              className="text-xs font-medium text-[var(--wine)] underline-offset-2 hover:underline"
+                              onClick={onCancelMove}
+                            >
+                              Cancelar
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                  {mapGrid}
+                  <div className="map-expanded-abajo shrink-0 overflow-y-auto overscroll-contain border-t border-[var(--line)] pt-2">
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-ink-soft">
+                        Abajo / fuera
+                      </p>
+                      <p className="text-xs text-ink-soft">
+                        {abajo.length} botellas
+                      </p>
+                    </div>
+                    <div
+                      data-slot="abajo"
+                      onDragOver={(e) => {
+                        if (!onMoveWine || touchUi || pickMode) return;
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = "move";
+                        setOverTarget("abajo");
+                      }}
+                      onDragLeave={() => setOverTarget(null)}
+                      onDrop={(e) => {
+                        if (touchUi || pickMode) return;
+                        e.preventDefault();
+                        const id = e.dataTransfer.getData(DRAG_MIME) || dragId;
+                        if (id) handleDesktopMove(id, "abajo");
+                        else clearDesktopDrag();
+                      }}
+                      onClick={() => {
+                        if (pickMode && onPlaceAt) onPlaceAt("abajo");
+                      }}
+                      className={[
+                        "min-h-[44px] rounded-[10px] border border-dashed p-1.5 transition",
+                        pickMode ? "cursor-pointer" : "",
+                        overTarget === "abajo" || (pickMode && movingWineId)
+                          ? "border-[var(--wine)] bg-[rgba(122,36,48,0.08)]"
+                          : "border-[var(--line)] bg-[rgba(255,252,247,0.35)]",
+                      ].join(" ")}
+                    >
+                      <div className="flex flex-wrap gap-1.5">
+                        {abajo.length === 0 ? (
+                          <p className="px-1 py-1 text-xs text-ink-soft">
+                            {pickMode
+                              ? "Toca para soltar abajo / fuera"
+                              : "Sin botellas fuera de la rejilla."}
+                          </p>
+                        ) : (
+                          abajo.map((wine) => {
+                            const active = wine.id === selectedId;
+                            const isMoving = activeMoveId === wine.id;
+                            return (
+                              <div
+                                key={wine.id}
+                                role="button"
+                                tabIndex={0}
+                                data-slot="abajo"
+                                onPointerDown={(e) => beginPress(wine, e)}
+                                onPointerMove={updatePress}
+                                onPointerUp={endPress}
+                                onPointerCancel={endPress}
+                                onClick={() => {
+                                  if (didDrag.current) {
+                                    didDrag.current = false;
+                                    return;
+                                  }
+                                  interactSlot("abajo", wine);
+                                }}
+                                className={[
+                                  "map-cell map-cell--draggable inline-flex min-h-[40px] max-w-full cursor-grab items-center gap-2 rounded-[10px] border px-2 py-1.5 text-left text-sm transition",
+                                  active || isMoving
+                                    ? "border-[var(--wine)] bg-[rgba(122,36,48,0.08)] text-ink slot-active"
+                                    : "border-[var(--line)] bg-[rgba(255,252,247,0.55)] text-ink",
+                                  isMoving
+                                    ? "ring-2 ring-[var(--wine)] opacity-90"
+                                    : "",
+                                ].join(" ")}
+                              >
+                                <CountryFlag country={wine.country} size="sm" />
+                                <span className="max-w-[9rem] truncate font-medium">
+                                  {wine.name}
+                                </span>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                mapShell
+              )}
             </div>
           </div>,
           document.body

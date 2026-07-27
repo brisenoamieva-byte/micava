@@ -559,6 +559,51 @@ select {
   scrollbar-width: thin;
 }
 
+/* Fullscreen Ampliar: visualViewport-sized overlay; landscape fits grid. */
+.map-expanded-overlay {
+  box-sizing: border-box;
+  max-width: 100vw;
+  max-height: 100dvh;
+}
+
+.map-expanded-stage {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.map-expanded-scaler {
+  position: relative;
+  flex-shrink: 0;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.map-expanded-grid {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.map-expanded-overlay--landscape .map-expanded-abajo {
+  max-height: min(28vh, 8.5rem);
+}
+
+.map-expanded-overlay--landscape .map-cell {
+  min-height: 48px;
+}
+
+@media (orientation: landscape) {
+  .map-expanded-overlay--landscape .map-expanded-header .display {
+    font-size: 1.15rem;
+  }
+}
+
 /*
  * Cells must not use `manipulation` alone — that blocks parent pan-x when the
  * gesture starts on a bottle. pan-x/pan-y keeps scroll free; long-press still

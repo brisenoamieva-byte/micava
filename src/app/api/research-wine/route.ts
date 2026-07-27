@@ -15,6 +15,7 @@ import {
   recordKimiUsage,
   type KimiTokenUsage,
 } from "@/lib/kimi-usage";
+import { captureApiFailure } from "@/lib/sentry-api";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -329,6 +330,7 @@ export async function POST(request: Request) {
   let sessionUsage: KimiTokenUsage | null = first.usage;
 
   if (!first.ok) {
+    captureApiFailure(USAGE_ROUTE, "kimi_upstream", first.error, first.status);
     await recordKimiUsage({
       userId: guard.userId,
       route: USAGE_ROUTE,
@@ -345,6 +347,7 @@ export async function POST(request: Request) {
   try {
     finalized = finalizeResearch(first.content);
   } catch (e) {
+    captureApiFailure(USAGE_ROUTE, "parse_research", e, 502);
     await recordKimiUsage({
       userId: guard.userId,
       route: USAGE_ROUTE,

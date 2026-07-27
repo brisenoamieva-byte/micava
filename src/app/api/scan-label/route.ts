@@ -12,6 +12,7 @@ import {
   parseScanLabelResult,
   type ScanLabelFields,
 } from "@/lib/scan-label";
+import { captureApiFailure } from "@/lib/sentry-api";
 import { wineCountriesForPrompt } from "@/lib/wine-countries";
 
 export const runtime = "nodejs";
@@ -333,6 +334,7 @@ export async function POST(request: Request) {
     vision = await visionIdentify(apiKey, imageDataUrl);
     sessionUsage = addKimiUsage(sessionUsage, vision.usage);
   } catch (e) {
+    captureApiFailure(USAGE_ROUTE, "vision_identify", e, 502);
     const errUsage =
       e && typeof e === "object" && "usage" in e
         ? ((e as { usage?: KimiTokenUsage | null }).usage ?? null)
@@ -382,8 +384,9 @@ export async function POST(request: Request) {
     if (enriched.fields?.name) {
       fields = mergeEnrichment(fields, enriched.fields);
     }
-  } catch {
+  } catch (e) {
     // Keep vision-only result; market fields may stay null
+    captureApiFailure(USAGE_ROUTE, "enrich_web", e);
   }
 
   const methodNote =

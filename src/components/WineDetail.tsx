@@ -732,7 +732,7 @@ export function WineDetail({
               </p>
               <p className="mt-1.5 text-xs text-ink-soft">
                 Oficial Cavatale · ~30% sabor · ~30% historia · ~25% mesa ·
-                ~15% originalidad. Independiente de la calificación Vivino.
+                ~15% originalidad.
               </p>
             </div>
           ) : null}

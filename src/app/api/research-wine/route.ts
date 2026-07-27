@@ -104,6 +104,16 @@ REESCRITURA OBLIGATORIA: tu borrador anterior sonaba a ficha de catálogo o era 
 - Mantén coherencia: mismos hechos en todos los campos.
 - Devuelve SOLO el JSON completo otra vez.`;
 
+const RETRY_ENCOUNTER_SUFFIX = `
+
+REESCRITURA OBLIGATORIA (modo encuentro / mesa esta noche):
+- talkHook: exactamente 1 frase oral, provocadora, para decir YA con la copa en la mano. Cero preguntas de cata.
+- Abre summary con PERSONA o detalle concreto — nunca DO/región/tipología.
+- curiosity y talkHook hechos distintos; sin inventar.
+- Devuelve SOLO el JSON completo otra vez.`;
+
+type ResearchMode = "cellar" | "encounter";
+
 type Body = {
   name?: string;
   winery?: string;
@@ -120,7 +130,28 @@ type Body = {
   userCorrection?: string | null;
   /** Alias of userCorrection. */
   feedback?: string | null;
+  /**
+   * "encounter" = restaurant table tonight (Encuentro).
+   * Bias talkHook toward something you can say out loud with the glass in hand.
+   * Default / omit = cellar Contar historia.
+   */
+  mode?: ResearchMode | string | null;
 };
+
+const ENCOUNTER_TALKHOOK_BIAS = `
+
+MODO ENCUENTRO (mesa de esta noche):
+Esta consulta viene de un restaurante / mesa ahora — no de una cava en casa.
+- talkHook es EL HÉROE: exactamente 1 frase (nunca 2) que se diga EN VOZ ALTA con la copa en la mano.
+- Tono: oral, provocador, humano — para esta mesa esta noche. No suena a pregunta de cata ni a tip genérico de sommelier.
+- Preferí: un secreto de gente, una decisión íntima, un "¿sabían que…?" anclado en hechos reales de ESTA botella.
+- Prohibido: "¿notas…?", "busca aromas de…", "ideal para maridar con…", preguntas de degustación, ganchos genéricos de región/DO.
+- summary y curiosity siguen siendo el relato completo; talkHook es lo que se lanza primero a la mesa.`;
+
+function resolveMode(raw: Body["mode"]): ResearchMode {
+  const m = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+  return m === "encounter" || m === "encuentro" ? "encounter" : "cellar";
+}
 
 type KimiChatResponse = {
   choices?: Array<{ message?: { content?: string | null } }>;
@@ -132,11 +163,21 @@ type KimiChatResponse = {
   };
 };
 
-function buildUserPrompt(identity: string): string {
-  return `Esta botella está a punto de abrirse (o regalarse). Prioriza a las personas detrás del vino (fundadores, dueños, familia, enólogo/a) si las conoces; si no, sé honesto y cuenta lo más íntimo y concreto que sí sepas — sin inventar.
+function buildUserPrompt(identity: string, mode: ResearchMode): string {
+  const talkHookHint =
+    mode === "encounter"
+      ? "talkHook (1 frase oral para decir YA en esta mesa, con la copa en la mano — provocación humana, no cata)"
+      : "talkHook (provocación de mesa)";
 
-Dame JSON con: Rating Cavatale (~30% sabor/calidad en copa, ~30% historia/autenticidad, ~25% experiencia de mesa, ~15% originalidad/interés), summary (historia íntima; NUNCA abrir con denominación/región genérica), curiosity (dato que se repite), talkHook (provocación de mesa), pairings + pairingNote, y estimaciones vivino/price solo si las conoces bien. No metas Vivino en los textos narrativos.
+  const opener =
+    mode === "encounter"
+      ? "Esta botella está en la mesa AHORA (restaurante / cena). Prioriza a las personas detrás del vino (fundadores, dueños, familia, enólogo/a) si las conoces; si no, sé honesto y cuenta lo más íntimo y concreto que sí sepas — sin inventar."
+      : "Esta botella está a punto de abrirse (o regalarse). Prioriza a las personas detrás del vino (fundadores, dueños, familia, enólogo/a) si las conoces; si no, sé honesto y cuenta lo más íntimo y concreto que sí sepas — sin inventar.";
 
+  return `${opener}
+
+Dame JSON con: Rating Cavatale (~30% sabor/calidad en copa, ~30% historia/autenticidad, ~25% experiencia de mesa, ~15% originalidad/interés), summary (historia íntima; NUNCA abrir con denominación/región genérica), curiosity (dato que se repite), ${talkHookHint}, pairings + pairingNote, y estimaciones vivino/price solo si las conoces bien. No metas Vivino en los textos narrativos.
+${mode === "encounter" ? ENCOUNTER_TALKHOOK_BIAS : ""}
 Ficha:\n\n${identity}`;
 }
 
@@ -279,10 +320,11 @@ export async function POST(request: Request) {
     price: body.price ?? null,
   });
 
+  const mode = resolveMode(body.mode);
   const correctionBlock = correctionNote
     ? buildUserCorrectionPromptBlock(correctionNote)
     : "";
-  const userPrompt = buildUserPrompt(identity) + correctionBlock;
+  const userPrompt = buildUserPrompt(identity, mode) + correctionBlock;
   const first = await callKimi(apiKey, userPrompt);
   let sessionUsage: KimiTokenUsage | null = first.usage;
 
@@ -322,7 +364,9 @@ export async function POST(request: Request) {
   }
 
   if (finalized.shouldRetry) {
-    const second = await callKimi(apiKey, userPrompt + RETRY_USER_SUFFIX);
+    const retrySuffix =
+      mode === "encounter" ? RETRY_ENCOUNTER_SUFFIX : RETRY_USER_SUFFIX;
+    const second = await callKimi(apiKey, userPrompt + retrySuffix);
     sessionUsage = addKimiUsage(sessionUsage, second.usage);
     if (second.ok) {
       try {

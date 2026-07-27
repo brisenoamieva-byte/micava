@@ -220,6 +220,7 @@ export function EncuentroModal({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          mode: "encounter",
           name: identity.name.trim(),
           winery: identity.winery.trim(),
           country: identity.country.trim(),
@@ -348,7 +349,7 @@ export function EncuentroModal({
               {step === "identify"
                 ? "Historia para esta mesa · sin sumarla a tu cava"
                 : step === "story"
-                  ? "Relato, dato curioso y calificación Cavatale — no hace falta precio ni casilla."
+                  ? "Primero el gancho para decir en voz alta — luego el relato completo."
                   : "Guarda el encuentro en tu bitácora. Sumar a la cava es opcional."}
             </p>
           </div>
@@ -526,11 +527,11 @@ export function EncuentroModal({
               {!hasStory && !kimiLoading ? (
                 <div>
                   <h3 className="display text-[1.65rem] leading-tight text-ink">
-                    ¿Qué cuenta esta botella?
+                    ¿Qué se dice en esta mesa?
                   </h3>
                   <p className="mt-2 max-w-md text-sm leading-relaxed text-ink-soft">
-                    Historia, dato curioso, gancho de mesa y calificación
-                    Cavatale — para esta mesa, no para el mapa.
+                    Una frase para lanzar con la copa en la mano — y detrás, la
+                    historia completa. Ritual de mesa, no del mapa.
                   </p>
                   <button
                     type="button"
@@ -549,7 +550,7 @@ export function EncuentroModal({
                 <div className="mt-2 space-y-4">
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--wine)]">
-                      Descubrimiento
+                      Esta mesa
                     </p>
                     <button
                       type="button"
@@ -568,6 +569,16 @@ export function EncuentroModal({
                       )}
                     </button>
                   </div>
+                  {research.kimiTalkHook ? (
+                    <div className="rounded-[12px] border border-[rgba(110,31,44,0.28)] bg-[rgba(110,31,44,0.07)] px-3.5 py-4">
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--wine)]">
+                        Para decir en la mesa
+                      </p>
+                      <p className="display mt-2 text-[1.35rem] leading-snug text-ink sm:text-[1.5rem]">
+                        {research.kimiTalkHook}
+                      </p>
+                    </div>
+                  ) : null}
                   {research.kimiSummary ? (
                     <div>
                       <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
@@ -585,16 +596,6 @@ export function EncuentroModal({
                       </p>
                       <p className="mt-1.5 text-sm leading-relaxed text-ink">
                         {research.kimiCuriosity}
-                      </p>
-                    </div>
-                  ) : null}
-                  {research.kimiTalkHook ? (
-                    <div className="rounded-[10px] border border-[rgba(110,31,44,0.2)] bg-[rgba(255,252,247,0.65)] px-3 py-3">
-                      <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                        Para conversar
-                      </p>
-                      <p className="mt-1.5 text-sm leading-relaxed italic text-ink">
-                        {research.kimiTalkHook}
                       </p>
                     </div>
                   ) : null}
@@ -637,6 +638,14 @@ export function EncuentroModal({
               {research.cavataleRating != null ? (
                 <p className="text-xs text-[var(--wine)]">
                   Cavatale {formatCavataleRating(research.cavataleRating)}
+                </p>
+              ) : null}
+              {research.kimiTalkHook ? (
+                <p className="mt-1.5 text-sm leading-snug text-ink">
+                  <span className="text-[11px] uppercase tracking-[0.12em] text-ink-soft">
+                    Gancho ·{" "}
+                  </span>
+                  {research.kimiTalkHook}
                 </p>
               ) : null}
             </div>

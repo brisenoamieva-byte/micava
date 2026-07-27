@@ -81,6 +81,11 @@ export function BitacoraPanel({ entries, onRemove }: Props) {
                       {e.note}
                     </p>
                   ) : null}
+                  {!e.note && e.kimiTalkHook && !isOpen ? (
+                    <p className="mt-0.5 line-clamp-1 text-xs italic text-ink-soft">
+                      {e.kimiTalkHook}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="shrink-0 text-right text-xs text-ink">
                   {e.cavataleRating != null ? (
@@ -115,6 +120,16 @@ export function BitacoraPanel({ entries, onRemove }: Props) {
                       ) : null}
                     </div>
                   ) : null}
+                  {open.kimiTalkHook ? (
+                    <div className="rounded-[10px] border border-[rgba(110,31,44,0.22)] bg-[rgba(110,31,44,0.06)] px-2.5 py-2.5">
+                      <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--wine)]">
+                        Para decir en la mesa
+                      </p>
+                      <p className="mt-1.5 text-[15px] leading-snug text-ink">
+                        {open.kimiTalkHook}
+                      </p>
+                    </div>
+                  ) : null}
                   {open.kimiSummary ? (
                     <div>
                       <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
@@ -132,16 +147,6 @@ export function BitacoraPanel({ entries, onRemove }: Props) {
                       </p>
                       <p className="mt-1.5 text-sm leading-relaxed text-ink">
                         {open.kimiCuriosity}
-                      </p>
-                    </div>
-                  ) : null}
-                  {open.kimiTalkHook ? (
-                    <div className="rounded-[8px] border border-[rgba(110,31,44,0.15)] px-2.5 py-2">
-                      <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                        Para conversar
-                      </p>
-                      <p className="mt-1 text-sm italic leading-relaxed text-ink">
-                        {open.kimiTalkHook}
                       </p>
                     </div>
                   ) : null}

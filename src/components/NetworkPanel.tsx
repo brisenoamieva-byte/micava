@@ -253,7 +253,7 @@ export function NetworkPanel() {
               <li>Nombre público, país/ciudad y bio (si los escribes).</li>
               <li>
                 Si activas “Cava pública”: tus vinos (nombre, bodega, tipo,
-                uva, calificaciones). Nunca precios ni el mapa de botellas.
+                uva, calificaciones) (no precios).
               </li>
               <li>Nunca tu email ni chats — la Red no tiene mensajería.</li>
             </ul>

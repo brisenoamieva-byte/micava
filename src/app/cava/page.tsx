@@ -455,72 +455,68 @@ export default function CavaPage() {
                 </span>
               </>
             ) : null}
-            <div className="flex flex-col items-end gap-1">
-              <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-2">
-                <button
-                  type="button"
-                  className="btn btn-primary min-h-[40px] px-3 text-sm"
-                  onClick={() => openAdd()}
-                >
-                  + Agregar
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-ghost min-h-[40px] px-3 text-sm"
-                  onClick={openEncuentro}
-                >
-                  Encuentro
-                </button>
-                <details className="relative">
-                  <summary className="flex min-h-[40px] cursor-pointer list-none items-center px-1 text-sm underline-offset-2 hover:text-ink hover:underline [&::-webkit-details-marker]:hidden">
-                    Más
-                  </summary>
-                  <div className="absolute right-0 z-20 mt-1 min-w-[10.5rem] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.98)] p-1.5 shadow-sm backdrop-blur-sm">
-                    <button
-                      type="button"
-                      className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
-                      onClick={() => {
-                        setMode("stats");
-                        window.requestAnimationFrame(() => {
-                          document
-                            .getElementById("bitacora")
-                            ?.scrollIntoView({ behavior: "smooth", block: "start" });
-                        });
-                      }}
-                    >
-                      Bitácora
-                    </button>
-                    <button
-                      type="button"
-                      className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
-                      onClick={() => void handleInviteFriend()}
-                    >
-                      {inviteHint ?? "Invitar"}
-                    </button>
-                    <button
-                      type="button"
-                      className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
-                      onClick={() => setShowHowTo(true)}
-                    >
-                      Cómo funciona
-                    </button>
-                    <button
-                      type="button"
-                      className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
-                      onClick={() => {
-                        void signOut().then(() => {
-                          window.location.href = "/";
-                        });
-                      }}
-                    >
-                      Salir
-                    </button>
-                  </div>
-                </details>
-              </div>
-              <p className="max-w-[16rem] text-right text-[11px] leading-snug text-ink-soft">
-                Encuentro · historia para esta mesa · sin sumarla a tu cava
-              </p>
+            <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-2">
+              <button
+                type="button"
+                className="btn btn-primary min-h-[40px] px-3 text-sm"
+                onClick={() => openAdd()}
+              >
+                + Agregar
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost min-h-[40px] px-3 text-sm"
+                onClick={openEncuentro}
+                title="Historia para esta mesa · sin sumarla a tu cava"
+              >
+                Encuentro
+              </button>
+              <details className="relative">
+                <summary className="flex min-h-[40px] cursor-pointer list-none items-center px-1 text-sm underline-offset-2 hover:text-ink hover:underline [&::-webkit-details-marker]:hidden">
+                  Más
+                </summary>
+                <div className="absolute right-0 z-20 mt-1 min-w-[10.5rem] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.98)] p-1.5 shadow-sm backdrop-blur-sm">
+                  <button
+                    type="button"
+                    className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
+                    onClick={() => {
+                      setMode("stats");
+                      window.requestAnimationFrame(() => {
+                        document
+                          .getElementById("bitacora")
+                          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      });
+                    }}
+                  >
+                    Bitácora
+                  </button>
+                  <button
+                    type="button"
+                    className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
+                    onClick={() => void handleInviteFriend()}
+                  >
+                    {inviteHint ?? "Invitar"}
+                  </button>
+                  <button
+                    type="button"
+                    className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
+                    onClick={() => setShowHowTo(true)}
+                  >
+                    Cómo funciona
+                  </button>
+                  <button
+                    type="button"
+                    className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
+                    onClick={() => {
+                      void signOut().then(() => {
+                        window.location.href = "/";
+                      });
+                    }}
+                  >
+                    Salir
+                  </button>
+                </div>
+              </details>
             </div>
           </div>
         </header>
@@ -594,7 +590,11 @@ export default function CavaPage() {
             />
           </div>
         ) : !ready ? (
-          <div className="mt-6 space-y-4" aria-hidden>
+          <div className="mt-6 space-y-4" aria-busy="true" aria-live="polite">
+            <p className="flex items-center gap-2 text-sm text-ink-soft">
+              <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[var(--wine-soft)]" />
+              Cargando tu cava…
+            </p>
             <div className="h-10 animate-pulse rounded-[10px] bg-[rgba(110,31,44,0.06)]" />
             <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
               <div className="h-[280px] animate-pulse rounded-[14px] bg-[rgba(110,31,44,0.05)]" />
@@ -641,7 +641,7 @@ export default function CavaPage() {
                 onUpdate={updateCellarUnit}
                 onDelete={deleteCellarUnit}
               />
-              <section className="panel p-3 sm:p-5">
+              <section className="panel-focus p-3 sm:p-5">
                 <div className="mb-3 flex items-baseline justify-between gap-3 sm:mb-4">
                   <h2 className="display text-xl text-ink sm:text-2xl">
                     {activeCellar ? activeCellar.name : "Mapa de la cava"}
@@ -776,7 +776,7 @@ export default function CavaPage() {
 
         <ResizableDesktopPanels
           map={
-            <section className="panel p-5">
+            <section className="panel-focus p-5">
               <div className="mb-4 flex items-baseline justify-between gap-3">
                 <h2 className="display text-2xl text-ink">
                   {activeCellar ? activeCellar.name : "Mapa de la cava"}
@@ -814,7 +814,7 @@ export default function CavaPage() {
             </section>
           }
           inventory={
-            <section className="panel flex min-h-[420px] flex-col p-5">
+            <section className="panel-quiet flex min-h-[420px] flex-col p-5">
               <div className="mb-4 flex items-baseline justify-between gap-3">
                 <h2 className="display text-2xl text-ink">Inventario</h2>
                 <p className="text-sm text-ink-soft">{visible.length}</p>
@@ -828,7 +828,7 @@ export default function CavaPage() {
             </section>
           }
           detail={
-            <section className="panel min-w-0 overflow-hidden p-5">
+            <section className="panel-focus min-w-0 overflow-hidden p-5">
               <WineDetail {...detailProps} />
             </section>
           }
@@ -836,7 +836,7 @@ export default function CavaPage() {
 
         <div className="mobile-only mt-5">
           {mobilePanel === "mapa" && (
-            <section className="panel p-3 sm:p-4">
+            <section className="panel-focus p-3 sm:p-4">
               <div className="mb-3 flex items-baseline justify-between gap-3">
                 <h2 className="display text-xl text-ink sm:text-2xl">
                   {activeCellar ? activeCellar.name : "Mapa"}
@@ -874,7 +874,7 @@ export default function CavaPage() {
           )}
 
           {mobilePanel === "lista" && (
-            <section className="panel flex flex-col p-3 sm:p-4">
+            <section className="panel-quiet flex flex-col p-3 sm:p-4">
               <div className="mb-3 flex items-baseline justify-between gap-3">
                 <h2 className="display text-xl text-ink sm:text-2xl">Inventario</h2>
                 <p className="text-sm text-ink-soft">{visible.length}</p>
@@ -891,7 +891,7 @@ export default function CavaPage() {
 
           {mobilePanel === "detalle" && (
             <section
-              className="panel mobile-detail-sheet p-0"
+              className="panel-focus mobile-detail-sheet p-0"
               aria-label="Detalle de botella"
             >
               <div className="mobile-detail-sheet__bar">

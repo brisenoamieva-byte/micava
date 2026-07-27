@@ -76,12 +76,12 @@ export function StatsDashboard({
 
       {/* Hero KPI: Calificación Cavatale — story score first */}
       <section className="space-y-3">
-        <div className="panel relative overflow-hidden px-5 py-5 sm:px-6 sm:py-6">
+        <div className="panel-focus relative overflow-hidden px-5 py-5 sm:px-6 sm:py-6">
           <div
             aria-hidden
             className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-[var(--wine)]"
           />
-          <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--wine)] sm:text-xs">
+          <p className="micro-label text-[var(--wine)]">
             Calificación Cavatale media
           </p>
           <div className="mt-2 flex flex-wrap items-end gap-x-4 gap-y-1">
@@ -137,7 +137,7 @@ export function StatsDashboard({
 
       <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
         {/* País */}
-        <section className="panel p-4 sm:p-5">
+        <section className="panel-quiet p-4 sm:p-5">
           <Header
             title="Por país"
             subtitle="Cantidad y peso en el inventario · toca un país"
@@ -212,7 +212,7 @@ export function StatsDashboard({
         </section>
 
         {/* Tipo donut + bands */}
-        <section className="panel p-4 sm:p-5">
+        <section className="panel-quiet p-4 sm:p-5">
           <Header title="Perfil" subtitle="Tipo, calificación Cavatale y rangos de precio" />
           <div className="mt-5 flex flex-col items-center gap-6 sm:flex-row sm:items-start">
             <TypeDonut items={insights.byType} total={insights.bottles} />
@@ -230,7 +230,7 @@ export function StatsDashboard({
       </div>
 
       {/* Vintages */}
-      <section className="panel p-4 sm:p-5">
+      <section className="panel-quiet p-4 sm:p-5">
         <Header title="Añadas en cava" subtitle="Cuántas botellas por año de cosecha · toca una barra" />
         {insights.vintages.length === 0 ? (
           <p className="mt-4 text-sm text-ink-soft">Sin años registrados.</p>
@@ -304,8 +304,8 @@ export function StatsDashboard({
           wines={insights.topByCavatale}
           metric={(w) =>
             w.cavataleRating != null
-              ? `Calif. C ${formatCavataleRating(w.cavataleRating)}`
-              : `Calif. V ${formatVivino(w.vivino)}`
+              ? `Cavatale ${formatCavataleRating(w.cavataleRating)}`
+              : `Vivino ${formatVivino(w.vivino)}`
           }
           onSelect={onSelectWine}
         />
@@ -319,7 +319,7 @@ export function StatsDashboard({
       </div>
 
       {/* Regiones */}
-      <section className="panel p-4 sm:p-5">
+      <section className="panel-quiet p-4 sm:p-5">
         <Header
           title="Regiones con más botellas"
           subtitle="Dónde se concentra tu cava · toca una región"
@@ -385,7 +385,7 @@ function stars(n: number): string {
 
 function ReplenishBlock({ items }: { items: ReplenishItem[] }) {
   return (
-    <section className="panel p-4 sm:p-5">
+    <section className="panel-quiet p-4 sm:p-5">
       <Header
         title="Para reponer"
         subtitle="Los que te gustaron (4–5★) y ya no tienes — o solo queda una"
@@ -464,8 +464,8 @@ function DrilldownList({
               </span>
               <span className="shrink-0 text-right text-xs font-medium text-ink">
                 {w.cavataleRating != null
-                  ? `Calif. C ${formatCavataleRating(w.cavataleRating)}`
-                  : `Calif. V ${formatVivino(w.vivino)}`}
+                  ? `Cavatale ${formatCavataleRating(w.cavataleRating)}`
+                  : `Vivino ${formatVivino(w.vivino)}`}
                 <span className="mt-0.5 block font-normal text-ink-soft">
                   {formatPrice(w.price)}
                 </span>
@@ -684,7 +684,7 @@ function RankList({
   onSelect?: (wine: Wine) => void;
 }) {
   return (
-    <section className="panel p-4 sm:p-5">
+    <section className="panel-quiet p-4 sm:p-5">
       <Header title={title} subtitle={subtitle} />
       <ol className="mt-4 space-y-2">
         {wines.length === 0 ? (

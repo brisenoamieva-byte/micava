@@ -58,15 +58,19 @@ export default function HomePage() {
         </header>
 
         <section className="relative flex flex-1 flex-col justify-center py-12 sm:py-16 md:py-20">
-          <div className="pointer-events-none absolute inset-y-0 right-[-10%] hidden w-[58%] md:block">
-            <div className="hero-silhouette h-full w-full" />
+        <div className="pointer-events-none absolute inset-y-0 right-[-10%] hidden w-[58%] md:block">
+            <div
+              className="hero-silhouette h-full w-full"
+              aria-hidden
+              role="presentation"
+            />
           </div>
 
           <div className="relative max-w-xl">
             <h1 className="fade-up leading-none text-[#141210]">
               <BrandWordmark size="hero" />
             </h1>
-            <p className="fade-up-delay mt-5 max-w-lg text-base leading-relaxed text-[#4f4a43] sm:mt-6 sm:text-lg md:text-[1.25rem] md:leading-snug">
+            <p className="fade-up-delay mt-5 max-w-lg text-base leading-relaxed text-ink-soft sm:mt-6 sm:text-lg md:text-[1.25rem] md:leading-snug">
               Cada botella guarda un lugar, unas manos, una decisión. Cavatale
               deja que el vino hable: cuida tu cava y, al descorchar, te entrega
               la historia que abre la conversación.
@@ -82,12 +86,12 @@ export default function HomePage() {
               {!loggedIn ? (
                 <Link
                   href="/login"
-                  className="text-sm text-[#4f4a43] underline-offset-2 hover:underline"
+                  className="text-sm text-ink-soft underline-offset-2 hover:underline"
                 >
                   Ya tengo cuenta
                 </Link>
               ) : (
-                <p className="text-sm text-[#4f4a43]">
+                <p className="text-sm text-ink-soft">
                   {stats.bottles} botellas · {formatPrice(stats.value)}
                 </p>
               )}

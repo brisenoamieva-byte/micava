@@ -788,7 +788,7 @@ export function WineDetail({
                 <p className="text-sm text-ink-soft">
                   Coinciden con tu ficha
                   {wine.kimiVivino != null
-                    ? ` · Calif. Vivino ${formatVivino(wine.kimiVivino)}`
+                    ? ` · Vivino ${formatVivino(wine.kimiVivino)}`
                     : ""}
                   {wine.kimiPrice != null
                     ? ` · ${formatPrice(wine.kimiPrice)}`
@@ -803,7 +803,7 @@ export function WineDetail({
                         {vivinoNeedsApply ? (
                           <>
                             <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                              Calif. Vivino estimada
+                              Vivino estimada
                             </p>
                             <p className="mt-1 text-sm text-ink">
                               {formatVivino(wine.kimiVivino)}
@@ -835,7 +835,7 @@ export function WineDetail({
                           </>
                         ) : (
                           <p className="text-sm text-ink-soft">
-                            Calif. Vivino en ficha: {formatVivino(wine.vivino)}{" "}
+                            Vivino en ficha: {formatVivino(wine.vivino)}{" "}
                             (coincide con la estimación)
                           </p>
                         )}

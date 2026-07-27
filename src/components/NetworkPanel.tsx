@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DisplayNameEditor } from "@/components/DisplayNameEditor";
 import { PublicCellarView } from "@/components/PublicCellarView";
+import { ThinkingIndicator } from "@/components/ThinkingIndicator";
 import { useAuth } from "@/lib/auth-store";
 import {
   type NetworkProfile,
@@ -177,7 +178,13 @@ export function NetworkPanel() {
   }
 
   if (loading) {
-    return <p className="text-sm text-ink-soft">Cargando red…</p>;
+    return (
+      <div className="mt-2 space-y-4" aria-busy="true" aria-live="polite">
+        <ThinkingIndicator label="Cargando red…" size="sm" />
+        <div className="h-24 animate-pulse rounded-[14px] bg-[rgba(110,31,44,0.05)]" />
+        <div className="h-40 animate-pulse rounded-[14px] bg-[rgba(110,31,44,0.05)]" />
+      </div>
+    );
   }
 
   if (viewing) {
@@ -205,7 +212,7 @@ export function NetworkPanel() {
 
   return (
     <section className="space-y-4">
-      <div className="panel p-5">
+      <div className="panel-quiet p-5">
         <h2 className="display text-3xl text-ink">Red</h2>
         <p className="mt-1 text-sm text-ink-soft">
           Descubre coleccionistas y explora sus cavas públicas. Tú eliges si
@@ -246,7 +253,7 @@ export function NetworkPanel() {
       </div>
 
       {tab === "presencia" ? (
-        <div className="panel space-y-4 p-5">
+        <div className="panel-quiet space-y-4 p-5">
           <div className="rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.55)] px-3 py-3 text-sm text-ink-soft">
             <p className="font-medium text-ink">Qué ven los demás</p>
             <ul className="mt-1.5 list-disc space-y-1 pl-4 text-xs leading-relaxed">
@@ -393,7 +400,7 @@ export function NetworkPanel() {
       ) : null}
 
       {tab === "directorio" ? (
-        <div className="panel space-y-4 p-5">
+        <div className="panel-quiet space-y-4 p-5">
           {!own?.cava_public ? (
             <p className="rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.5)] px-3 py-2 text-sm text-ink-soft">
               Puedes explorar cavas públicas sin compartir la tuya. Para
@@ -460,7 +467,9 @@ export function NetworkPanel() {
 
           <ul className="divide-y divide-[var(--line)]">
             {directoryLoading ? (
-              <li className="py-6 text-sm text-ink-soft">Cargando directorio…</li>
+              <li className="py-6">
+                <ThinkingIndicator label="Cargando directorio…" size="sm" />
+              </li>
             ) : profiles.length === 0 ? (
               <li className="py-6 text-sm text-ink-soft">
                 Nadie con cava pública aún. Sé el primero en Mi presencia, o

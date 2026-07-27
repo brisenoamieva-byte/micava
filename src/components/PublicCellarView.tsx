@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { CountryFlag } from "@/components/CountryFlag";
+import { ThinkingIndicator } from "@/components/ThinkingIndicator";
 import type { NetworkProfile, PublicWine } from "@/lib/network";
 import { placeLabel } from "@/lib/network";
 import {
@@ -144,7 +145,10 @@ export function PublicCellarView({
         </div>
 
         {loading ? (
-          <p className="text-sm text-ink-soft">Cargando cava…</p>
+          <div className="space-y-3 py-2">
+            <ThinkingIndicator label="Cargando cava…" size="sm" />
+            <div className="h-24 animate-pulse rounded-[12px] bg-[rgba(110,31,44,0.05)]" />
+          </div>
         ) : (
           <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-[var(--line)] pt-3 text-xs text-ink-soft">
             <span>
@@ -169,7 +173,7 @@ export function PublicCellarView({
       </div>
 
       {!loading ? (
-        <div className="panel space-y-4 p-5">
+        <div className="panel-quiet space-y-4 p-5">
           <label className="block text-sm text-ink-soft">
             Buscar en esta cava
             <input

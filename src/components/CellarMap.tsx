@@ -12,6 +12,7 @@ import { createPortal } from "react-dom";
 import type { Wine } from "@/lib/types";
 import { CountryFlag } from "@/components/CountryFlag";
 import {
+  formatCavataleRating,
   formatVivino,
   getEmptySlots,
   getWineBySlot,
@@ -46,20 +47,25 @@ const MOVE_HINT_KEY = "micava.map.move.hint.v1";
 
 function cellLabel(wine: Wine): string {
   const name = wine.name.trim();
-  if (name.length <= 11) return name;
+  if (name.length <= 13) return name;
   const words = name.split(/\s+/).filter(Boolean);
-  if (words[0] && words[0].length >= 4 && words[0].length <= 11) {
+  if (words[0] && words[0].length >= 4 && words[0].length <= 13) {
     return words[0];
   }
-  return `${name.slice(0, 10)}…`;
+  return `${name.slice(0, 12)}…`;
 }
 
 function cellMeta(wine: Wine): string {
   const bits: string[] = [];
-  if (wine.cavataleRating != null) bits.push(formatVivino(wine.cavataleRating));
-  else if (wine.vivino != null) bits.push(formatVivino(wine.vivino));
-  else if (wine.vintage != null) bits.push(String(wine.vintage));
-  else if (wine.type) bits.push(wine.type.slice(0, 3));
+  if (wine.cavataleRating != null) {
+    bits.push(formatCavataleRating(wine.cavataleRating));
+  } else if (wine.vivino != null) {
+    bits.push(formatVivino(wine.vivino));
+  } else if (wine.vintage != null) {
+    bits.push(String(wine.vintage));
+  } else if (wine.type) {
+    bits.push(wine.type.slice(0, 3));
+  }
   return bits[0] ?? "";
 }
 
@@ -1076,15 +1082,17 @@ function Row({
         const label = cellLabel(wine);
         const meta = cellMeta(wine);
         const tip = [
-          slot,
           wine.name,
           wine.winery,
-          wine.country,
           wine.vintage != null ? String(wine.vintage) : "",
-          wine.vivino != null
-            ? `Calificación Vivino ${wine.vivino.toFixed(1)}`
-            : "",
+          wine.cavataleRating != null
+            ? `Cavatale ${formatCavataleRating(wine.cavataleRating)}`
+            : wine.vivino != null
+              ? `Vivino ${formatVivino(wine.vivino)}`
+              : "",
+          wine.country,
           wine.type,
+          slot,
         ]
           .filter(Boolean)
           .join(" · ");
@@ -1151,7 +1159,14 @@ function Row({
               {label}
             </span>
             {meta ? (
-              <span className="block truncate px-0.5 text-[8px] leading-none text-ink-soft sm:text-[9px]">
+              <span
+                className={[
+                  "block truncate px-0.5 leading-none",
+                  wine.cavataleRating != null
+                    ? "font-medium tabular-nums text-[9px] text-ink sm:text-[10px]"
+                    : "text-[8px] text-ink-soft sm:text-[9px]",
+                ].join(" ")}
+              >
                 {meta}
               </span>
             ) : null}

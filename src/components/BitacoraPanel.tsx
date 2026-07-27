@@ -31,7 +31,7 @@ export function BitacoraPanel({ entries, onRemove }: Props) {
 
   if (entries.length === 0) {
     return (
-      <section className="panel p-4 sm:p-5">
+      <section className="panel-quiet p-4 sm:p-5">
         <h2 className="display text-2xl text-ink">Bitácora</h2>
         <p className="mt-0.5 text-sm text-ink-soft">
           Encuentros en la mesa — historias que no viven en el mapa.
@@ -48,7 +48,7 @@ export function BitacoraPanel({ entries, onRemove }: Props) {
   }
 
   return (
-    <section className="panel p-4 sm:p-5">
+    <section className="panel-quiet p-4 sm:p-5">
       <h2 className="display text-2xl text-ink">Bitácora</h2>
       <p className="mt-0.5 text-sm text-ink-soft">
         {entries.length} encuentro{entries.length === 1 ? "" : "s"}

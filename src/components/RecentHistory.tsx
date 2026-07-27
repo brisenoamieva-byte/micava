@@ -38,7 +38,7 @@ export function RecentHistory({ entries }: Props) {
     .slice(0, 5);
 
   return (
-    <section className="panel p-4 sm:p-5">
+    <section className="panel-quiet p-4 sm:p-5">
       <h2 className="display text-2xl text-ink">Reciente</h2>
       <p className="mt-0.5 text-sm text-ink-soft">
         Lo que salió de la cava — con tu nota para recordar qué repetir.
@@ -89,7 +89,7 @@ export function RecentHistory({ entries }: Props) {
               ) : null}
             </div>
             <div className="shrink-0 text-right text-xs text-ink">
-              Calif. V {formatVivino(e.wine.vivino)}
+              Vivino {formatVivino(e.wine.vivino)}
               <span className="mt-0.5 block text-ink-soft">
                 {formatPrice(e.wine.price)}
               </span>

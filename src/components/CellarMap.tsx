@@ -346,39 +346,24 @@ export function CellarMap({
     zoomReset,
   } = useExpandedZoom(expanded);
   const viewport = useExpandedViewport(expanded);
-  const [lockHint, setLockHint] = useState<string | null>(null);
+  /**
+   * Many phones (esp. iOS / old PWA installs) never unlock portrait for the
+   * webview. Simulate landscape with a rotated frame that STILL scrolls & zooms.
+   * Drop simulation when the OS itself is already landscape.
+   */
+  const cssLandscape = expanded && touchUi && !viewport.landscape;
 
   async function openExpanded() {
     setExpanded(true);
-    setLockHint(null);
-    // User gesture: ask OS to rotate into landscape (keeps map interactive).
-    const locked = await tryLockLandscape();
-    if (!locked) {
-      setLockHint(
-        "Gira el teléfono (o desactiva el bloqueo de rotación) para ver el mueble en horizontal."
-      );
-    }
-    window.setTimeout(() => {
+    // Best effort on Android Chrome; iOS usually ignores this.
+    void tryLockLandscape().then(() => {
       window.dispatchEvent(new Event("resize"));
-    }, 80);
+    });
   }
 
   function closeExpanded() {
     setExpanded(false);
-    setLockHint(null);
     tryUnlockOrientation();
-  }
-
-  async function requestHorizontal() {
-    const locked = await tryLockLandscape();
-    if (locked) {
-      setLockHint(null);
-      window.dispatchEvent(new Event("resize"));
-      return;
-    }
-    setLockHint(
-      "Tu teléfono no permitió girar la app. Desactiva el candado de rotación y gira el celular."
-    );
   }
 
   useEffect(() => {
@@ -858,43 +843,49 @@ export function CellarMap({
     </div>
   );
 
-  const overlayStyle =
-    viewport.width > 0 && viewport.height > 0
+  const shellW = viewport.width > 0 ? viewport.width : undefined;
+  const shellH = viewport.height > 0 ? viewport.height : undefined;
+  /** After 90° CSS rotate, logical landscape width = phone height. */
+  const frameW = cssLandscape
+    ? shellH ?? "100dvh"
+    : shellW ?? "100%";
+  const frameH = cssLandscape
+    ? shellW ?? "100dvw"
+    : shellH ?? "100%";
+
+  if (expanded && portalReady) {
+    const zoomPct = Math.round(zoom * 100);
+
+    const frameStyle = cssLandscape
       ? ({
-          top: 0,
-          left: 0,
-          width: viewport.width,
-          height: viewport.height,
+          position: "absolute" as const,
+          top: "50%",
+          left: "50%",
+          width: frameW,
+          height: frameH,
           maxWidth: "none",
           maxHeight: "none",
-          paddingTop: "max(0.5rem, env(safe-area-inset-top))",
-          paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))",
-          paddingLeft: "max(0.5rem, env(safe-area-inset-left))",
-          paddingRight: "max(0.5rem, env(safe-area-inset-right))",
+          transform: "translate(-50%, -50%) rotate(90deg)",
+          transformOrigin: "center center",
+          paddingTop: "max(0.4rem, env(safe-area-inset-left))",
+          paddingBottom: "max(0.4rem, env(safe-area-inset-right))",
+          paddingLeft: "max(0.4rem, env(safe-area-inset-bottom))",
+          paddingRight: "max(0.4rem, env(safe-area-inset-top))",
         } as const)
       : ({
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          width: "100%",
-          height: "100%",
+          position: "absolute" as const,
+          inset: 0,
+          width: frameW,
+          height: frameH,
           maxWidth: "none",
           maxHeight: "none",
+          transform: "none",
           paddingTop: "max(0.5rem, env(safe-area-inset-top))",
           paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))",
           paddingLeft: "max(0.5rem, env(safe-area-inset-left))",
           paddingRight: "max(0.5rem, env(safe-area-inset-right))",
         } as const);
 
-  // Clear rotate tip once the device is actually landscape.
-  useEffect(() => {
-    if (!expanded) return;
-    if (viewport.landscape) setLockHint(null);
-  }, [expanded, viewport.landscape]);
-
-  if (expanded && portalReady) {
-    const zoomPct = Math.round(zoom * 100);
     return (
       <>
         <div className="space-y-3">
@@ -909,233 +900,237 @@ export function CellarMap({
         </div>
         {createPortal(
           <div
-            key={`map-${viewport.landscape ? "L" : "P"}-${viewport.width}x${viewport.height}`}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="cellar-map-expanded-title"
-            className={[
-              "map-expanded-overlay fixed z-[45] flex flex-col bg-[var(--surface-solid)]",
-              viewport.width > 0 ? "" : "inset-0",
-              viewport.landscape ? "map-expanded-overlay--landscape" : "",
-              dragId ? "map-is-dragging" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            data-orientation={viewport.landscape ? "landscape" : "portrait"}
-            style={overlayStyle}
+            className="map-expanded-shell fixed inset-0 z-[45]"
+            style={{
+              width: shellW ?? "100%",
+              height: shellH ?? "100%",
+            }}
           >
-            <div className="map-expanded-header mb-2 flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--line)] pb-2">
-              <h2
-                id="cellar-map-expanded-title"
-                className="display min-w-0 text-xl leading-tight text-ink sm:text-2xl"
-              >
-                {mapTitle}
-              </h2>
-              <div className="flex flex-wrap items-center gap-1.5">
-                {!viewport.landscape ? (
-                  <button
-                    type="button"
-                    className="btn btn-ghost min-h-[40px] px-2.5 text-xs"
-                    onClick={() => void requestHorizontal()}
-                  >
-                    Horizontal
-                  </button>
-                ) : null}
-                <div
-                  className="inline-flex items-center rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.7)] p-0.5"
-                  role="group"
-                  aria-label="Zoom del mapa"
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="cellar-map-expanded-title"
+              className={[
+                "map-expanded-overlay flex flex-col bg-[var(--surface-solid)]",
+                cssLandscape ? "map-expanded-overlay--css-land" : "",
+                viewport.landscape ? "map-expanded-overlay--landscape" : "",
+                dragId ? "map-is-dragging" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              data-orientation={
+                cssLandscape
+                  ? "css-landscape"
+                  : viewport.landscape
+                    ? "landscape"
+                    : "portrait"
+              }
+              style={frameStyle}
+            >
+              <div className="map-expanded-header mb-2 flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--line)] pb-2">
+                <h2
+                  id="cellar-map-expanded-title"
+                  className="display min-w-0 text-xl leading-tight text-ink sm:text-2xl"
                 >
-                  <button
-                    type="button"
-                    className="btn btn-ghost min-h-[40px] min-w-[40px] px-2 text-base"
-                    aria-label="Alejar"
-                    onClick={zoomOut}
-                  >
-                    −
-                  </button>
-                  <button
-                    type="button"
-                    className="min-h-[40px] min-w-[3.25rem] px-1 text-xs font-medium text-ink-soft"
-                    aria-label="Restablecer zoom"
-                    title="Restablecer"
-                    onClick={zoomReset}
-                  >
-                    {zoomPct}%
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-ghost min-h-[40px] min-w-[40px] px-2 text-base"
-                    aria-label="Acercar"
-                    onClick={zoomIn}
-                  >
-                    +
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  className="btn btn-ghost flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center gap-1.5 px-3 text-sm"
-                  aria-label="Cerrar mapa ampliado"
-                  onClick={closeExpanded}
-                >
-                  <span aria-hidden className="text-lg leading-none">
-                    ×
-                  </span>
-                  <span>Cerrar</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="map-expanded-body flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
-              {lockHint ? (
-                <div className="shrink-0 rounded-[10px] border border-[rgba(110,31,44,0.22)] bg-[rgba(110,31,44,0.06)] px-3 py-2 text-sm text-ink">
-                  {lockHint}
-                </div>
-              ) : null}
-              {movingWine && pickMode ? (
-                <div className="shrink-0 rounded-[10px] border border-[rgba(110,31,44,0.35)] bg-[rgba(250,249,245,0.96)] px-3 py-1.5">
-                  <p className="text-sm font-medium text-ink">
-                    Moviendo · {movingWine.name}
-                  </p>
-                  <p className="text-xs text-ink-soft">
-                    Desplaza o haz zoom; luego toca el hueco destino.
-                  </p>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                    {onPlaceAt ? (
-                      <button
-                        type="button"
-                        className="btn btn-primary min-h-[36px] px-3 text-xs disabled:opacity-50"
-                        disabled={!firstEmptySlot}
-                        onClick={() => {
-                          if (firstEmptySlot) onPlaceAt(firstEmptySlot);
-                        }}
-                      >
-                        {firstEmptySlot
-                          ? "Ocupar espacio disponible"
-                          : "Sin huecos libres"}
-                      </button>
-                    ) : null}
-                    {onCancelMove ? (
-                      <button
-                        type="button"
-                        className="text-xs font-medium text-[var(--wine)] underline-offset-2 hover:underline"
-                        onClick={onCancelMove}
-                      >
-                        Cancelar
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
-              ) : (
-                <p className="shrink-0 text-xs text-ink-soft">
-                  {viewport.landscape
-                    ? "Desliza para mover · pellizca o usa +/− para zoom."
-                    : "Gira el teléfono o toca Horizontal · desliza y haz zoom en el mueble."}
-                </p>
-              )}
-
-              <div ref={zoomViewportRef} className="map-expanded-viewport">
-                <div
-                  className="map-expanded-zoom-space"
-                  style={{
-                    width: gridNaturalW * zoom,
-                    height: gridNaturalH * zoom,
-                  }}
-                >
+                  {mapTitle}
+                </h2>
+                <div className="flex flex-wrap items-center gap-1.5">
                   <div
+                    className="inline-flex items-center rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.7)] p-0.5"
+                    role="group"
+                    aria-label="Zoom del mapa"
+                  >
+                    <button
+                      type="button"
+                      className="btn btn-ghost min-h-[40px] min-w-[40px] px-2 text-base"
+                      aria-label="Alejar"
+                      onClick={zoomOut}
+                    >
+                      −
+                    </button>
+                    <button
+                      type="button"
+                      className="min-h-[40px] min-w-[3.25rem] px-1 text-xs font-medium text-ink-soft"
+                      aria-label="Restablecer zoom"
+                      title="Restablecer"
+                      onClick={zoomReset}
+                    >
+                      {zoomPct}%
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost min-h-[40px] min-w-[40px] px-2 text-base"
+                      aria-label="Acercar"
+                      onClick={zoomIn}
+                    >
+                      +
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-ghost flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center gap-1.5 px-3 text-sm"
+                    aria-label="Cerrar mapa ampliado"
+                    onClick={closeExpanded}
+                  >
+                    <span aria-hidden className="text-lg leading-none">
+                      ×
+                    </span>
+                    <span>Cerrar</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="map-expanded-body flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+                {cssLandscape ? (
+                  <p className="shrink-0 text-xs text-ink-soft">
+                    Gira el teléfono para alinearlo. El mueble ya está en
+                    horizontal — desliza y usa +/−.
+                  </p>
+                ) : (
+                  <p className="shrink-0 text-xs text-ink-soft">
+                    Desliza para mover · pellizca o usa +/− para zoom.
+                  </p>
+                )}
+
+                {movingWine && pickMode ? (
+                  <div className="shrink-0 rounded-[10px] border border-[rgba(110,31,44,0.35)] bg-[rgba(250,249,245,0.96)] px-3 py-1.5">
+                    <p className="text-sm font-medium text-ink">
+                      Moviendo · {movingWine.name}
+                    </p>
+                    <p className="text-xs text-ink-soft">
+                      Desplaza o haz zoom; luego toca el hueco destino.
+                    </p>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                      {onPlaceAt ? (
+                        <button
+                          type="button"
+                          className="btn btn-primary min-h-[36px] px-3 text-xs disabled:opacity-50"
+                          disabled={!firstEmptySlot}
+                          onClick={() => {
+                            if (firstEmptySlot) onPlaceAt(firstEmptySlot);
+                          }}
+                        >
+                          {firstEmptySlot
+                            ? "Ocupar espacio disponible"
+                            : "Sin huecos libres"}
+                        </button>
+                      ) : null}
+                      {onCancelMove ? (
+                        <button
+                          type="button"
+                          className="text-xs font-medium text-[var(--wine)] underline-offset-2 hover:underline"
+                          onClick={onCancelMove}
+                        >
+                          Cancelar
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+
+                <div ref={zoomViewportRef} className="map-expanded-viewport">
+                  <div
+                    className="map-expanded-zoom-space"
                     style={{
-                      width: gridNaturalW,
-                      transform: `scale(${zoom})`,
-                      transformOrigin: "top left",
+                      width: gridNaturalW * zoom,
+                      height: gridNaturalH * zoom,
                     }}
                   >
-                    {expandedGridInner}
+                    <div
+                      style={{
+                        width: gridNaturalW,
+                        transform: `scale(${zoom})`,
+                        transformOrigin: "top left",
+                      }}
+                    >
+                      {expandedGridInner}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="map-expanded-abajo shrink-0 overflow-y-auto overscroll-contain border-t border-[var(--line)] pt-2">
-                <div className="mb-1 flex items-center justify-between gap-2">
-                  <p className="text-[11px] uppercase tracking-[0.16em] text-ink-soft">
-                    Abajo / fuera
-                  </p>
-                  <p className="text-xs text-ink-soft">
-                    {abajo.length} botellas
-                  </p>
-                </div>
-                <div
-                  data-slot="abajo"
-                  onDragOver={(e) => {
-                    if (!onMoveWine || touchUi || pickMode) return;
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = "move";
-                    setOverTarget("abajo");
-                  }}
-                  onDragLeave={() => setOverTarget(null)}
-                  onDrop={(e) => {
-                    if (touchUi || pickMode) return;
-                    e.preventDefault();
-                    const id = e.dataTransfer.getData(DRAG_MIME) || dragId;
-                    if (id) handleDesktopMove(id, "abajo");
-                    else clearDesktopDrag();
-                  }}
-                  onClick={() => {
-                    if (pickMode && onPlaceAt) onPlaceAt("abajo");
-                  }}
-                  className={[
-                    "min-h-[44px] rounded-[10px] border border-dashed p-1.5 transition",
-                    pickMode ? "cursor-pointer" : "",
-                    overTarget === "abajo" || (pickMode && movingWineId)
-                      ? "border-[var(--wine)] bg-[rgba(122,36,48,0.08)]"
-                      : "border-[var(--line)] bg-[rgba(255,252,247,0.35)]",
-                  ].join(" ")}
-                >
-                  <div className="flex flex-wrap gap-1.5">
-                    {abajo.length === 0 ? (
-                      <p className="px-1 py-1 text-xs text-ink-soft">
-                        {pickMode
-                          ? "Toca para soltar abajo / fuera"
-                          : "Sin botellas fuera de la rejilla."}
-                      </p>
-                    ) : (
-                      abajo.map((wine) => {
-                        const active = wine.id === selectedId;
-                        const isMoving = activeMoveId === wine.id;
-                        return (
-                          <div
-                            key={wine.id}
-                            role="button"
-                            tabIndex={0}
-                            data-slot="abajo"
-                            onPointerDown={(e) => beginPress(wine, e)}
-                            onPointerMove={updatePress}
-                            onPointerUp={endPress}
-                            onPointerCancel={endPress}
-                            onClick={() => {
-                              if (didDrag.current) {
-                                didDrag.current = false;
-                                return;
-                              }
-                              interactSlot("abajo", wine);
-                            }}
-                            className={[
-                              "map-cell map-cell--draggable inline-flex min-h-[40px] max-w-full cursor-grab items-center gap-2 rounded-[10px] border px-2 py-1.5 text-left text-sm transition",
-                              active || isMoving
-                                ? "border-[var(--wine)] bg-[rgba(122,36,48,0.08)] text-ink slot-active"
-                                : "border-[var(--line)] bg-[rgba(255,252,247,0.55)] text-ink",
-                              isMoving
-                                ? "ring-2 ring-[var(--wine)] opacity-90"
-                                : "",
-                            ].join(" ")}
-                          >
-                            <CountryFlag country={wine.country} size="sm" />
-                            <span className="max-w-[9rem] truncate font-medium">
-                              {wine.name}
-                            </span>
-                          </div>
-                        );
-                      })
-                    )}
+                <div className="map-expanded-abajo shrink-0 overflow-y-auto overscroll-contain border-t border-[var(--line)] pt-2">
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <p className="text-[11px] uppercase tracking-[0.16em] text-ink-soft">
+                      Abajo / fuera
+                    </p>
+                    <p className="text-xs text-ink-soft">
+                      {abajo.length} botellas
+                    </p>
+                  </div>
+                  <div
+                    data-slot="abajo"
+                    onDragOver={(e) => {
+                      if (!onMoveWine || touchUi || pickMode) return;
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      setOverTarget("abajo");
+                    }}
+                    onDragLeave={() => setOverTarget(null)}
+                    onDrop={(e) => {
+                      if (touchUi || pickMode) return;
+                      e.preventDefault();
+                      const id = e.dataTransfer.getData(DRAG_MIME) || dragId;
+                      if (id) handleDesktopMove(id, "abajo");
+                      else clearDesktopDrag();
+                    }}
+                    onClick={() => {
+                      if (pickMode && onPlaceAt) onPlaceAt("abajo");
+                    }}
+                    className={[
+                      "min-h-[44px] rounded-[10px] border border-dashed p-1.5 transition",
+                      pickMode ? "cursor-pointer" : "",
+                      overTarget === "abajo" || (pickMode && movingWineId)
+                        ? "border-[var(--wine)] bg-[rgba(122,36,48,0.08)]"
+                        : "border-[var(--line)] bg-[rgba(255,252,247,0.35)]",
+                    ].join(" ")}
+                  >
+                    <div className="flex flex-wrap gap-1.5">
+                      {abajo.length === 0 ? (
+                        <p className="px-1 py-1 text-xs text-ink-soft">
+                          {pickMode
+                            ? "Toca para soltar abajo / fuera"
+                            : "Sin botellas fuera de la rejilla."}
+                        </p>
+                      ) : (
+                        abajo.map((wine) => {
+                          const active = wine.id === selectedId;
+                          const isMoving = activeMoveId === wine.id;
+                          return (
+                            <div
+                              key={wine.id}
+                              role="button"
+                              tabIndex={0}
+                              data-slot="abajo"
+                              onPointerDown={(e) => beginPress(wine, e)}
+                              onPointerMove={updatePress}
+                              onPointerUp={endPress}
+                              onPointerCancel={endPress}
+                              onClick={() => {
+                                if (didDrag.current) {
+                                  didDrag.current = false;
+                                  return;
+                                }
+                                interactSlot("abajo", wine);
+                              }}
+                              className={[
+                                "map-cell map-cell--draggable inline-flex min-h-[40px] max-w-full cursor-grab items-center gap-2 rounded-[10px] border px-2 py-1.5 text-left text-sm transition",
+                                active || isMoving
+                                  ? "border-[var(--wine)] bg-[rgba(122,36,48,0.08)] text-ink slot-active"
+                                  : "border-[var(--line)] bg-[rgba(255,252,247,0.55)] text-ink",
+                                isMoving
+                                  ? "ring-2 ring-[var(--wine)] opacity-90"
+                                  : "",
+                              ].join(" ")}
+                            >
+                              <CountryFlag country={wine.country} size="sm" />
+                              <span className="max-w-[9rem] truncate font-medium">
+                                {wine.name}
+                              </span>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

@@ -583,14 +583,22 @@ select {
   scrollbar-width: thin;
 }
 
-/* Fullscreen Ampliar: interactive pan + zoom viewport. */
+/* Fullscreen Ampliar: shell fills the phone; optional CSS-land frame rotates. */
+.map-expanded-shell {
+  box-sizing: border-box;
+  overflow: hidden;
+  background: var(--surface-solid);
+}
+
 .map-expanded-overlay {
   box-sizing: border-box;
-  width: 100%;
-  height: 100%;
-  height: 100dvh;
   max-width: none;
   max-height: none;
+}
+
+.map-expanded-overlay--css-land {
+  /* Touches must reach the scroll/zoom viewport inside the rotated frame. */
+  touch-action: manipulation;
 }
 
 .map-expanded-viewport {
@@ -615,11 +623,17 @@ select {
   display: grid;
 }
 
-.map-expanded-overlay--landscape .map-expanded-header .display {
+.map-expanded-abajo {
+  max-height: min(28vh, 9rem);
+}
+
+.map-expanded-overlay--landscape .map-expanded-header .display,
+.map-expanded-overlay--css-land .map-expanded-header .display {
   font-size: 1.15rem;
 }
 
-.map-expanded-overlay--landscape .map-expanded-abajo {
+.map-expanded-overlay--landscape .map-expanded-abajo,
+.map-expanded-overlay--css-land .map-expanded-abajo {
   max-height: min(22vh, 7.5rem);
 }
 

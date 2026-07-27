@@ -101,6 +101,121 @@ function clampZoom(z: number) {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Number(z.toFixed(3))));
 }
 
+function readIsLandscape(): boolean {
+  if (typeof window === "undefined") return false;
+  const width = Math.round(
+    window.visualViewport?.width ?? window.innerWidth ?? 0
+  );
+  const height = Math.round(
+    window.visualViewport?.height ?? window.innerHeight ?? 0
+  );
+  if (width > 0 && height > 0 && Math.abs(width - height) >= 16) {
+    return width > height;
+  }
+  const type = window.screen?.orientation?.type;
+  if (typeof type === "string") {
+    if (type.startsWith("landscape")) return true;
+    if (type.startsWith("portrait")) return false;
+  }
+  try {
+    return window.matchMedia("(orientation: landscape)").matches;
+  } catch {
+    return width > height;
+  }
+}
+
+async function tryLockLandscape(): Promise<boolean> {
+  try {
+    const orient = window.screen?.orientation as
+      | (ScreenOrientation & {
+          lock?: (orientation: string) => Promise<void>;
+        })
+      | undefined;
+    if (!orient || typeof orient.lock !== "function") return false;
+    await orient.lock("landscape");
+    return true;
+  } catch {
+    try {
+      const orient = window.screen?.orientation as
+        | (ScreenOrientation & {
+            lock?: (orientation: string) => Promise<void>;
+          })
+        | undefined;
+      await orient?.lock?.("landscape-primary");
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
+function tryUnlockOrientation() {
+  try {
+    const orient = window.screen?.orientation as
+      | (ScreenOrientation & { unlock?: () => void })
+      | undefined;
+    orient?.unlock?.();
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Track real viewport size so Ampliar reflows when the phone rotates. */
+function useExpandedViewport(active: boolean) {
+  const [box, setBox] = useState(() => ({
+    width: 0,
+    height: 0,
+    landscape: false,
+  }));
+
+  useEffect(() => {
+    if (!active) return;
+
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    const sync = () => {
+      const vv = window.visualViewport;
+      const width = Math.round(vv?.width ?? window.innerWidth);
+      const height = Math.round(vv?.height ?? window.innerHeight);
+      setBox({
+        width,
+        height,
+        landscape: readIsLandscape(),
+      });
+    };
+
+    const syncSoon = () => {
+      for (const t of timers) clearTimeout(t);
+      timers.length = 0;
+      sync();
+      for (const ms of [16, 80, 200, 400, 800]) {
+        timers.push(setTimeout(sync, ms));
+      }
+    };
+
+    sync();
+    const vv = window.visualViewport;
+    vv?.addEventListener("resize", syncSoon);
+    window.addEventListener("resize", syncSoon);
+    window.addEventListener("orientationchange", syncSoon);
+    const mq = window.matchMedia("(orientation: landscape)");
+    mq.addEventListener("change", syncSoon);
+    const onSO = () => syncSoon();
+    window.screen?.orientation?.addEventListener?.("change", onSO);
+
+    return () => {
+      for (const t of timers) clearTimeout(t);
+      vv?.removeEventListener("resize", syncSoon);
+      window.removeEventListener("resize", syncSoon);
+      window.removeEventListener("orientationchange", syncSoon);
+      mq.removeEventListener("change", syncSoon);
+      window.screen?.orientation?.removeEventListener?.("change", onSO);
+    };
+  }, [active]);
+
+  return box;
+}
+
 /** Pinch + button zoom for the fullscreen mueble; pan via native scroll. */
 function useExpandedZoom(active: boolean) {
   const [zoom, setZoom] = useState(1);
@@ -230,13 +345,40 @@ export function CellarMap({
     zoomOut,
     zoomReset,
   } = useExpandedZoom(expanded);
+  const viewport = useExpandedViewport(expanded);
+  const [lockHint, setLockHint] = useState<string | null>(null);
 
-  function openExpanded() {
+  async function openExpanded() {
     setExpanded(true);
+    setLockHint(null);
+    // User gesture: ask OS to rotate into landscape (keeps map interactive).
+    const locked = await tryLockLandscape();
+    if (!locked) {
+      setLockHint(
+        "Gira el teléfono (o desactiva el bloqueo de rotación) para ver el mueble en horizontal."
+      );
+    }
+    window.setTimeout(() => {
+      window.dispatchEvent(new Event("resize"));
+    }, 80);
   }
 
   function closeExpanded() {
     setExpanded(false);
+    setLockHint(null);
+    tryUnlockOrientation();
+  }
+
+  async function requestHorizontal() {
+    const locked = await tryLockLandscape();
+    if (locked) {
+      setLockHint(null);
+      window.dispatchEvent(new Event("resize"));
+      return;
+    }
+    setLockHint(
+      "Tu teléfono no permitió girar la app. Desactiva el candado de rotación y gira el celular."
+    );
   }
 
   useEffect(() => {
@@ -716,20 +858,40 @@ export function CellarMap({
     </div>
   );
 
-  const overlayStyle = {
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    width: "100%",
-    height: "100%",
-    maxWidth: "none",
-    maxHeight: "none",
-    paddingTop: "max(0.5rem, env(safe-area-inset-top))",
-    paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))",
-    paddingLeft: "max(0.5rem, env(safe-area-inset-left))",
-    paddingRight: "max(0.5rem, env(safe-area-inset-right))",
-  } as const;
+  const overlayStyle =
+    viewport.width > 0 && viewport.height > 0
+      ? ({
+          top: 0,
+          left: 0,
+          width: viewport.width,
+          height: viewport.height,
+          maxWidth: "none",
+          maxHeight: "none",
+          paddingTop: "max(0.5rem, env(safe-area-inset-top))",
+          paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))",
+          paddingLeft: "max(0.5rem, env(safe-area-inset-left))",
+          paddingRight: "max(0.5rem, env(safe-area-inset-right))",
+        } as const)
+      : ({
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: "100%",
+          height: "100%",
+          maxWidth: "none",
+          maxHeight: "none",
+          paddingTop: "max(0.5rem, env(safe-area-inset-top))",
+          paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))",
+          paddingLeft: "max(0.5rem, env(safe-area-inset-left))",
+          paddingRight: "max(0.5rem, env(safe-area-inset-right))",
+        } as const);
+
+  // Clear rotate tip once the device is actually landscape.
+  useEffect(() => {
+    if (!expanded) return;
+    if (viewport.landscape) setLockHint(null);
+  }, [expanded, viewport.landscape]);
 
   if (expanded && portalReady) {
     const zoomPct = Math.round(zoom * 100);
@@ -747,15 +909,19 @@ export function CellarMap({
         </div>
         {createPortal(
           <div
+            key={`map-${viewport.landscape ? "L" : "P"}-${viewport.width}x${viewport.height}`}
             role="dialog"
             aria-modal="true"
             aria-labelledby="cellar-map-expanded-title"
             className={[
-              "map-expanded-overlay fixed inset-0 z-[45] flex flex-col bg-[var(--surface-solid)]",
+              "map-expanded-overlay fixed z-[45] flex flex-col bg-[var(--surface-solid)]",
+              viewport.width > 0 ? "" : "inset-0",
+              viewport.landscape ? "map-expanded-overlay--landscape" : "",
               dragId ? "map-is-dragging" : "",
             ]
               .filter(Boolean)
               .join(" ")}
+            data-orientation={viewport.landscape ? "landscape" : "portrait"}
             style={overlayStyle}
           >
             <div className="map-expanded-header mb-2 flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--line)] pb-2">
@@ -766,6 +932,15 @@ export function CellarMap({
                 {mapTitle}
               </h2>
               <div className="flex flex-wrap items-center gap-1.5">
+                {!viewport.landscape ? (
+                  <button
+                    type="button"
+                    className="btn btn-ghost min-h-[40px] px-2.5 text-xs"
+                    onClick={() => void requestHorizontal()}
+                  >
+                    Horizontal
+                  </button>
+                ) : null}
                 <div
                   className="inline-flex items-center rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.7)] p-0.5"
                   role="group"
@@ -812,6 +987,11 @@ export function CellarMap({
             </div>
 
             <div className="map-expanded-body flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+              {lockHint ? (
+                <div className="shrink-0 rounded-[10px] border border-[rgba(110,31,44,0.22)] bg-[rgba(110,31,44,0.06)] px-3 py-2 text-sm text-ink">
+                  {lockHint}
+                </div>
+              ) : null}
               {movingWine && pickMode ? (
                 <div className="shrink-0 rounded-[10px] border border-[rgba(110,31,44,0.35)] bg-[rgba(250,249,245,0.96)] px-3 py-1.5">
                   <p className="text-sm font-medium text-ink">
@@ -848,7 +1028,9 @@ export function CellarMap({
                 </div>
               ) : (
                 <p className="shrink-0 text-xs text-ink-soft">
-                  Desliza para mover · pellizca o usa +/− para zoom.
+                  {viewport.landscape
+                    ? "Desliza para mover · pellizca o usa +/− para zoom."
+                    : "Gira el teléfono o toca Horizontal · desliza y haz zoom en el mueble."}
                 </p>
               )}
 

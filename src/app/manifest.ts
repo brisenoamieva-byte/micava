@@ -6,11 +6,11 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "Cavatale",
     description:
       "Tu cava de vinos con historias que abren conversación.",
-    start_url: "/cava",
+    // Cache-bust start_url so installed apps pick up orientation: any.
+    start_url: "/cava?v=orient2",
     scope: "/",
     display: "standalone",
-    // Omit orientation so installed apps can rotate freely (Android was
-    // sticky on portrait-primary from an older manifest).
+    orientation: "any",
     background_color: "#e5e2da",
     theme_color: "#e5e2da",
     lang: "es",

@@ -1,4 +1,10 @@
-import type { CellarLogEntry, CellarUnit, DepartAction, Wine } from "@/lib/types";
+import type {
+  CellarLogEntry,
+  CellarUnit,
+  DepartAction,
+  Encounter,
+  Wine,
+} from "@/lib/types";
 import {
   parseKimiPairingsBlob,
   serializeKimiPairings,
@@ -218,6 +224,90 @@ export function cellarToRow(unit: CellarUnit, userId: string): CellarRow {
     cols: unit.cols,
     rows: unit.rows,
     sort_order: unit.sortOrder,
+  };
+}
+
+export type EncounterRow = {
+  id: string;
+  user_id: string;
+  at: string;
+  wine_id: string | null;
+  name: string;
+  winery: string;
+  country: string;
+  region: string;
+  type: string;
+  grape: string;
+  aging: string;
+  vintage: number | null;
+  cavatale_rating: number | null;
+  kimi_summary: string | null;
+  kimi_curiosity: string | null;
+  kimi_talk_hook: string | null;
+  kimi_pairings: string | null;
+  kimi_checked_at: string | null;
+  kimi_confidence: string | null;
+  note: string | null;
+  place: string | null;
+};
+
+export function encounterFromRow(row: EncounterRow): Encounter {
+  const pairings = parseKimiPairingsBlob(row.kimi_pairings);
+  return {
+    id: row.id,
+    at: row.at,
+    wineId: row.wine_id ?? null,
+    name: row.name ?? "",
+    winery: row.winery ?? "",
+    country: row.country ?? "",
+    region: row.region ?? "",
+    type: row.type ?? "",
+    grape: row.grape ?? "",
+    aging: row.aging ?? "",
+    vintage: row.vintage,
+    cavataleRating:
+      row.cavatale_rating != null ? Number(row.cavatale_rating) : null,
+    kimiSummary: row.kimi_summary ?? null,
+    kimiCuriosity: row.kimi_curiosity ?? null,
+    kimiTalkHook: row.kimi_talk_hook ?? null,
+    kimiPairings: pairings.dishes,
+    kimiPairingNote: pairings.note,
+    kimiCheckedAt: row.kimi_checked_at ?? null,
+    kimiConfidence: row.kimi_confidence as Encounter["kimiConfidence"],
+    note: row.note ?? null,
+    place: row.place ?? null,
+  };
+}
+
+export function encounterToRow(
+  entry: Encounter,
+  userId: string
+): EncounterRow {
+  return {
+    id: entry.id,
+    user_id: userId,
+    at: entry.at,
+    wine_id: entry.wineId,
+    name: entry.name,
+    winery: entry.winery,
+    country: entry.country,
+    region: entry.region,
+    type: entry.type,
+    grape: entry.grape,
+    aging: entry.aging,
+    vintage: entry.vintage,
+    cavatale_rating: entry.cavataleRating,
+    kimi_summary: entry.kimiSummary,
+    kimi_curiosity: entry.kimiCuriosity,
+    kimi_talk_hook: entry.kimiTalkHook,
+    kimi_pairings: serializeKimiPairings(
+      entry.kimiPairings,
+      entry.kimiPairingNote
+    ),
+    kimi_checked_at: entry.kimiCheckedAt,
+    kimi_confidence: entry.kimiConfidence,
+    note: entry.note,
+    place: entry.place,
   };
 }
 

@@ -26,11 +26,14 @@ import {
   cellarToRow,
   DEFAULT_CELLAR_COLS,
   DEFAULT_CELLAR_ROWS,
+  encounterFromRow,
+  encounterToRow,
   historyFromRow,
   historyToRow,
   wineFromRow,
   wineToRow,
   type CellarRow,
+  type EncounterRow,
   type HistoryRow,
   type WineRow,
 } from "@/lib/supabase/map";
@@ -39,6 +42,7 @@ import type {
   CellarUnit,
   DepartAction,
   DepartExtras,
+  Encounter,
   Wine,
   WineDraft,
 } from "@/lib/types";
@@ -46,6 +50,7 @@ import { parseLocation } from "@/lib/wines";
 
 const STORAGE_KEY = "micava.wines.v1";
 const HISTORY_KEY = "micava.history.v1";
+const ENCOUNTERS_KEY = "micava.encounters.v1";
 const IMPORT_FLAG = "micava.import.offered.v1";
 
 function localDefaultCellar(): CellarUnit {
@@ -72,6 +77,7 @@ function isMissingRelationError(err: { code?: string; message?: string } | null)
 type CellarContextValue = {
   wines: Wine[];
   history: CellarLogEntry[];
+  encounters: Encounter[];
   cellars: CellarUnit[];
   activeCellarId: string | null;
   setActiveCellarId: (id: string | null) => void;
@@ -112,6 +118,12 @@ type CellarContextValue = {
     action: DepartAction,
     extras?: DepartExtras
   ) => void;
+  /** Save a table encounter to the bitácora (not cellar inventory). */
+  saveEncounter: (entry: Omit<Encounter, "id" | "at"> & {
+    id?: string;
+    at?: string;
+  }) => Encounter;
+  removeEncounter: (id: string) => void;
   resetCellar: () => Promise<void>;
   importLocalCellar: () => Promise<void>;
   dismissImportOffer: () => void;
@@ -226,6 +238,33 @@ function loadHistoryLocal(): CellarLogEntry[] {
   }
 }
 
+function loadEncountersLocal(): Encounter[] {
+  try {
+    const raw = localStorage.getItem(ENCOUNTERS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as Encounter[];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((e) => ({
+      ...e,
+      wineId: e.wineId ?? null,
+      place: e.place ?? null,
+      note: e.note ?? null,
+      kimiPairings: e.kimiPairings ?? null,
+      kimiPairingNote: e.kimiPairingNote ?? null,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function persistEncountersLocal(list: Encounter[]) {
+  try {
+    localStorage.setItem(ENCOUNTERS_KEY, JSON.stringify(list.slice(0, 200)));
+  } catch {
+    /* ignore */
+  }
+}
+
 export function wineToDraft(wine: Wine): WineDraft {
   return {
     name: wine.name,
@@ -247,6 +286,7 @@ export function CellarProvider({ children }: { children: ReactNode }) {
   const { user, ready: authReady, configured } = useAuth();
   const [wines, setWines] = useState<Wine[]>([]);
   const [history, setHistory] = useState<CellarLogEntry[]>([]);
+  const [encounters, setEncounters] = useState<Encounter[]>([]);
   const [cellars, setCellars] = useState<CellarUnit[]>([]);
   const [activeCellarId, setActiveCellarId] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
@@ -261,6 +301,8 @@ export function CellarProvider({ children }: { children: ReactNode }) {
   const multiCellarRef = useRef(false);
   /** False if kimi_* columns are missing in Supabase. */
   const kimiColumnsRef = useRef(true);
+  /** False if encounters table is missing in Supabase. */
+  const encountersTableRef = useRef(true);
   const syncOkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Skip success toasts until the initial cloud load finishes. */
   const allowSyncOkRef = useRef(false);
@@ -414,6 +456,57 @@ export function CellarProvider({ children }: { children: ReactNode }) {
     [reportSyncError]
   );
 
+  const upsertEncounterRemote = useCallback(
+    async (entry: Encounter, userId: string, all: Encounter[]) => {
+      persistEncountersLocal(all);
+      if (!isSupabaseConfigured()) return;
+      if (!encountersTableRef.current) return;
+      if (typeof navigator !== "undefined" && !navigator.onLine) return;
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("encounters")
+        .upsert(encounterToRow(entry, userId), {
+          onConflict: "user_id,id",
+        });
+      if (error && isMissingRelationError(error)) {
+        encountersTableRef.current = false;
+        return;
+      }
+      if (error) {
+        reportSyncError(
+          `No se pudo guardar el encuentro: ${error.message}.`
+        );
+      } else {
+        reportSyncOk("Guardado en tu bitácora");
+      }
+    },
+    [reportSyncError, reportSyncOk]
+  );
+
+  const deleteEncounterRemote = useCallback(
+    async (id: string, userId: string, all: Encounter[]) => {
+      persistEncountersLocal(all);
+      if (!isSupabaseConfigured() || !encountersTableRef.current) return;
+      if (typeof navigator !== "undefined" && !navigator.onLine) return;
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("encounters")
+        .delete()
+        .eq("user_id", userId)
+        .eq("id", id);
+      if (error && isMissingRelationError(error)) {
+        encountersTableRef.current = false;
+        return;
+      }
+      if (error) {
+        reportSyncError(
+          `No se pudo borrar el encuentro: ${error.message}.`
+        );
+      }
+    },
+    [reportSyncError]
+  );
+
   const persistWines = useCallback(async (list: Wine[], userId: string) => {
     if (!isSupabaseConfigured()) return;
     if (typeof navigator !== "undefined" && !navigator.onLine) return;
@@ -487,6 +580,7 @@ export function CellarProvider({ children }: { children: ReactNode }) {
     if (!configured || !user) {
       setWines([]);
       setHistory([]);
+      setEncounters([]);
       setCellars([]);
       setActiveCellarId(null);
       setCanImportLocal(false);
@@ -511,6 +605,7 @@ export function CellarProvider({ children }: { children: ReactNode }) {
         { data: cellarRows, error: cellarErr },
         { data: wineRows },
         { data: histRows },
+        encResult,
       ] = await Promise.all([
         supabase
           .from("cellars")
@@ -520,6 +615,12 @@ export function CellarProvider({ children }: { children: ReactNode }) {
         supabase.from("wines").select("*").eq("user_id", user.id).order("name"),
         supabase
           .from("cellar_history")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("at", { ascending: false })
+          .limit(100),
+        supabase
+          .from("encounters")
           .select("*")
           .eq("user_id", user.id)
           .order("at", { ascending: false })
@@ -561,10 +662,26 @@ export function CellarProvider({ children }: { children: ReactNode }) {
         historyFromRow
       );
 
+      let cloudEncounters: Encounter[] = [];
+      if (encResult.error && isMissingRelationError(encResult.error)) {
+        encountersTableRef.current = false;
+        cloudEncounters = loadEncountersLocal();
+      } else if (encResult.error) {
+        encountersTableRef.current = true;
+        cloudEncounters = loadEncountersLocal();
+      } else {
+        encountersTableRef.current = true;
+        cloudEncounters = ((encResult.data ?? []) as EncounterRow[]).map(
+          encounterFromRow
+        );
+        persistEncountersLocal(cloudEncounters);
+      }
+
       setCellars(units);
       setActiveCellarId(units[0]?.id ?? null);
       setWines(cloudWines);
       setHistory(cloudHistory);
+      setEncounters(cloudEncounters);
 
       const local = loadStored();
       const offered = localStorage.getItem(IMPORT_FLAG) === "1";
@@ -854,6 +971,61 @@ export function CellarProvider({ children }: { children: ReactNode }) {
     [deleteWineRemote, insertHistoryRemote]
   );
 
+  const saveEncounter = useCallback(
+    (input: Omit<Encounter, "id" | "at"> & { id?: string; at?: string }) => {
+      const entry: Encounter = {
+        id: input.id ?? `e-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        at: input.at ?? new Date().toISOString(),
+        wineId: input.wineId ?? null,
+        name: input.name.trim(),
+        winery: (input.winery ?? "").trim(),
+        country: (input.country ?? "").trim(),
+        region: (input.region ?? "").trim(),
+        type: (input.type ?? "").trim() || "Tinto",
+        grape: (input.grape ?? "").trim(),
+        aging: (input.aging ?? "").trim(),
+        vintage: input.vintage ?? null,
+        cavataleRating: input.cavataleRating ?? null,
+        kimiSummary: input.kimiSummary ?? null,
+        kimiCuriosity: input.kimiCuriosity ?? null,
+        kimiTalkHook: input.kimiTalkHook ?? null,
+        kimiPairings: input.kimiPairings ?? null,
+        kimiPairingNote: input.kimiPairingNote ?? null,
+        kimiCheckedAt: input.kimiCheckedAt ?? null,
+        kimiConfidence: input.kimiConfidence ?? null,
+        place: input.place?.trim() ? input.place.trim() : null,
+        note: input.note?.trim() ? input.note.trim() : null,
+      };
+      let nextList: Encounter[] = [];
+      setEncounters((prev) => {
+        nextList = [entry, ...prev.filter((e) => e.id !== entry.id)].slice(
+          0,
+          100
+        );
+        return nextList;
+      });
+      const uid = userIdRef.current;
+      if (uid) void upsertEncounterRemote(entry, uid, nextList);
+      else persistEncountersLocal(nextList);
+      return entry;
+    },
+    [upsertEncounterRemote]
+  );
+
+  const removeEncounter = useCallback(
+    (id: string) => {
+      let nextList: Encounter[] = [];
+      setEncounters((prev) => {
+        nextList = prev.filter((e) => e.id !== id);
+        return nextList;
+      });
+      const uid = userIdRef.current;
+      if (uid) void deleteEncounterRemote(id, uid, nextList);
+      else persistEncountersLocal(nextList);
+    },
+    [deleteEncounterRemote]
+  );
+
   const resetCellar = useCallback(async () => {
     const uid = userIdRef.current;
     // Invalidate any in-flight cloud fetch so it can't resurrect bottles.
@@ -1059,6 +1231,7 @@ export function CellarProvider({ children }: { children: ReactNode }) {
     () => ({
       wines,
       history,
+      encounters,
       cellars,
       activeCellarId: activeCellar?.id ?? null,
       setActiveCellarId,
@@ -1080,6 +1253,8 @@ export function CellarProvider({ children }: { children: ReactNode }) {
       moveWine,
       removeWine,
       departWine,
+      saveEncounter,
+      removeEncounter,
       resetCellar,
       importLocalCellar,
       dismissImportOffer,
@@ -1090,6 +1265,7 @@ export function CellarProvider({ children }: { children: ReactNode }) {
     [
       wines,
       history,
+      encounters,
       cellars,
       activeCellar,
       ready,
@@ -1110,6 +1286,8 @@ export function CellarProvider({ children }: { children: ReactNode }) {
       moveWine,
       removeWine,
       departWine,
+      saveEncounter,
+      removeEncounter,
       resetCellar,
       importLocalCellar,
       dismissImportOffer,

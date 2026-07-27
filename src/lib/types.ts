@@ -144,3 +144,46 @@ export type DepartExtras = {
   myRating?: number | null;
   note?: string | null;
 };
+
+/**
+ * A table encounter saved to the bitácora — story + memory, not a cellar bottle.
+ * Identity and kimi fields are snapshotted so the tale survives without adding to cava.
+ */
+export type Encounter = {
+  id: string;
+  at: string;
+  /** Optional link if the bottle was later (or already) in inventory. */
+  wineId: string | null;
+  name: string;
+  winery: string;
+  country: string;
+  region: string;
+  type: WineType;
+  grape: string;
+  aging: string;
+  vintage: number | null;
+  cavataleRating: number | null;
+  kimiSummary: string | null;
+  kimiCuriosity: string | null;
+  kimiTalkHook: string | null;
+  kimiPairings: string[] | null;
+  kimiPairingNote: string | null;
+  kimiCheckedAt: string | null;
+  kimiConfidence: MatchConfidence | null;
+  /** Restaurant / mesa / ciudad — shown in the list. */
+  place: string | null;
+  /** Compañía, por qué esta noche — short sybarite memory. */
+  note: string | null;
+};
+
+/** Identity draft for Contar historia without mueble/slot. */
+export type EncounterDraft = {
+  name: string;
+  winery: string;
+  country: string;
+  region: string;
+  type: WineType;
+  grape: string;
+  aging: string;
+  vintage: number | null;
+};

@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { BrandMark } from "@/components/BrandMark";
+import { BitacoraPanel } from "@/components/BitacoraPanel";
 import { CellarMap } from "@/components/CellarMap";
 import { CellarUnitsBar } from "@/components/CellarUnitsBar";
 import { DepartTasteModal } from "@/components/DepartTasteModal";
 import { DisplayNameEditor } from "@/components/DisplayNameEditor";
+import { EncuentroModal } from "@/components/EncuentroModal";
 import { FiltersBar } from "@/components/FiltersBar";
 import { FirstRunGuide } from "@/components/FirstRunGuide";
 import { InstallAppHint } from "@/components/InstallAppHint";
@@ -25,7 +27,15 @@ import {
   buildInviteFriendText,
   shareOrCopyText,
 } from "@/lib/share-wine";
-import type { DepartAction, DepartExtras, Filters, MatchConfidence, RatingSource, Wine } from "@/lib/types";
+import type {
+  DepartAction,
+  DepartExtras,
+  Filters,
+  MatchConfidence,
+  RatingSource,
+  Wine,
+  WineDraft,
+} from "@/lib/types";
 import {
   cellarStats,
   filterWines,
@@ -54,6 +64,7 @@ export default function CavaPage() {
   const {
     wines,
     history,
+    encounters,
     ready,
     canImportLocal,
     cellars,
@@ -72,6 +83,8 @@ export default function CavaPage() {
     applyKimiResearch,
     moveWine,
     departWine,
+    saveEncounter,
+    removeEncounter,
     resetCellar,
     importLocalCellar,
     dismissImportOffer,
@@ -93,6 +106,8 @@ export default function CavaPage() {
   const [formInitialStep, setFormInitialStep] = useState<"pick" | "form">(
     "pick"
   );
+  const [formPrefill, setFormPrefill] = useState<WineDraft | null>(null);
+  const [encuentroOpen, setEncuentroOpen] = useState(false);
   const [editing, setEditing] = useState<Wine | null>(null);
   const [departWineTarget, setDepartWineTarget] = useState<Wine | null>(null);
   const [departAction, setDepartAction] = useState<DepartAction>("opened");
@@ -229,12 +244,17 @@ export default function CavaPage() {
     setMobilePanel(detailReturn);
   }
 
-  function openAdd(slot = "", opts?: { step?: "pick" | "form" }) {
+  function openAdd(slot = "", opts?: { step?: "pick" | "form"; prefill?: WineDraft | null }) {
     setEditing(null);
     setFormSlot(slot);
     setFormInitialStep(opts?.step ?? "pick");
+    setFormPrefill(opts?.prefill ?? null);
     setFormOpen(true);
     setMode("cava");
+  }
+
+  function openEncuentro() {
+    setEncuentroOpen(true);
   }
 
   function handleMoveWine(wineId: string, targetLocation: string) {
@@ -435,45 +455,73 @@ export default function CavaPage() {
                 </span>
               </>
             ) : null}
-            <button
-              type="button"
-              className="btn btn-primary min-h-[40px] px-3 text-sm"
-              onClick={() => openAdd()}
-            >
-              + Agregar
-            </button>
-            <details className="relative">
-              <summary className="flex min-h-[40px] cursor-pointer list-none items-center px-1 text-sm underline-offset-2 hover:text-ink hover:underline [&::-webkit-details-marker]:hidden">
-                Más
-              </summary>
-              <div className="absolute right-0 z-20 mt-1 min-w-[10.5rem] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.98)] p-1.5 shadow-sm backdrop-blur-sm">
+            <div className="flex flex-col items-end gap-1">
+              <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-2">
                 <button
                   type="button"
-                  className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
-                  onClick={() => void handleInviteFriend()}
+                  className="btn btn-primary min-h-[40px] px-3 text-sm"
+                  onClick={() => openAdd()}
                 >
-                  {inviteHint ?? "Invitar"}
+                  + Agregar
                 </button>
                 <button
                   type="button"
-                  className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
-                  onClick={() => setShowHowTo(true)}
+                  className="btn btn-ghost min-h-[40px] px-3 text-sm"
+                  onClick={openEncuentro}
                 >
-                  Cómo funciona
+                  Encuentro
                 </button>
-                <button
-                  type="button"
-                  className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
-                  onClick={() => {
-                    void signOut().then(() => {
-                      window.location.href = "/";
-                    });
-                  }}
-                >
-                  Salir
-                </button>
+                <details className="relative">
+                  <summary className="flex min-h-[40px] cursor-pointer list-none items-center px-1 text-sm underline-offset-2 hover:text-ink hover:underline [&::-webkit-details-marker]:hidden">
+                    Más
+                  </summary>
+                  <div className="absolute right-0 z-20 mt-1 min-w-[10.5rem] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.98)] p-1.5 shadow-sm backdrop-blur-sm">
+                    <button
+                      type="button"
+                      className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
+                      onClick={() => {
+                        setMode("stats");
+                        window.requestAnimationFrame(() => {
+                          document
+                            .getElementById("bitacora")
+                            ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                        });
+                      }}
+                    >
+                      Bitácora
+                    </button>
+                    <button
+                      type="button"
+                      className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
+                      onClick={() => void handleInviteFriend()}
+                    >
+                      {inviteHint ?? "Invitar"}
+                    </button>
+                    <button
+                      type="button"
+                      className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
+                      onClick={() => setShowHowTo(true)}
+                    >
+                      Cómo funciona
+                    </button>
+                    <button
+                      type="button"
+                      className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
+                      onClick={() => {
+                        void signOut().then(() => {
+                          window.location.href = "/";
+                        });
+                      }}
+                    >
+                      Salir
+                    </button>
+                  </div>
+                </details>
               </div>
-            </details>
+              <p className="max-w-[16rem] text-right text-[11px] leading-snug text-ink-soft">
+                Encuentro · historia para esta mesa · sin sumarla a tu cava
+              </p>
+            </div>
           </div>
         </header>
 
@@ -531,6 +579,12 @@ export default function CavaPage() {
           </div>
         ) : mode === "stats" ? (
           <div className="mt-6 space-y-5">
+            <div id="bitacora">
+              <BitacoraPanel
+                entries={encounters}
+                onRemove={removeEncounter}
+              />
+            </div>
             <RecentHistory entries={history} />
             <StatsDashboard
               wines={wines}
@@ -938,12 +992,14 @@ export default function CavaPage() {
         activeCellarId={activeCellar?.id ?? null}
         initialSlot={formSlot}
         initialStep={formInitialStep}
+        prefillDraft={formPrefill}
         editing={editing}
         onClose={() => {
           setFormOpen(false);
           setEditing(null);
           setFormSlot("");
           setFormInitialStep("pick");
+          setFormPrefill(null);
         }}
         onSubmit={(draft, extras) => {
           void (async () => {
@@ -969,6 +1025,18 @@ export default function CavaPage() {
               }
             }
           })();
+        }}
+      />
+
+      <EncuentroModal
+        open={encuentroOpen}
+        onClose={() => setEncuentroOpen(false)}
+        onSave={(entry) => {
+          saveEncounter(entry);
+        }}
+        onAlsoAddToCava={(draft) => {
+          setEncuentroOpen(false);
+          openAdd("", { step: "form", prefill: draft });
         }}
       />
 

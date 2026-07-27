@@ -28,6 +28,8 @@ type Props = {
   initialSlot?: string;
   /** When adding: start on chooser (default) or blank form. */
   initialStep?: "pick" | "form";
+  /** Prefill identity (e.g. from Encuentro → también sumar a cava). */
+  prefillDraft?: WineDraft | null;
   editing?: Wine | null;
   onClose: () => void;
   onSubmit: (
@@ -96,6 +98,7 @@ export function WineFormModal({
   activeCellarId,
   initialSlot = "",
   initialStep = "pick",
+  prefillDraft = null,
   editing = null,
   onClose,
   onSubmit,
@@ -171,12 +174,20 @@ export function WineFormModal({
     if (editing) {
       setStep("form");
       setDraft(wineToDraft(editing));
+    } else if (prefillDraft) {
+      setStep("form");
+      setFromExisting(true);
+      setDraft({
+        ...prefillDraft,
+        cellarId: prefillDraft.cellarId ?? activeCellarId,
+        location: prefillDraft.location || initialSlot || "",
+      });
     } else {
       setDraft(emptyDraft(initialSlot, activeCellarId));
       // Always offer scan vs manual (and catalog when it exists).
       setStep(initialStep === "form" ? "form" : "pick");
     }
-  }, [open, editing, initialSlot, initialStep, activeCellarId]);
+  }, [open, editing, prefillDraft, initialSlot, initialStep, activeCellarId]);
 
   useEffect(() => {
     return () => {
@@ -433,7 +444,9 @@ export function WineFormModal({
                     ? "Tu primera botella"
                     : "¿Qué botella sumas?"
                   : fromExisting
-                    ? "Otra botella"
+                    ? prefillDraft
+                      ? "Sumar a la cava"
+                      : "Otra botella"
                     : "Vino nuevo"}
             </h2>
             <p className="mt-1 text-sm text-ink-soft">
@@ -448,7 +461,9 @@ export function WineFormModal({
                       ? `Casilla ${initialSlot} · elige un vino de tu cava o uno nuevo.`
                       : "Elige uno que ya tengas, o agrega uno distinto."
                   : fromExisting
-                    ? "Datos copiados · elige mueble y ubicación."
+                    ? prefillDraft
+                      ? "Datos del encuentro · elige mueble y casilla para sumarlo."
+                      : "Datos copiados · elige mueble y ubicación."
                     : "Completa los datos de un vino que aún no está en tu cava."}
             </p>
           </div>

@@ -9,7 +9,8 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/cava",
     scope: "/",
     display: "standalone",
-    orientation: "any",
+    // Omit orientation so installed apps can rotate freely (Android was
+    // sticky on portrait-primary from an older manifest).
     background_color: "#e5e2da",
     theme_color: "#e5e2da",
     lang: "es",

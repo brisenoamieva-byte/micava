@@ -593,6 +593,11 @@ select {
   max-height: none;
 }
 
+/* Portrait-locked PWAs: draw landscape UI and let the user tip the phone. */
+.map-expanded-overlay--force-rotate {
+  overflow: hidden;
+}
+
 .map-expanded-stage {
   position: relative;
   display: flex;

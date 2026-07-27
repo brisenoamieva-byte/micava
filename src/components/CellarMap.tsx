@@ -92,9 +92,18 @@ function useTouchMoveUi() {
   return touchUi;
 }
 
-/** True when the device is in landscape (robust across iOS/Android/PWA). */
+/** Prefer real layout aspect — screen.orientation can lag or stay portrait in PWAs. */
 function readIsLandscape(): boolean {
   if (typeof window === "undefined") return false;
+  const width = Math.round(
+    window.visualViewport?.width ?? window.innerWidth ?? 0
+  );
+  const height = Math.round(
+    window.visualViewport?.height ?? window.innerHeight ?? 0
+  );
+  if (width > 0 && height > 0 && Math.abs(width - height) >= 24) {
+    return width > height;
+  }
   const type = window.screen?.orientation?.type;
   if (typeof type === "string") {
     if (type.startsWith("landscape")) return true;
@@ -106,17 +115,46 @@ function readIsLandscape(): boolean {
   } catch {
     /* ignore */
   }
-  // Legacy iOS
   const angle = (window as Window & { orientation?: number }).orientation;
   if (angle === 90 || angle === -90) return true;
   if (angle === 0 || angle === 180) return false;
-  const width = Math.round(
-    window.visualViewport?.width ?? window.innerWidth
-  );
-  const height = Math.round(
-    window.visualViewport?.height ?? window.innerHeight
-  );
   return width > height;
+}
+
+async function tryLockLandscape(): Promise<boolean> {
+  try {
+    const orient = window.screen?.orientation as
+      | (ScreenOrientation & {
+          lock?: (orientation: string) => Promise<void>;
+        })
+      | undefined;
+    if (!orient || typeof orient.lock !== "function") return false;
+    await orient.lock("landscape");
+    return true;
+  } catch {
+    try {
+      const orient = window.screen?.orientation as
+        | (ScreenOrientation & {
+            lock?: (orientation: string) => Promise<void>;
+          })
+        | undefined;
+      await orient?.lock?.("landscape-primary");
+      return Boolean(orient?.lock);
+    } catch {
+      return false;
+    }
+  }
+}
+
+function tryUnlockOrientation() {
+  try {
+    const orient = window.screen?.orientation as
+      | (ScreenOrientation & { unlock?: () => void })
+      | undefined;
+    orient?.unlock?.();
+  } catch {
+    /* ignore */
+  }
 }
 
 /** Keep expanded map layout in sync with phone rotation. */
@@ -147,18 +185,12 @@ function useExpandedViewport(active: boolean) {
       for (const t of timers) clearTimeout(t);
       timers.length = 0;
       sync();
-      // iOS/Android report stale sizes mid-orientation animation.
-      for (const ms of [50, 150, 320, 600, 1000]) {
+      for (const ms of [16, 50, 150, 320, 600, 1000, 1600]) {
         timers.push(setTimeout(sync, ms));
       }
     };
 
     sync();
-    try {
-      window.screen?.orientation?.unlock?.();
-    } catch {
-      /* may require gesture / unsupported */
-    }
 
     const vv = window.visualViewport;
     vv?.addEventListener("resize", syncSoon);
@@ -277,14 +309,41 @@ export function CellarMap({
   const fitStageRef = useRef<HTMLDivElement | null>(null);
   const fitGridRef = useRef<HTMLDivElement | null>(null);
   const viewport = useExpandedViewport(expanded);
-  const landscapeFit = expanded && viewport.landscape;
+  const naturalLandscape =
+    viewport.landscape ||
+    (viewport.width > 0 &&
+      viewport.height > 0 &&
+      viewport.width / viewport.height >= 1.05);
+  /**
+   * If the OS/PWA keeps the UI in portrait, rotate the overlay ourselves so
+   * the mueble can be used in landscape by tipping the phone.
+   */
+  const forceRotate = expanded && touchUi && !naturalLandscape;
+  const landscapeFit = expanded && (naturalLandscape || forceRotate);
   const fitMetrics = useContainScale(
     fitStageRef,
     fitGridRef,
     landscapeFit,
-    `${cols}x${rows.join(",")}:${viewport.width}x${viewport.height}`
+    `${cols}x${rows.join(",")}:${viewport.width}x${viewport.height}:${landscapeFit ? "L" : "P"}:${forceRotate ? "F" : "N"}`
   );
   const fitScale = fitMetrics.scale;
+
+  async function openExpanded() {
+    setExpanded(true);
+    // User gesture: ask the OS to flip to landscape for the wide grid.
+    const locked = await tryLockLandscape();
+    if (locked) {
+      // Force a sync after lock; some browsers delay orientation events.
+      window.setTimeout(() => {
+        window.dispatchEvent(new Event("resize"));
+      }, 50);
+    }
+  }
+
+  function closeExpanded() {
+    setExpanded(false);
+    tryUnlockOrientation();
+  }
 
   useEffect(() => {
     setPortalReady(true);
@@ -310,7 +369,7 @@ export function CellarMap({
   useEffect(() => {
     if (!expanded) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setExpanded(false);
+      if (e.key === "Escape") closeExpanded();
     };
     window.addEventListener("keydown", onKey);
     const prevOverflow = document.body.style.overflow;
@@ -319,6 +378,8 @@ export function CellarMap({
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = prevOverflow;
     };
+    // closeExpanded is stable enough for this effect's purpose
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expanded]);
   const emptyTapRef = useRef<{
     slot: string;
@@ -426,7 +487,7 @@ export function CellarMap({
     }
     if (wineThere) {
       // Leave fullscreen so mobile Detalle / desktop detail panel are visible.
-      setExpanded(false);
+      closeExpanded();
       onSelect(wineThere);
       return;
     }
@@ -564,7 +625,7 @@ export function CellarMap({
                 type="button"
                 className="btn btn-ghost min-h-[44px] px-3 text-xs"
                 aria-label="Ampliar mapa"
-                onClick={() => setExpanded(true)}
+                onClick={() => void openExpanded()}
               >
                 Ampliar
               </button>
@@ -613,7 +674,7 @@ export function CellarMap({
                 type="button"
                 className="btn btn-ghost min-h-[44px] px-3 text-xs"
                 aria-label="Ampliar mapa"
-                onClick={() => setExpanded(true)}
+                onClick={() => void openExpanded()}
               >
                 Ampliar
               </button>
@@ -768,20 +829,38 @@ export function CellarMap({
     </div>
   );
 
-  const overlayStyle = {
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    width: "100%",
-    height: "100%",
-    maxWidth: "none",
-    maxHeight: "none",
-    paddingTop: "max(0.5rem, env(safe-area-inset-top))",
-    paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))",
-    paddingLeft: "max(0.5rem, env(safe-area-inset-left))",
-    paddingRight: "max(0.5rem, env(safe-area-inset-right))",
-  } as const;
+  const overlayStyle = forceRotate
+    ? ({
+        top: "50%",
+        left: "50%",
+        right: "auto",
+        bottom: "auto",
+        width: "100dvh",
+        height: "100dvw",
+        maxWidth: "none",
+        maxHeight: "none",
+        transform: "translate(-50%, -50%) rotate(90deg)",
+        transformOrigin: "center center",
+        paddingTop: "max(0.5rem, env(safe-area-inset-left))",
+        paddingBottom: "max(0.5rem, env(safe-area-inset-right))",
+        paddingLeft: "max(0.5rem, env(safe-area-inset-bottom))",
+        paddingRight: "max(0.5rem, env(safe-area-inset-top))",
+      } as const)
+    : ({
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: "100%",
+        height: "100%",
+        maxWidth: "none",
+        maxHeight: "none",
+        transform: "none",
+        paddingTop: "max(0.5rem, env(safe-area-inset-top))",
+        paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))",
+        paddingLeft: "max(0.5rem, env(safe-area-inset-left))",
+        paddingRight: "max(0.5rem, env(safe-area-inset-right))",
+      } as const);
 
   if (expanded && portalReady) {
     return (
@@ -791,24 +870,29 @@ export function CellarMap({
           <button
             type="button"
             className="btn btn-ghost min-h-[44px] px-3 text-xs"
-            onClick={() => setExpanded(false)}
+            onClick={() => closeExpanded()}
           >
             Cerrar
           </button>
         </div>
         {createPortal(
           <div
+            key={forceRotate ? "map-force" : landscapeFit ? "map-land" : "map-port"}
             role="dialog"
             aria-modal="true"
             aria-labelledby="cellar-map-expanded-title"
             className={[
-              "map-expanded-overlay fixed inset-0 z-[45] flex flex-col bg-[var(--surface-solid)]",
+              "map-expanded-overlay fixed z-[45] flex flex-col bg-[var(--surface-solid)]",
+              forceRotate ? "" : "inset-0",
               landscapeFit ? "map-expanded-overlay--landscape" : "",
+              forceRotate ? "map-expanded-overlay--force-rotate" : "",
               dragId ? "map-is-dragging" : "",
             ]
               .filter(Boolean)
               .join(" ")}
-            data-orientation={landscapeFit ? "landscape" : "portrait"}
+            data-orientation={
+              forceRotate ? "force-landscape" : landscapeFit ? "landscape" : "portrait"
+            }
             style={overlayStyle}
           >
             <div className="map-expanded-header mb-2 flex shrink-0 items-start justify-between gap-3 border-b border-[var(--line)] pb-2 sm:mb-3 sm:pb-3">
@@ -822,7 +906,7 @@ export function CellarMap({
                 type="button"
                 className="btn btn-ghost flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center gap-1.5 px-3 text-sm"
                 aria-label="Cerrar mapa ampliado"
-                onClick={() => setExpanded(false)}
+                onClick={closeExpanded}
               >
                 <span aria-hidden className="text-lg leading-none">
                   ×
@@ -838,6 +922,25 @@ export function CellarMap({
                   : "overflow-y-auto overscroll-contain pb-2",
               ].join(" ")}
             >
+              {!naturalLandscape && touchUi && !forceRotate ? (
+                <div className="mb-2 rounded-[10px] border border-[rgba(110,31,44,0.22)] bg-[rgba(110,31,44,0.06)] px-3 py-2">
+                  <p className="text-sm text-ink">
+                    Gira el teléfono para ver el mueble completo.
+                  </p>
+                  <button
+                    type="button"
+                    className="btn btn-ghost mt-1.5 min-h-[36px] px-2 text-xs"
+                    onClick={() => void tryLockLandscape()}
+                  >
+                    Intentar horizontal
+                  </button>
+                </div>
+              ) : null}
+              {forceRotate ? (
+                <p className="mb-1 text-xs text-ink-soft">
+                  Gira el teléfono — el mapa ya está en horizontal.
+                </p>
+              ) : null}
               {landscapeFit ? (
                 <>
                   <div className="map-expanded-chrome shrink-0 space-y-2">

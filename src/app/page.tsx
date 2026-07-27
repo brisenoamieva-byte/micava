@@ -58,12 +58,111 @@ export default function HomePage() {
         </header>
 
         <section className="relative flex flex-1 flex-col justify-center py-12 sm:py-16 md:py-20">
-        <div className="pointer-events-none absolute inset-y-0 right-[-10%] hidden w-[58%] md:block">
+          <div className="pointer-events-none absolute inset-y-0 right-[-10%] hidden w-[58%] md:block">
             <div
               className="hero-silhouette h-full w-full"
               aria-hidden
               role="presentation"
-            />
+            >
+              <svg
+                className="hero-silhouette-svg"
+                viewBox="0 0 360 440"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect
+                  className="rack-fill"
+                  x="28"
+                  y="36"
+                  width="304"
+                  height="368"
+                  rx="14"
+                />
+                <rect
+                  className="rack-edge"
+                  x="28"
+                  y="36"
+                  width="304"
+                  height="368"
+                  rx="14"
+                />
+                {/* Vertical cell lines — 5 columns */}
+                {[1, 2, 3, 4].map((i) => (
+                  <line
+                    key={`v${i}`}
+                    className="rack-line"
+                    x1={28 + i * 60.8}
+                    y1="36"
+                    x2={28 + i * 60.8}
+                    y2="404"
+                  />
+                ))}
+                {/* Horizontal shelves — 4 rows */}
+                {[1, 2, 3].map((i) => (
+                  <line
+                    key={`h${i}`}
+                    className="rack-line"
+                    x1="28"
+                    y1={36 + i * 92}
+                    x2="332"
+                    y2={36 + i * 92}
+                  />
+                ))}
+                {/* Bottle silhouettes: crisp paths, some empty slots */}
+                {(
+                  [
+                    [0, 0, "#6e1f2c"],
+                    [1, 0, "#4f1520"],
+                    [2, 0, "#3a4a3d"],
+                    [4, 0, "#6e1f2c"],
+                    [0, 1, "#7d6344"],
+                    [2, 1, "#6e1f2c"],
+                    [3, 1, "#4f1520"],
+                    [4, 1, "#3a4a3d"],
+                    [1, 2, "#6e1f2c"],
+                    [2, 2, "#4f1520"],
+                    [3, 2, "#7d6344"],
+                    [0, 3, "#4f1520"],
+                    [1, 3, "#3a4a3d"],
+                    [3, 3, "#6e1f2c"],
+                    [4, 3, "#7d6344"],
+                  ] as const
+                ).map(([col, row, fill], i) => {
+                  const cx = 28 + col * 60.8 + 30.4;
+                  const cy = 36 + row * 92 + 78;
+                  return (
+                    <g
+                      key={i}
+                      className="bottle"
+                      transform={`translate(${cx} ${cy})`}
+                    >
+                      {/* cork */}
+                      <rect
+                        x="-3.2"
+                        y="-62"
+                        width="6.4"
+                        height="7"
+                        rx="1.2"
+                        fill={fill}
+                        opacity="0.85"
+                      />
+                      {/* neck */}
+                      <path
+                        d="M-3.4 -55 V-42 C-3.4 -38 -5.5 -35 -8 -32 L-9.5 -18 V8 C-9.5 12 -6.5 14 0 14 C6.5 14 9.5 12 9.5 8 V-18 L8 -32 C5.5 -35 3.4 -38 3.4 -42 V-55 Z"
+                        fill={fill}
+                      />
+                      {/* shoulder highlight */}
+                      <path
+                        d="M-2.2 -54 V-43 C-2.2 -40 -3.8 -37.5 -5.5 -35.5"
+                        stroke="rgba(255,252,247,0.22)"
+                        strokeWidth="1.2"
+                        strokeLinecap="round"
+                      />
+                    </g>
+                  );
+                })}
+              </svg>
+            </div>
           </div>
 
           <div className="relative max-w-xl">

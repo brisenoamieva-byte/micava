@@ -306,6 +306,7 @@ function useExpandedZoom(active: boolean) {
 
   return {
     zoom,
+    setZoom,
     viewportRef,
     zoomIn: () => setZoom((z) => clampZoom(z * 1.18)),
     zoomOut: () => setZoom((z) => clampZoom(z / 1.18)),
@@ -340,6 +341,7 @@ export function CellarMap({
   const mapScrollRef = useRef<HTMLDivElement | null>(null);
   const {
     zoom,
+    setZoom,
     viewportRef: zoomViewportRef,
     zoomIn,
     zoomOut,
@@ -353,9 +355,12 @@ export function CellarMap({
    */
   const cssLandscape = expanded && touchUi && !viewport.landscape;
 
+  /** True screen box — prefer the larger pair so the rotated frame fills edge-to-edge. */
+  const screenLong = Math.max(viewport.width || 0, viewport.height || 0);
+  const screenShort = Math.min(viewport.width || 0, viewport.height || 0);
+
   async function openExpanded() {
     setExpanded(true);
-    // Best effort on Android Chrome; iOS usually ignores this.
     void tryLockLandscape().then(() => {
       window.dispatchEvent(new Event("resize"));
     });
@@ -526,6 +531,35 @@ export function CellarMap({
   const gridNaturalW = LABEL_COL_PX + cols * BASE_CELL_PX + Math.max(0, cols) * 4;
   const gridNaturalH =
     24 + rows.length * BASE_CELL_PX + Math.max(0, rows.length) * 4;
+
+  // Fit the full mueble into the landscape frame when Ampliar opens / rotates.
+  useEffect(() => {
+    if (!expanded) return;
+    const longSide =
+      screenLong ||
+      Math.max(window.innerWidth, window.innerHeight);
+    const shortSide =
+      screenShort ||
+      Math.min(window.innerWidth, window.innerHeight);
+    if (longSide < 80 || shortSide < 80) return;
+    const availW = longSide - 12;
+    const availH = shortSide - (cssLandscape ? 88 : 120);
+    if (availW <= 0 || availH <= 0) return;
+    const fit = Math.min(
+      availW / gridNaturalW,
+      availH / gridNaturalH,
+      1.45
+    );
+    setZoom(clampZoom(fit));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    expanded,
+    cssLandscape,
+    screenLong,
+    screenShort,
+    gridNaturalW,
+    gridNaturalH,
+  ]);
 
   const rowProps = {
     cols,
@@ -843,47 +877,50 @@ export function CellarMap({
     </div>
   );
 
-  const shellW = viewport.width > 0 ? viewport.width : undefined;
-  const shellH = viewport.height > 0 ? viewport.height : undefined;
-  /** After 90° CSS rotate, logical landscape width = phone height. */
-  const frameW = cssLandscape
-    ? shellH ?? "100dvh"
-    : shellW ?? "100%";
-  const frameH = cssLandscape
-    ? shellW ?? "100dvw"
-    : shellH ?? "100%";
+  const longSide =
+    screenLong ||
+    (typeof window !== "undefined"
+      ? Math.max(window.innerWidth, window.innerHeight)
+      : 0);
+  const shortSide =
+    screenShort ||
+    (typeof window !== "undefined"
+      ? Math.min(window.innerWidth, window.innerHeight)
+      : 0);
 
   if (expanded && portalReady) {
     const zoomPct = Math.round(zoom * 100);
 
+    /**
+     * CSS landscape: a (long × short) box rotated 90° fills the portrait
+     * screen edge-to-edge. Do NOT use the raw width/height pair — on some
+     * WebViews those are already partially swapped and cause letterboxing.
+     */
     const frameStyle = cssLandscape
       ? ({
           position: "absolute" as const,
           top: "50%",
           left: "50%",
-          width: frameW,
-          height: frameH,
+          width: longSide,
+          height: shortSide,
           maxWidth: "none",
           maxHeight: "none",
           transform: "translate(-50%, -50%) rotate(90deg)",
           transformOrigin: "center center",
-          paddingTop: "max(0.4rem, env(safe-area-inset-left))",
-          paddingBottom: "max(0.4rem, env(safe-area-inset-right))",
-          paddingLeft: "max(0.4rem, env(safe-area-inset-bottom))",
-          paddingRight: "max(0.4rem, env(safe-area-inset-top))",
+          padding: 0,
         } as const)
       : ({
           position: "absolute" as const,
           inset: 0,
-          width: frameW,
-          height: frameH,
+          width: "100%",
+          height: "100%",
           maxWidth: "none",
           maxHeight: "none",
           transform: "none",
-          paddingTop: "max(0.5rem, env(safe-area-inset-top))",
-          paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))",
-          paddingLeft: "max(0.5rem, env(safe-area-inset-left))",
-          paddingRight: "max(0.5rem, env(safe-area-inset-right))",
+          paddingTop: "max(0.35rem, env(safe-area-inset-top))",
+          paddingBottom: "max(0.35rem, env(safe-area-inset-bottom))",
+          paddingLeft: "max(0.35rem, env(safe-area-inset-left))",
+          paddingRight: "max(0.35rem, env(safe-area-inset-right))",
         } as const);
 
     return (
@@ -899,13 +936,7 @@ export function CellarMap({
           </button>
         </div>
         {createPortal(
-          <div
-            className="map-expanded-shell fixed inset-0 z-[45]"
-            style={{
-              width: shellW ?? "100%",
-              height: shellH ?? "100%",
-            }}
-          >
+          <div className="map-expanded-shell">
             <div
               role="dialog"
               aria-modal="true"
@@ -927,14 +958,14 @@ export function CellarMap({
               }
               style={frameStyle}
             >
-              <div className="map-expanded-header mb-2 flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--line)] pb-2">
+              <div className="map-expanded-header flex shrink-0 items-center justify-between gap-2 border-b border-[var(--line)] px-2 py-1">
                 <h2
                   id="cellar-map-expanded-title"
-                  className="display min-w-0 text-xl leading-tight text-ink sm:text-2xl"
+                  className="display min-w-0 truncate text-lg leading-tight text-ink"
                 >
                   {mapTitle}
                 </h2>
-                <div className="flex flex-wrap items-center gap-1.5">
+                <div className="flex shrink-0 items-center gap-1">
                   <div
                     className="inline-flex items-center rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.7)] p-0.5"
                     role="group"
@@ -942,7 +973,7 @@ export function CellarMap({
                   >
                     <button
                       type="button"
-                      className="btn btn-ghost min-h-[40px] min-w-[40px] px-2 text-base"
+                      className="btn btn-ghost min-h-[36px] min-w-[36px] px-2 text-base"
                       aria-label="Alejar"
                       onClick={zoomOut}
                     >
@@ -950,7 +981,7 @@ export function CellarMap({
                     </button>
                     <button
                       type="button"
-                      className="min-h-[40px] min-w-[3.25rem] px-1 text-xs font-medium text-ink-soft"
+                      className="min-h-[36px] min-w-[2.75rem] px-1 text-xs font-medium text-ink-soft"
                       aria-label="Restablecer zoom"
                       title="Restablecer"
                       onClick={zoomReset}
@@ -959,7 +990,7 @@ export function CellarMap({
                     </button>
                     <button
                       type="button"
-                      className="btn btn-ghost min-h-[40px] min-w-[40px] px-2 text-base"
+                      className="btn btn-ghost min-h-[36px] min-w-[36px] px-2 text-base"
                       aria-label="Acercar"
                       onClick={zoomIn}
                     >
@@ -968,39 +999,24 @@ export function CellarMap({
                   </div>
                   <button
                     type="button"
-                    className="btn btn-ghost flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center gap-1.5 px-3 text-sm"
+                    className="btn btn-ghost flex min-h-[36px] min-w-[36px] shrink-0 items-center justify-center px-2 text-sm"
                     aria-label="Cerrar mapa ampliado"
                     onClick={closeExpanded}
                   >
                     <span aria-hidden className="text-lg leading-none">
                       ×
                     </span>
-                    <span>Cerrar</span>
                   </button>
                 </div>
               </div>
 
-              <div className="map-expanded-body flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
-                {cssLandscape ? (
-                  <p className="shrink-0 text-xs text-ink-soft">
-                    Gira el teléfono para alinearlo. El mueble ya está en
-                    horizontal — desliza y usa +/−.
-                  </p>
-                ) : (
-                  <p className="shrink-0 text-xs text-ink-soft">
-                    Desliza para mover · pellizca o usa +/− para zoom.
-                  </p>
-                )}
-
+              <div className="map-expanded-body flex min-h-0 flex-1 flex-col gap-1 overflow-hidden px-1.5 pb-1.5 pt-1">
                 {movingWine && pickMode ? (
                   <div className="shrink-0 rounded-[10px] border border-[rgba(110,31,44,0.35)] bg-[rgba(250,249,245,0.96)] px-3 py-1.5">
                     <p className="text-sm font-medium text-ink">
                       Moviendo · {movingWine.name}
                     </p>
-                    <p className="text-xs text-ink-soft">
-                      Desplaza o haz zoom; luego toca el hueco destino.
-                    </p>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
                       {onPlaceAt ? (
                         <button
                           type="button"
@@ -1048,13 +1064,10 @@ export function CellarMap({
                   </div>
                 </div>
 
-                <div className="map-expanded-abajo shrink-0 overflow-y-auto overscroll-contain border-t border-[var(--line)] pt-2">
-                  <div className="mb-1 flex items-center justify-between gap-2">
-                    <p className="text-[11px] uppercase tracking-[0.16em] text-ink-soft">
-                      Abajo / fuera
-                    </p>
-                    <p className="text-xs text-ink-soft">
-                      {abajo.length} botellas
+                <div className="map-expanded-abajo shrink-0 overflow-x-auto overflow-y-hidden overscroll-contain border-t border-[var(--line)] pt-1">
+                  <div className="mb-0.5 flex items-center justify-between gap-2">
+                    <p className="text-[10px] uppercase tracking-[0.14em] text-ink-soft">
+                      Abajo / fuera · {abajo.length}
                     </p>
                   </div>
                   <div
@@ -1077,19 +1090,19 @@ export function CellarMap({
                       if (pickMode && onPlaceAt) onPlaceAt("abajo");
                     }}
                     className={[
-                      "min-h-[44px] rounded-[10px] border border-dashed p-1.5 transition",
+                      "min-h-[40px] rounded-[10px] border border-dashed p-1 transition",
                       pickMode ? "cursor-pointer" : "",
                       overTarget === "abajo" || (pickMode && movingWineId)
                         ? "border-[var(--wine)] bg-[rgba(122,36,48,0.08)]"
                         : "border-[var(--line)] bg-[rgba(255,252,247,0.35)]",
                     ].join(" ")}
                   >
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex flex-nowrap gap-1.5">
                       {abajo.length === 0 ? (
                         <p className="px-1 py-1 text-xs text-ink-soft">
                           {pickMode
                             ? "Toca para soltar abajo / fuera"
-                            : "Sin botellas fuera de la rejilla."}
+                            : "Sin botellas fuera."}
                         </p>
                       ) : (
                         abajo.map((wine) => {
@@ -1113,7 +1126,7 @@ export function CellarMap({
                                 interactSlot("abajo", wine);
                               }}
                               className={[
-                                "map-cell map-cell--draggable inline-flex min-h-[40px] max-w-full cursor-grab items-center gap-2 rounded-[10px] border px-2 py-1.5 text-left text-sm transition",
+                                "map-cell map-cell--draggable inline-flex min-h-[36px] max-w-[9rem] shrink-0 cursor-grab items-center gap-1.5 rounded-[10px] border px-2 py-1 text-left text-xs transition",
                                 active || isMoving
                                   ? "border-[var(--wine)] bg-[rgba(122,36,48,0.08)] text-ink slot-active"
                                   : "border-[var(--line)] bg-[rgba(255,252,247,0.55)] text-ink",
@@ -1123,7 +1136,7 @@ export function CellarMap({
                               ].join(" ")}
                             >
                               <CountryFlag country={wine.country} size="sm" />
-                              <span className="max-w-[9rem] truncate font-medium">
+                              <span className="truncate font-medium">
                                 {wine.name}
                               </span>
                             </div>

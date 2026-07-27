@@ -585,9 +585,14 @@ select {
 
 /* Fullscreen Ampliar: shell fills the phone; optional CSS-land frame rotates. */
 .map-expanded-shell {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
   box-sizing: border-box;
+  width: 100dvw;
+  height: 100dvh;
   overflow: hidden;
-  background: var(--surface-solid);
+  background: #000;
 }
 
 .map-expanded-overlay {
@@ -597,7 +602,6 @@ select {
 }
 
 .map-expanded-overlay--css-land {
-  /* Touches must reach the scroll/zoom viewport inside the rotated frame. */
   touch-action: manipulation;
 }
 
@@ -609,10 +613,10 @@ select {
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x pan-y;
-  border-radius: 12px;
+  border-radius: 10px;
   border: 1px solid var(--line);
-  background: rgba(255, 252, 247, 0.4);
-  padding: 0.5rem;
+  background: rgba(255, 252, 247, 0.45);
+  padding: 0.35rem;
 }
 
 .map-expanded-zoom-space {
@@ -624,21 +628,16 @@ select {
 }
 
 .map-expanded-abajo {
-  max-height: min(28vh, 9rem);
-}
-
-.map-expanded-overlay--landscape .map-expanded-header .display,
-.map-expanded-overlay--css-land .map-expanded-header .display {
-  font-size: 1.15rem;
+  max-height: 4.25rem;
 }
 
 .map-expanded-overlay--landscape .map-expanded-abajo,
 .map-expanded-overlay--css-land .map-expanded-abajo {
-  max-height: min(22vh, 7.5rem);
+  max-height: 4.25rem;
 }
 
 .map-expanded-overlay .map-cell {
-  min-height: 48px;
+  min-height: 44px;
 }
 
 /*

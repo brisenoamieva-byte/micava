@@ -52,7 +52,7 @@ export function GoogleAuthButton({
         type="button"
         onClick={() => void signInWithGoogle()}
         disabled={loading}
-        className="btn btn-primary flex min-h-[48px] w-full items-center justify-center gap-2.5 text-sm"
+        className="btn btn-ghost flex min-h-[48px] w-full items-center justify-center gap-2.5 border border-[var(--line)] text-sm"
       >
         <GoogleMark />
         {loading ? "Abriendo Google…" : label}
@@ -68,7 +68,7 @@ function friendlyOAuthError(message: string): string {
     lower.includes("provider is not enabled") ||
     lower.includes("unsupported provider")
   ) {
-    return "Google aún no está activado en Supabase. Usa email/contraseña, o en el dashboard: Authentication → Providers → Google.";
+    return "Google no está disponible. Usa email y contraseña.";
   }
   return message;
 }

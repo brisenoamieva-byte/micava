@@ -55,8 +55,6 @@ export function LoginForm() {
 
   return (
     <div className="space-y-4">
-      <GoogleAuthButton next={next} label="Continuar con Google" />
-      <AuthDivider />
       <form onSubmit={onSubmit} className="space-y-4">
         <label className="block">
           <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
@@ -97,13 +95,15 @@ export function LoginForm() {
         >
           {loading ? "Entrando…" : "Entrar"}
         </button>
-        <p className="text-center text-sm text-ink-soft">
-          ¿Nuevo?{" "}
-          <Link href="/registro" className="text-ink underline-offset-2 hover:underline">
-            Crear mi cava
-          </Link>
-        </p>
       </form>
+      <AuthDivider />
+      <GoogleAuthButton next={next} label="Continuar con Google" />
+      <p className="text-center text-sm text-ink-soft">
+        ¿Nuevo?{" "}
+        <Link href="/registro" className="text-ink underline-offset-2 hover:underline">
+          Crear mi cava
+        </Link>
+      </p>
     </div>
   );
 }

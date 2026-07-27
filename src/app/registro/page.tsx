@@ -21,21 +21,19 @@ export default function RegisterPage() {
             <RegisterForm />
           </div>
           <p className="mt-6 text-center text-xs text-ink-soft">
-            Al continuar aceptas nuestras{" "}
             <Link
               href="/terminos"
               className="text-ink underline-offset-2 hover:underline"
             >
-              Condiciones del servicio
-            </Link>{" "}
-            y la{" "}
+              Condiciones
+            </Link>
+            {" · "}
             <Link
               href="/privacidad"
               className="text-ink underline-offset-2 hover:underline"
             >
-              Política de privacidad
+              Privacidad
             </Link>
-            .
           </p>
         </div>
       </div>

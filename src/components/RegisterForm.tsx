@@ -77,8 +77,6 @@ export function RegisterForm() {
 
   return (
     <div className="space-y-4">
-      <GoogleAuthButton next="/cava" label="Continuar con Google" />
-      <AuthDivider />
       <form onSubmit={onSubmit} className="space-y-4">
         <label className="block">
           <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
@@ -121,12 +119,7 @@ export function RegisterForm() {
             checked={bottlePledge}
             onChange={(e) => setBottlePledge(e.target.checked)}
           />
-          <span>
-            Si un día te gusta, me regalas una botella.
-            <span className="block text-xs text-ink-soft">
-              Gratis — solo un trato entre amigos del vino.
-            </span>
-          </span>
+          <span>Si un día te gusta, me regalas una botella.</span>
         </label>
 
         {error ? <p className="text-sm text-[var(--wine-deep)]">{error}</p> : null}
@@ -139,13 +132,15 @@ export function RegisterForm() {
         >
           {loading ? "Creando…" : "Crear mi cava"}
         </button>
-        <p className="text-center text-sm text-ink-soft">
-          ¿Ya tienes cuenta?{" "}
-          <Link href="/login" className="text-ink underline-offset-2 hover:underline">
-            Entrar
-          </Link>
-        </p>
       </form>
+      <AuthDivider />
+      <GoogleAuthButton next="/cava" label="Continuar con Google" />
+      <p className="text-center text-sm text-ink-soft">
+        ¿Ya tienes cuenta?{" "}
+        <Link href="/login" className="text-ink underline-offset-2 hover:underline">
+          Entrar
+        </Link>
+      </p>
     </div>
   );
 }

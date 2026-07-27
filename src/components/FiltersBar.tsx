@@ -23,7 +23,7 @@ type Props = {
 };
 
 const fieldClass =
-  "w-full min-h-[44px] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.8)] px-3 py-2.5 outline-none transition focus:border-[rgba(122,36,48,0.45)]";
+  "w-full min-h-[44px] rounded-[10px] border border-[rgba(20,18,16,0.1)] bg-[rgba(255,252,247,0.65)] px-3 py-2.5 outline-none transition focus:border-[rgba(122,36,48,0.45)]";
 
 const sortOptions: { value: SortOption; label: string }[] = [
   { value: "cavatale-desc", label: "Cavatale ↓" },
@@ -97,7 +97,7 @@ function DualRangeField({
           {displayLabel}
         </span>
       </span>
-      <div className="flex min-h-[52px] flex-1 flex-col justify-center rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.8)] px-2.5 py-2 sm:px-3">
+      <div className="flex min-h-[52px] flex-1 flex-col justify-center rounded-[10px] border border-[rgba(20,18,16,0.08)] bg-[rgba(255,252,247,0.55)] px-2.5 py-2 sm:px-3">
         <div
           className="dual-range"
           style={
@@ -326,8 +326,8 @@ export function FiltersBar({ filters, onChange, total, wines }: Props) {
   }, [forType]);
 
   return (
-    <div className="panel p-3 sm:p-4">
-      <div className="space-y-3">
+    <div className="panel-quiet p-2.5 sm:p-3">
+      <div className="space-y-2.5 sm:space-y-3">
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6 lg:items-end">
           <label className="col-span-2 min-w-0 sm:col-span-3 lg:col-span-2">
             <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">

@@ -89,7 +89,7 @@ export function CellarUnitsBar({
   }
 
   return (
-    <section className="panel p-3 sm:p-4">
+    <section className="panel-quiet p-2.5 sm:p-3">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
@@ -121,7 +121,7 @@ export function CellarUnitsBar({
                   "min-h-[40px] rounded-l-[10px] border px-3 py-2 text-left text-sm transition",
                   active
                     ? "border-[rgba(110,31,44,0.35)] bg-[rgba(110,31,44,0.1)] font-medium text-ink"
-                    : "border-[var(--line)] bg-[rgba(255,252,247,0.55)] text-ink hover:border-[rgba(110,31,44,0.25)]",
+                    : "border-[rgba(20,18,16,0.1)] bg-[rgba(255,252,247,0.45)] text-ink hover:border-[rgba(110,31,44,0.25)]",
                 ].join(" ")}
               >
                 {c.name}
@@ -136,7 +136,7 @@ export function CellarUnitsBar({
                   "min-h-[40px] rounded-r-[10px] border border-l-0 px-2 text-xs text-ink-soft transition hover:text-ink",
                   active
                     ? "border-[rgba(110,31,44,0.35)] bg-[rgba(110,31,44,0.06)]"
-                    : "border-[var(--line)] bg-[rgba(255,252,247,0.55)]",
+                    : "border-[rgba(20,18,16,0.1)] bg-[rgba(255,252,247,0.45)]",
                 ].join(" ")}
                 onClick={() => openEdit(c)}
               >

@@ -74,45 +74,59 @@ export function StatsDashboard({
         </div>
       </div>
 
-      {/* KPIs */}
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Kpi
-          label="Botellas"
-          value={String(insights.bottles)}
-          hint={`${insights.countries} países`}
-        />
-        <Kpi
-          label="Valor ref."
-          value={formatPrice(insights.value)}
-          hint={
-            insights.avgPrice != null
-              ? `prom. ${formatPrice(insights.avgPrice)}`
-              : "—"
-          }
-        />
-        <Kpi
-          label="Media calif. Cavatale"
-          value={formatCavataleRating(insights.avgCavatale)}
-          hint={
-            insights.avgCavatale != null
-              ? "solo botellas con calificación Cavatale"
-              : "cuenta la historia de un vino"
-          }
-        />
-        <div className="panel col-span-2 flex items-center gap-4 p-4 lg:col-span-1">
-          <OccupancyRing value={insights.occupancy} />
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-              Ocupación
+      {/* Hero KPI: Calificación Cavatale — story score first */}
+      <section className="space-y-3">
+        <div className="panel relative overflow-hidden px-5 py-5 sm:px-6 sm:py-6">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-[var(--wine)]"
+          />
+          <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--wine)] sm:text-xs">
+            Calificación Cavatale media
+          </p>
+          <div className="mt-2 flex flex-wrap items-end gap-x-4 gap-y-1">
+            <p className="display text-5xl leading-none text-ink sm:text-6xl">
+              {formatCavataleRating(insights.avgCavatale)}
             </p>
-            <p className="display mt-1 text-2xl leading-none text-ink">
-              {Math.round(insights.occupancy * 100)}%
+            <p className="mb-1 max-w-sm text-sm text-ink-soft">
+              {insights.avgCavatale != null
+                ? "Score oficial de la cava · solo botellas con historia contada"
+                : "Cuenta la historia de un vino para ver la media de tu cava"}
             </p>
-            <p className="mt-1.5 text-xs text-ink-soft">
-              {insights.totalSlots - insights.emptySlots} de {insights.totalSlots}
-              {" · "}
-              {insights.occupancyLabel}
-            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+          <KpiQuiet
+            label="Botellas"
+            value={String(insights.bottles)}
+            hint={`${insights.countries} países`}
+          />
+          <KpiQuiet
+            label="Valor ref."
+            value={formatPrice(insights.value)}
+            hint={
+              insights.avgPrice != null
+                ? `prom. ${formatPrice(insights.avgPrice)}`
+                : "—"
+            }
+          />
+          <div className="panel-quiet col-span-2 flex items-center gap-3 px-3 py-3 sm:col-span-2">
+            <OccupancyRing value={insights.occupancy} size="sm" />
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-ink-soft">
+                Ocupación
+              </p>
+              <p className="display mt-0.5 text-xl leading-none text-ink">
+                {Math.round(insights.occupancy * 100)}%
+              </p>
+              <p className="mt-1 text-[11px] leading-snug text-ink-soft">
+                {insights.totalSlots - insights.emptySlots} de{" "}
+                {insights.totalSlots}
+                {" · "}
+                {insights.occupancyLabel}
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -464,7 +478,7 @@ function DrilldownList({
   );
 }
 
-function Kpi({
+function KpiQuiet({
   label,
   value,
   hint,
@@ -474,32 +488,52 @@ function Kpi({
   hint: string;
 }) {
   return (
-    <div className="panel p-4">
-      <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">{label}</p>
-      <p className="display mt-1 text-2xl leading-none text-ink md:text-3xl">{value}</p>
-      <p className="mt-2 text-xs text-ink-soft">{hint}</p>
+    <div className="panel-quiet px-3 py-3">
+      <p className="text-[10px] uppercase tracking-[0.14em] text-ink-soft">
+        {label}
+      </p>
+      <p className="display mt-1 text-xl leading-none text-ink sm:text-2xl">
+        {value}
+      </p>
+      <p className="mt-1.5 text-[11px] text-ink-soft">{hint}</p>
     </div>
   );
 }
 
-function OccupancyRing({ value }: { value: number }) {
-  const r = 28;
+function OccupancyRing({
+  value,
+  size = "md",
+}: {
+  value: number;
+  size?: "sm" | "md";
+}) {
+  const dim = size === "sm" ? 56 : 72;
+  const r = size === "sm" ? 22 : 28;
+  const stroke = size === "sm" ? 5.5 : 7;
   const c = 2 * Math.PI * r;
   const offset = c * (1 - Math.min(1, Math.max(0, value)));
+  const mid = dim / 2;
   return (
-    <svg width="72" height="72" viewBox="0 0 72 72" aria-hidden>
-      <circle cx="36" cy="36" r={r} fill="none" stroke="rgba(26,23,20,0.1)" strokeWidth="7" />
+    <svg width={dim} height={dim} viewBox={`0 0 ${dim} ${dim}`} aria-hidden>
       <circle
-        cx="36"
-        cy="36"
+        cx={mid}
+        cy={mid}
+        r={r}
+        fill="none"
+        stroke="rgba(26,23,20,0.1)"
+        strokeWidth={stroke}
+      />
+      <circle
+        cx={mid}
+        cy={mid}
         r={r}
         fill="none"
         stroke="var(--wine)"
-        strokeWidth="7"
+        strokeWidth={stroke}
         strokeLinecap="round"
         strokeDasharray={c}
         strokeDashoffset={offset}
-        transform="rotate(-90 36 36)"
+        transform={`rotate(-90 ${mid} ${mid})`}
         className="transition-all duration-700"
       />
     </svg>

@@ -31,7 +31,7 @@ const COUNTRY_SUGGESTIONS = [
 ];
 
 export function NetworkPanel() {
-  const { user, displayName, refreshProfile } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const [tab, setTab] = useState<Tab>("directorio");
   const [own, setOwn] = useState<OwnNetworkProfile | null>(null);
   const [profiles, setProfiles] = useState<NetworkProfile[]>([]);
@@ -143,7 +143,7 @@ export function NetworkPanel() {
     if (formCavaPublic) setFormVisible(true);
     setInfo(
       formCavaPublic
-        ? "Tu cava es pública: otros pueden ver tus vinos (sin precios)."
+        ? "Tu cava es pública: otros pueden ver tus vinos (no precios)."
         : formVisible
           ? "Apareces en la red, con cava privada."
           : "Dejaste de aparecer en la red."
@@ -209,7 +209,7 @@ export function NetworkPanel() {
         <h2 className="display text-3xl text-ink">Red</h2>
         <p className="mt-1 text-sm text-ink-soft">
           Descubre coleccionistas y explora sus cavas públicas. Tú eliges si
-          compartes la tuya; nunca precios ni tu email.
+          compartes la tuya.
         </p>
 
         <div className="mt-4 flex flex-wrap gap-2">
@@ -252,10 +252,8 @@ export function NetworkPanel() {
             <ul className="mt-1.5 list-disc space-y-1 pl-4 text-xs leading-relaxed">
               <li>Nombre público, país/ciudad y bio (si los escribes).</li>
               <li>
-                Si activas “Cava pública”: tus vinos (nombre, bodega, tipo,
-                uva, calificaciones) (no precios).
+                Con “Cava pública”: vinos y calificaciones (no precios).
               </li>
-              <li>Nunca tu email ni chats — la Red no tiene mensajería.</li>
             </ul>
           </div>
 
@@ -275,8 +273,7 @@ export function NetworkPanel() {
             <span>
               <span className="font-medium">Cava pública</span>
               <span className="mt-0.5 block text-xs text-ink-soft">
-                Opt-in. Otros pueden explorar tus vinos sin precios. Te muestra
-                en el directorio.
+                Otros ven tus vinos en el directorio (no precios).
               </span>
             </span>
           </label>
@@ -504,10 +501,6 @@ export function NetworkPanel() {
         </div>
       ) : null}
 
-      <p className="px-1 text-xs text-ink-soft">
-        Hola{displayName ? `, ${displayName}` : ""}. La red no comparte tu
-        email ni precios.
-      </p>
     </section>
   );
 }

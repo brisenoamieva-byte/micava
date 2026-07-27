@@ -263,7 +263,7 @@ export function PublicCellarView({
       ) : null}
 
       <p className="px-1 text-xs text-ink-soft">
-        Solo vinos y calificaciones. Sin precios ni mapa de la cava.
+        Solo vinos y calificaciones (no precios).
       </p>
     </div>
   );

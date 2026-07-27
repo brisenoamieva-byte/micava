@@ -583,7 +583,7 @@ select {
   scrollbar-width: thin;
 }
 
-/* Fullscreen Ampliar: fill the screen; landscape fits grid via JS scale. */
+/* Fullscreen Ampliar: interactive pan + zoom viewport. */
 .map-expanded-overlay {
   box-sizing: border-box;
   width: 100%;
@@ -593,47 +593,34 @@ select {
   max-height: none;
 }
 
-/* Portrait-locked PWAs: draw landscape UI and let the user tip the phone. */
-.map-expanded-overlay--force-rotate {
-  overflow: hidden;
-}
-
-.map-expanded-stage {
-  position: relative;
-  display: flex;
+.map-expanded-viewport {
   flex: 1 1 auto;
-  align-items: center;
-  justify-content: center;
   min-height: 0;
   min-width: 0;
-  overflow: hidden;
-  touch-action: none;
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255, 252, 247, 0.4);
+  padding: 0.5rem;
 }
 
-.map-expanded-scaler {
+.map-expanded-zoom-space {
   position: relative;
-  flex-shrink: 0;
-  max-width: 100%;
-  max-height: 100%;
 }
 
 .map-expanded-grid {
   display: grid;
-  gap: 0.25rem;
 }
 
-.map-expanded-overlay--landscape .map-expanded-abajo {
-  max-height: min(28vh, 8.5rem);
+.map-expanded-abajo {
+  max-height: min(28vh, 9rem);
 }
 
-.map-expanded-overlay--landscape .map-cell {
+.map-expanded-overlay .map-cell {
   min-height: 48px;
-}
-
-@media (orientation: landscape) {
-  .map-expanded-overlay--landscape .map-expanded-header .display {
-    font-size: 1.15rem;
-  }
 }
 
 /*
@@ -651,7 +638,8 @@ select {
   -webkit-user-drag: element;
 }
 
-.map-is-dragging .map-scroll {
+.map-is-dragging .map-scroll,
+.map-is-dragging .map-expanded-viewport {
   touch-action: none;
   overflow: hidden;
 }

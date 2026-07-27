@@ -90,7 +90,9 @@ export default function PrivacidadPage() {
               </li>
               <li>
                 Mostrarte en el directorio y, si activaste “Cava pública”,
-                permitir que otros vean tus vinos (sin precios).
+                permitir que otros te encuentren por tu handle (@…) y vean tus
+                vinos (sin precios). Tu correo no se muestra ni se busca en la
+                Red.
               </li>
               <li>Mejorar la seguridad, estabilidad y experiencia del producto.</li>
               <li>

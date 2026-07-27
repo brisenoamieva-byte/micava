@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { CountryFlag } from "@/components/CountryFlag";
 import { ThinkingIndicator } from "@/components/ThinkingIndicator";
@@ -19,7 +20,10 @@ type Props = {
   profile: NetworkProfile;
   wines: PublicWine[];
   loading?: boolean;
-  onBack: () => void;
+  /** Directory back action. Omit on standalone /u/[handle]. */
+  onBack?: () => void;
+  backHref?: string;
+  backLabel?: string;
 };
 
 function wineSearchHaystack(w: PublicWine): string {
@@ -50,6 +54,8 @@ export function PublicCellarView({
   wines,
   loading,
   onBack,
+  backHref = "/",
+  backLabel = "← Cavatale",
 }: Props) {
   const [mode, setMode] = useState<BrowseMode>("pais");
   const [query, setQuery] = useState("");
@@ -125,19 +131,34 @@ export function PublicCellarView({
   }, [filtered]);
 
   const displayName = profile.display_name?.trim() || "Coleccionista";
+  const handle = profile.public_handle?.trim();
 
   return (
     <div className="space-y-4">
       <div className="panel space-y-3 p-5">
-        <button
-          type="button"
-          className="text-sm text-[var(--wine)] underline-offset-2 hover:underline"
-          onClick={onBack}
-        >
-          ← Directorio
-        </button>
+        {onBack ? (
+          <button
+            type="button"
+            className="text-sm text-[var(--wine)] underline-offset-2 hover:underline"
+            onClick={onBack}
+          >
+            ← Directorio
+          </button>
+        ) : (
+          <Link
+            href={backHref}
+            className="inline-block text-sm text-[var(--wine)] underline-offset-2 hover:underline"
+          >
+            {backLabel}
+          </Link>
+        )}
         <div>
           <h3 className="display text-2xl text-ink">{displayName}</h3>
+          {handle ? (
+            <p className="mt-0.5 text-sm font-medium text-[var(--wine)]">
+              @{handle}
+            </p>
+          ) : null}
           <p className="mt-0.5 text-sm text-ink-soft">{placeLabel(profile)}</p>
           {profile.bio ? (
             <p className="mt-2 text-sm text-ink-soft">{profile.bio}</p>

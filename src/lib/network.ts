@@ -1,8 +1,15 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import {
+  isValidPublicHandle,
+  normalizeDirectoryQuery,
+  normalizePublicHandle,
+  publicHandleValidationError,
+} from "@/lib/public-handle";
 
 export type NetworkProfile = {
   id: string;
   display_name: string | null;
+  public_handle: string | null;
   country: string | null;
   city: string | null;
   bio: string | null;
@@ -34,7 +41,7 @@ export type PublicWine = {
 };
 
 const PROFILE_COLS =
-  "id, display_name, country, city, bio, network_visible, cava_public, network_updated_at";
+  "id, display_name, public_handle, country, city, bio, network_visible, cava_public, network_updated_at";
 
 const PUBLIC_WINE_COLS =
   "id, user_id, country, region, type, winery, name, aging, grape, vintage, vivino, cavatale_rating";
@@ -62,6 +69,7 @@ export async function updateOwnNetworkProfile(
     city?: string | null;
     bio?: string | null;
     display_name?: string | null;
+    public_handle?: string | null;
   }
 ): Promise<{ error: string | null }> {
   if (!isSupabaseConfigured()) {
@@ -76,6 +84,28 @@ export async function updateOwnNetworkProfile(
     return { error: "La bio admite máximo 160 caracteres." };
   }
 
+  let public_handle: string | null | undefined = undefined;
+  if ("public_handle" in patch) {
+    if (patch.public_handle == null || patch.public_handle.trim() === "") {
+      public_handle = null;
+    } else {
+      const normalized = normalizePublicHandle(patch.public_handle);
+      const validation = publicHandleValidationError(normalized);
+      if (validation) return { error: validation };
+      public_handle = normalized;
+    }
+  }
+
+  if (patch.cava_public === true) {
+    const resolved =
+      public_handle !== undefined ? public_handle : undefined;
+    if (resolved === null) {
+      return {
+        error: "Con cava pública necesitas un handle (ej. @ricardo).",
+      };
+    }
+  }
+
   const payload: Record<string, unknown> = {
     ...patch,
     country,
@@ -83,14 +113,53 @@ export async function updateOwnNetworkProfile(
     bio,
     network_updated_at: new Date().toISOString(),
   };
+  if (public_handle !== undefined) {
+    payload.public_handle = public_handle;
+  }
 
   const { error } = await supabase
     .from("profiles")
     .update(payload)
     .eq("id", userId);
 
-  if (error) return { error: error.message };
+  if (error) {
+    if (
+      error.code === "23505" ||
+      /unique|duplicate/i.test(error.message)
+    ) {
+      return { error: "Ese handle ya está en uso. Prueba otro." };
+    }
+    if (
+      error.code === "23514" ||
+      /public_handle|check/i.test(error.message)
+    ) {
+      return {
+        error:
+          "Handle inválido: 3–24 caracteres, solo a-z, 0-9, _ y -.",
+      };
+    }
+    return { error: error.message };
+  }
   return { error: null };
+}
+
+/** True if handle is free for the current user (RPC). */
+export async function checkPublicHandleAvailable(
+  desired: string
+): Promise<{ available: boolean; error: string | null }> {
+  if (!isSupabaseConfigured()) {
+    return { available: false, error: "Supabase no configurado." };
+  }
+  const normalized = normalizePublicHandle(desired);
+  if (!isValidPublicHandle(normalized)) {
+    return { available: false, error: publicHandleValidationError(normalized) };
+  }
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("is_public_handle_available", {
+    desired: normalized,
+  });
+  if (error) return { available: false, error: error.message };
+  return { available: Boolean(data), error: null };
 }
 
 /** Directory: people who made their cava pública. */
@@ -119,7 +188,14 @@ export async function listPublicCavaProfiles(opts: {
     q = q.ilike("city", `%${opts.city.trim()}%`);
   }
   if (opts.query?.trim()) {
-    q = q.ilike("display_name", `%${opts.query.trim()}%`);
+    const raw = normalizeDirectoryQuery(opts.query);
+    // Escape PostgREST filter special chars in user input
+    const safe = raw.replace(/[,.()%_\\]/g, "");
+    if (safe) {
+      q = q.or(
+        `display_name.ilike.%${safe}%,public_handle.ilike.%${safe}%`
+      );
+    }
   }
 
   const { data, error } = await q.limit(100);
@@ -162,6 +238,24 @@ export async function fetchPublicProfile(
     .from("profiles")
     .select(PROFILE_COLS)
     .eq("id", userId)
+    .eq("cava_public", true)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as NetworkProfile | null) ?? null;
+}
+
+/** Resolve /u/[handle] — only cava_public profiles. */
+export async function fetchPublicProfileByHandle(
+  handle: string
+): Promise<NetworkProfile | null> {
+  if (!isSupabaseConfigured()) return null;
+  const normalized = normalizePublicHandle(handle);
+  if (!isValidPublicHandle(normalized)) return null;
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select(PROFILE_COLS)
+    .eq("public_handle", normalized)
     .eq("cava_public", true)
     .maybeSingle();
   if (error) throw new Error(error.message);

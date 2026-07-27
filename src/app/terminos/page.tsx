@@ -104,9 +104,11 @@ export default function TerminosPage() {
             </h2>
             <p className="text-ink-soft">
               Aparecer en el directorio y compartir tu cava son voluntarios
-              (“Aparecer en la red” / “Cava pública”). Si haces pública tu cava,
-              otros usuarios pueden ver tus vinos y calificaciones, nunca
-              precios ni el mapa de botellas. Cavatale no garantiza la conducta
+              (“Aparecer en la red” / “Cava pública”). Con cava pública eliges
+              un handle (@…) para el link `/u/tu-handle` y para que te busquen
+              en el directorio. Otros usuarios pueden ver tus vinos y
+              calificaciones, nunca precios ni el mapa de botellas. El correo
+              no forma parte del directorio. Cavatale no garantiza la conducta
               de terceros; reporta abusos a{" "}
               <a
                 href="mailto:hello@lumien.org"

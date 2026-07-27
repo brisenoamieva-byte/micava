@@ -9,6 +9,7 @@ import {
   type NetworkProfile,
   type OwnNetworkProfile,
   type PublicWine,
+  checkPublicHandleAvailable,
   fetchOwnNetworkProfile,
   listPublicCavaProfiles,
   listPublicCellarWines,
@@ -16,6 +17,11 @@ import {
   updateOwnNetworkProfile,
 } from "@/lib/network";
 import { isMexicoCountry, MEXICO_STATES } from "@/lib/mexico-states";
+import {
+  buildPublicCellarUrl,
+  normalizePublicHandle,
+  publicHandleValidationError,
+} from "@/lib/public-handle";
 
 type Tab = "presencia" | "directorio";
 
@@ -44,6 +50,7 @@ export function NetworkPanel() {
   const [loading, setLoading] = useState(true);
   const [directoryLoading, setDirectoryLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<string | null>(null);
 
   const [viewing, setViewing] = useState<NetworkProfile | null>(null);
   const [cellarWines, setCellarWines] = useState<PublicWine[]>([]);
@@ -51,6 +58,9 @@ export function NetworkPanel() {
 
   const [formVisible, setFormVisible] = useState(false);
   const [formCavaPublic, setFormCavaPublic] = useState(false);
+  const [formHandle, setFormHandle] = useState("");
+  const [handleHint, setHandleHint] = useState<string | null>(null);
+  const [handleOk, setHandleOk] = useState(false);
   const [formCountry, setFormCountry] = useState("");
   const [formCity, setFormCity] = useState("");
   const [formBio, setFormBio] = useState("");
@@ -63,6 +73,7 @@ export function NetworkPanel() {
       if (profile) {
         setFormVisible(profile.network_visible);
         setFormCavaPublic(profile.cava_public);
+        setFormHandle(profile.public_handle ?? "");
         setFormCountry(profile.country ?? "");
         setFormCity(profile.city ?? "");
         setFormBio(profile.bio ?? "");
@@ -114,6 +125,56 @@ export function NetworkPanel() {
     if (tab === "directorio" && !viewing) void loadDirectory();
   }, [tab, loadDirectory, viewing]);
 
+  // Live handle validation + uniqueness
+  useEffect(() => {
+    if (!formCavaPublic) {
+      setHandleHint(null);
+      setHandleOk(false);
+      return;
+    }
+    const normalized = normalizePublicHandle(formHandle);
+    if (!normalized) {
+      setHandleHint("Elige un handle para que te encuentren (ej. ricardo).");
+      setHandleOk(false);
+      return;
+    }
+    const formatErr = publicHandleValidationError(normalized);
+    if (formatErr) {
+      setHandleHint(formatErr);
+      setHandleOk(false);
+      return;
+    }
+    if (own?.public_handle === normalized) {
+      setHandleHint(`Tu link será /u/${normalized}`);
+      setHandleOk(true);
+      return;
+    }
+    let cancelled = false;
+    const t = window.setTimeout(() => {
+      void (async () => {
+        const { available, error: err } =
+          await checkPublicHandleAvailable(normalized);
+        if (cancelled) return;
+        if (err && !available) {
+          setHandleHint(err);
+          setHandleOk(false);
+          return;
+        }
+        if (!available) {
+          setHandleHint("Ese handle ya está en uso.");
+          setHandleOk(false);
+          return;
+        }
+        setHandleHint(`Disponible — tu link será /u/${normalized}`);
+        setHandleOk(true);
+      })();
+    }, 400);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+  }, [formHandle, formCavaPublic, own?.public_handle]);
+
   const countriesInNetwork = useMemo(() => {
     const set = new Set<string>();
     for (const p of profiles) {
@@ -122,19 +183,46 @@ export function NetworkPanel() {
     return [...set].sort((a, b) => a.localeCompare(b, "es"));
   }, [profiles]);
 
+  const shareableHandle =
+    own?.cava_public && own.public_handle
+      ? own.public_handle
+      : null;
+
   async function savePresence() {
     if (!user) return;
     setSaving(true);
     setError(null);
     setInfo(null);
-    // Public cava implies directory presence
+    setCopyStatus(null);
+
     const networkVisible = formCavaPublic ? true : formVisible;
+    const handleNormalized = formCavaPublic
+      ? normalizePublicHandle(formHandle)
+      : formHandle.trim()
+        ? normalizePublicHandle(formHandle)
+        : null;
+
+    if (formCavaPublic) {
+      const formatErr = publicHandleValidationError(handleNormalized ?? "");
+      if (formatErr) {
+        setSaving(false);
+        setError(formatErr);
+        return;
+      }
+      if (!handleOk && handleNormalized !== own?.public_handle) {
+        setSaving(false);
+        setError(handleHint || "Revisa el handle antes de guardar.");
+        return;
+      }
+    }
+
     const { error: err } = await updateOwnNetworkProfile(user.id, {
       network_visible: networkVisible,
       cava_public: formCavaPublic,
       country: formCountry,
       city: formCity,
       bio: formBio,
+      public_handle: handleNormalized,
     });
     setSaving(false);
     if (err) {
@@ -144,13 +232,27 @@ export function NetworkPanel() {
     if (formCavaPublic) setFormVisible(true);
     setInfo(
       formCavaPublic
-        ? "Tu cava es pública: otros pueden ver tus vinos (no precios)."
+        ? `Tu cava es pública como @${handleNormalized}. Comparte el link o busca tu handle en el directorio.`
         : formVisible
           ? "Apareces en la red, con cava privada."
           : "Dejaste de aparecer en la red."
     );
     await loadOwn();
     await refreshProfile();
+  }
+
+  async function copyMyCellarLink() {
+    if (!shareableHandle) return;
+    const origin =
+      typeof window !== "undefined" ? window.location.origin : null;
+    const url = buildPublicCellarUrl(shareableHandle, origin);
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopyStatus("Link copiado. Ya puedes pegarlo en un mensaje.");
+      setInfo(null);
+    } catch {
+      setCopyStatus(`Copia este link: ${url}`);
+    }
   }
 
   async function openPublicCellar(profile: NetworkProfile) {
@@ -250,6 +352,11 @@ export function NetworkPanel() {
             {info}
           </p>
         ) : null}
+        {copyStatus ? (
+          <p className="mt-3 text-sm text-ink-soft" role="status">
+            {copyStatus}
+          </p>
+        ) : null}
       </div>
 
       {tab === "presencia" ? (
@@ -257,9 +364,13 @@ export function NetworkPanel() {
           <div className="rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.55)] px-3 py-3 text-sm text-ink-soft">
             <p className="font-medium text-ink">Qué ven los demás</p>
             <ul className="mt-1.5 list-disc space-y-1 pl-4 text-xs leading-relaxed">
-              <li>Nombre público, país/ciudad y bio (si los escribes).</li>
               <li>
-                Con “Cava pública”: vinos y calificaciones (no precios).
+                Nombre público, handle (@…), país/ciudad y bio (si los
+                escribes).
+              </li>
+              <li>
+                Con “Cava pública”: vinos y calificaciones (no precios). Tu
+                correo nunca se muestra ni se busca.
               </li>
             </ul>
           </div>
@@ -280,10 +391,54 @@ export function NetworkPanel() {
             <span>
               <span className="font-medium">Cava pública</span>
               <span className="mt-0.5 block text-xs text-ink-soft">
-                Otros ven tus vinos en el directorio (no precios).
+                Otros ven tus vinos en el directorio (no precios). Necesitas un
+                handle para que te encuentren.
               </span>
             </span>
           </label>
+
+          {formCavaPublic ? (
+            <div className="space-y-2">
+              <label className="block text-sm text-ink-soft">
+                Handle público
+                <div className="mt-1 flex items-center gap-1">
+                  <span className="text-ink" aria-hidden>
+                    @
+                  </span>
+                  <input
+                    className="w-full min-h-[44px] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.9)] px-3 py-2 text-ink"
+                    value={formHandle}
+                    onChange={(e) => {
+                      setFormHandle(
+                        e.target.value.replace(/@/g, "").toLowerCase()
+                      );
+                      setCopyStatus(null);
+                    }}
+                    placeholder="ricardo"
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    maxLength={24}
+                    aria-describedby="handle-hint"
+                  />
+                </div>
+              </label>
+              <p
+                id="handle-hint"
+                className={[
+                  "text-xs",
+                  handleOk ? "text-ink-soft" : "text-[var(--wine-deep)]",
+                ].join(" ")}
+                role="status"
+              >
+                {handleHint}
+              </p>
+              <p className="text-xs text-ink-soft">
+                Letras minúsculas, números, _ o -. Así te buscan en el
+                directorio o con tu link.
+              </p>
+            </div>
+          ) : null}
 
           <label className="flex items-start gap-3 text-sm text-ink">
             <input
@@ -374,18 +529,35 @@ export function NetworkPanel() {
             />
           </label>
 
-          <button
-            type="button"
-            className="btn btn-primary min-h-[44px]"
-            disabled={saving}
-            onClick={() => void savePresence()}
-          >
-            {saving ? "Guardando…" : "Guardar presencia"}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="btn btn-primary min-h-[44px]"
+              disabled={saving}
+              onClick={() => void savePresence()}
+            >
+              {saving ? "Guardando…" : "Guardar presencia"}
+            </button>
+            {shareableHandle ? (
+              <button
+                type="button"
+                className="btn btn-ghost min-h-[44px]"
+                onClick={() => void copyMyCellarLink()}
+              >
+                Copiar link de mi cava
+              </button>
+            ) : null}
+          </div>
 
-          {own?.cava_public ? (
+          {own?.cava_public && own.public_handle ? (
             <p className="text-xs text-ink-soft">
-              Tu cava es pública. Puedes volver a privada cuando quieras.
+              Tu cava es pública como @{own.public_handle}. Puedes volver a
+              privada cuando quieras.
+            </p>
+          ) : own?.cava_public ? (
+            <p className="text-xs text-ink-soft">
+              Tu cava es pública. Elige y guarda un handle para compartir el
+              link.
             </p>
           ) : own?.network_visible ? (
             <p className="text-xs text-ink-soft">
@@ -404,7 +576,8 @@ export function NetworkPanel() {
           {!own?.cava_public ? (
             <p className="rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.5)] px-3 py-2 text-sm text-ink-soft">
               Puedes explorar cavas públicas sin compartir la tuya. Para
-              aparecer aquí, activa “Cava pública” en Mi presencia.
+              aparecer aquí, activa “Cava pública” y elige un handle en Mi
+              presencia.
             </p>
           ) : null}
 
@@ -415,7 +588,7 @@ export function NetworkPanel() {
                 className="mt-1 w-full min-h-[44px] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.9)] px-3 py-2 text-ink"
                 value={filterQuery}
                 onChange={(e) => setFilterQuery(e.target.value)}
-                placeholder="Nombre"
+                placeholder="Nombre o @handle"
               />
             </label>
             <label className="block text-sm text-ink-soft">
@@ -484,6 +657,11 @@ export function NetworkPanel() {
                   <div className="min-w-0">
                     <p className="font-medium text-ink">
                       {p.display_name?.trim() || "Coleccionista"}
+                      {p.public_handle ? (
+                        <span className="ml-1.5 font-normal text-[var(--wine)]">
+                          @{p.public_handle}
+                        </span>
+                      ) : null}
                     </p>
                     <p className="text-xs text-ink-soft">{placeLabel(p)}</p>
                     {p.bio ? (
@@ -509,7 +687,6 @@ export function NetworkPanel() {
           </ul>
         </div>
       ) : null}
-
     </section>
   );
 }

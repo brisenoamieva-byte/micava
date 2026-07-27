@@ -163,24 +163,11 @@ export function WineDetail({
     { label: "Bodega", value: wine.winery || "—" },
     {
       label: "Uva",
-      value: wine.grape ? (
-        classified.length > 0 ? (
-          <span className="flex flex-wrap gap-1.5">
-            {classified.map((g) => (
-              <span
-                key={g}
-                className="rounded-[6px] border border-[var(--line)] bg-[rgba(255,252,247,0.7)] px-2 py-0.5 text-[11px] text-ink"
-              >
-                {g}
-              </span>
-            ))}
-          </span>
-        ) : (
-          wine.grape
-        )
-      ) : (
-        "—"
-      ),
+      value: wine.grape
+        ? classified.length > 0
+          ? classified.join(" · ")
+          : wine.grape
+        : "—",
     },
     { label: "Año", value: wine.vintage ? String(wine.vintage) : "—" },
     { label: "Añejamiento", value: wine.aging || "—" },
@@ -461,9 +448,7 @@ export function WineDetail({
       ) : null}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-ink-soft sm:text-xs">
-            Detalle
-          </p>
+          <p className="micro-label text-ink-soft">Detalle</p>
           <h2 className="display mt-2 text-[1.85rem] leading-tight text-ink sm:text-3xl">
             {wine.name}
           </h2>
@@ -517,9 +502,7 @@ export function WineDetail({
         >
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--wine)]">
-                Descubrimiento
-              </p>
+              <p className="micro-label text-[var(--wine)]">Descubrimiento</p>
               {hasDiscoveryStory ? (
                 <p className="mt-1 text-xs text-ink-soft">
                   Última consulta: {formatCheckedAt(wine.kimiCheckedAt)}
@@ -949,9 +932,7 @@ export function WineDetail({
       </dl>
 
       <div className="mt-5 border-t border-[var(--line)] pt-4">
-        <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-          Maridaje sugerido
-        </p>
+        <p className="micro-label text-ink-soft">Maridaje sugerido</p>
         <p className="mt-1 text-xs text-ink-soft">
           {pairing.source === "ia"
             ? `IA · ${pairing.note}`
@@ -963,25 +944,16 @@ export function WineDetail({
             para esta botella.
           </p>
         ) : null}
-        <ul className="mt-3 flex flex-wrap gap-1.5">
-          {pairing.dishes.map((dish) => (
-            <li
-              key={dish}
-              className="rounded-[8px] border border-[var(--line)] bg-[rgba(255,252,247,0.7)] px-2.5 py-1.5 text-xs text-ink"
-            >
-              {dish}
-            </li>
-          ))}
-        </ul>
+        <p className="mt-3 text-sm leading-relaxed text-ink">
+          {pairing.dishes.join(" · ")}
+        </p>
       </div>
 
       {onVerifyRating ? (
         <div className="mt-5 border-t border-[var(--line)] pt-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                Calificación externa
-              </p>
+              <p className="micro-label text-ink-soft">Calificación externa</p>
               <p className="mt-0.5 text-xs text-ink-soft">
                 Última revisión: {formatCheckedAt(wine.lastCheckedAt)}
                 {wine.ratingSource

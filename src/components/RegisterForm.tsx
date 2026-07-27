@@ -79,7 +79,7 @@ export function RegisterForm() {
     <div className="space-y-4">
       <form onSubmit={onSubmit} className="space-y-4">
         <label className="block">
-          <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+          <span className="micro-label mb-1 block text-ink-soft">
             Cómo te llamamos
           </span>
           <input
@@ -91,9 +91,7 @@ export function RegisterForm() {
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-            Email
-          </span>
+          <span className="micro-label mb-1 block text-ink-soft">Email</span>
           <input
             type="email"
             required

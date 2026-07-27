@@ -6,7 +6,8 @@
   --surface: rgba(250, 249, 245, 0.78);
   --surface-solid: #faf9f5;
   --ink: #141210;
-  --ink-soft: #4f4a43;
+  /* Slightly deeper for 11–12px labels on warm bg (readable without going muddy) */
+  --ink-soft: #3c3731;
   --line: rgba(20, 18, 16, 0.14);
   --wine: #6e1f2c;
   --wine-deep: #4f1520;
@@ -33,6 +34,14 @@
   --color-oak: var(--oak);
   --font-sans: var(--font-outfit);
   --font-display: var(--font-cormorant);
+}
+
+/* Shared micro-labels (auth + detail sections): weight helps tiny caps track */
+.micro-label {
+  font-size: 0.75rem; /* 12px — clearer than 11px on warm surfaces */
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 /* Dual wordmark: structured cellar + spoken story */

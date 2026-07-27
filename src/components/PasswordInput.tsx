@@ -12,7 +12,7 @@ export function PasswordInput({ label, className, id, name, ...rest }: Props) {
 
   return (
     <label className="block" htmlFor={inputId}>
-      <span className="mb-1 flex items-center justify-between gap-2 text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+      <span className="micro-label mb-1 flex items-center justify-between gap-2 text-ink-soft">
         {typeof label === "string" ? <span>{label}</span> : label}
       </span>
       <span className="relative block">

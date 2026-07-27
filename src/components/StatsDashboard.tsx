@@ -336,16 +336,16 @@ export function StatsDashboard({
                 }
                 aria-pressed={active}
                 className={[
-                  "inline-flex items-center gap-2 rounded-[10px] border px-3 py-2 text-sm transition",
+                  "inline-flex items-baseline gap-1.5 rounded-[6px] px-2 py-1.5 text-sm transition",
                   active
-                    ? "border-[rgba(110,31,44,0.35)] bg-[rgba(110,31,44,0.1)]"
-                    : "border-[var(--line)] bg-[rgba(255,252,247,0.55)] hover:border-[rgba(110,31,44,0.25)]",
+                    ? "bg-[rgba(110,31,44,0.1)] text-ink"
+                    : "text-ink hover:bg-[rgba(20,18,16,0.05)]",
                 ].join(" ")}
               >
-                <span className="font-medium text-ink">
-                  {r.name || "Sin región"}
+                <span className="font-medium">{r.name || "Sin región"}</span>
+                <span className="text-xs tabular-nums text-ink-soft">
+                  {r.count}
                 </span>
-                <span className="text-ink-soft">{r.count}</span>
               </button>
             );
           })}

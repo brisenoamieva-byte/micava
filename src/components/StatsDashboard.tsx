@@ -4,7 +4,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import type { CellarLogEntry, CellarUnit, Wine } from "@/lib/types";
 import { CountryFlag } from "@/components/CountryFlag";
 import { buildInsights, qualityScore, type ReplenishItem } from "@/lib/analytics";
-import { formatCavataleRating, formatPrice, formatVivino, typeAccent } from "@/lib/wines";
+import { formatCavataleRating, formatPrice, formatVivino } from "@/lib/wines";
 
 type Props = {
   wines: Wine[];
@@ -540,6 +540,13 @@ function OccupancyRing({
   );
 }
 
+function donutAccent(type: string): string {
+  const t = type.toLowerCase();
+  if (t.includes("blanco")) return "#c4a86a";
+  if (t.includes("rosado")) return "#a86b76";
+  return "var(--wine)";
+}
+
 function TypeDonut({
   items,
   total,
@@ -547,77 +554,74 @@ function TypeDonut({
   items: { name: string; count: number; share: number }[];
   total: number;
 }) {
-  const r = 42;
+  const size = 152;
+  const mid = size / 2;
+  const stroke = 11;
+  const r = 50;
   const c = 2 * Math.PI * r;
   let cursor = 0;
   return (
     <div className="shrink-0">
-      <svg
-        width="140"
-        height="140"
-        viewBox="0 0 140 140"
-        className="mx-auto block"
-        aria-hidden
+      <div
+        className="relative mx-auto"
+        style={{ width: size, height: size }}
+        role="img"
+        aria-label={`${total} botellas en total`}
       >
-        <g transform="rotate(-90 70 70)">
-          {items.map((item) => {
-            const len = c * item.share;
-            const dash = `${len} ${c - len}`;
-            const el = (
-              <circle
-                key={item.name}
-                cx="70"
-                cy="70"
-                r={r}
-                fill="none"
-                stroke={typeAccent(item.name)}
-                strokeWidth="16"
-                strokeDasharray={dash}
-                strokeDashoffset={-cursor}
-                className="transition-all duration-700"
-              />
-            );
-            cursor += len;
-            return el;
-          })}
-        </g>
-        {/* SVG text stays unrotated; pair optically centered in the hole */}
-        <text
-          x="70"
-          y="64"
-          textAnchor="middle"
-          dominantBaseline="central"
-          fill="var(--ink)"
-          style={{
-            fontFamily: "var(--font-cormorant), Georgia, serif",
-            fontSize: 32,
-            fontWeight: 500,
-          }}
+        <svg
+          width={size}
+          height={size}
+          viewBox={`0 0 ${size} ${size}`}
+          className="block"
+          aria-hidden
         >
-          {total}
-        </text>
-        <text
-          x="70"
-          y="82"
-          textAnchor="middle"
-          dominantBaseline="central"
-          fill="var(--ink-soft)"
-          style={{
-            fontFamily: "var(--font-outfit), system-ui, sans-serif",
-            fontSize: 9,
-            letterSpacing: "0.14em",
-            textTransform: "uppercase",
-          }}
-        >
-          total
-        </text>
-      </svg>
+          <circle
+            cx={mid}
+            cy={mid}
+            r={r}
+            fill="none"
+            stroke="rgba(26,23,20,0.08)"
+            strokeWidth={stroke}
+          />
+          <g transform={`rotate(-90 ${mid} ${mid})`}>
+            {items.map((item) => {
+              const len = c * item.share;
+              const dash = `${len} ${c - len}`;
+              const el = (
+                <circle
+                  key={item.name}
+                  cx={mid}
+                  cy={mid}
+                  r={r}
+                  fill="none"
+                  stroke={donutAccent(item.name)}
+                  strokeWidth={stroke}
+                  strokeLinecap="butt"
+                  strokeDasharray={dash}
+                  strokeDashoffset={-cursor}
+                  className="transition-all duration-700"
+                />
+              );
+              cursor += len;
+              return el;
+            })}
+          </g>
+        </svg>
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+          <p className="display text-[2.125rem] leading-none tracking-tight text-ink tabular-nums">
+            {total}
+          </p>
+          <p className="mt-2 text-[0.625rem] font-medium uppercase leading-none tracking-[0.2em] text-ink-soft">
+            Total
+          </p>
+        </div>
+      </div>
       <ul className="mt-3 space-y-1">
         {items.map((item) => (
           <li key={item.name} className="flex items-center gap-2 text-xs text-ink-soft">
             <span
               className="h-2 w-2 rounded-full"
-              style={{ background: typeAccent(item.name) }}
+              style={{ background: donutAccent(item.name) }}
             />
             {item.name} · {item.count}
           </li>

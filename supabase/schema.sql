@@ -6,6 +6,7 @@ create table if not exists public.profiles (
   display_name text,
   bottle_pledge boolean not null default false,
   network_visible boolean not null default false,
+  cava_public boolean not null default false,
   country text,
   city text,
   bio text,
@@ -30,10 +31,11 @@ create policy "profiles_update_own"
 
 create policy "profiles_select_network_visible"
   on public.profiles for select
-  using (network_visible = true);
+  using (network_visible = true or cava_public = true);
 
 -- See supabase/migrations/006_user_network.sql for conversations, messages, RLS, and Realtime.
 -- See supabase/migrations/009_message_reads.sql for last_read_at / unread DM badges.
+-- See supabase/migrations/011_public_cava.sql for cava_public + public_wines (no prices).
 
 -- Furniture units (muebles) — before wines.cellar_id and signup trigger
 create table if not exists public.cellars (

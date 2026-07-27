@@ -49,8 +49,8 @@ export default function TerminosPage() {
               Cavatale es una aplicación para gestionar una cava personal de
               vinos: inventario, mapa de muebles, historias y valoraciones
               asistidas por IA, y —si lo activas— una red opt-in para conocer a
-              otros usuarios y chatear en privado. El producto puede estar en
-              beta y cambiar con el tiempo.
+              otros coleccionistas y explorar cavas públicas. El producto puede
+              estar en beta y cambiar con el tiempo.
             </p>
           </section>
 
@@ -87,32 +87,34 @@ export default function TerminosPage() {
             </h2>
             <p className="text-ink-soft">
               Conservas los derechos sobre el contenido que subes (fotos de
-              etiquetas, notas, mensajes, perfil de red). Nos concedes una
-              licencia limitada para alojarlo, mostrártelo y operar el servicio
-              (incluida la generación de historias/ratings con IA a partir de
-              los datos de botella que indiques).
+              etiquetas, notas, perfil de red, cava pública si la activas). Nos
+              concedes una licencia limitada para alojarlo, mostrártelo y
+              operar el servicio (incluida la generación de historias/ratings
+              con IA a partir de los datos de botella que indiques).
             </p>
             <p className="text-ink-soft">
               No subas contenido ilegal, ofensivo, que infrinja derechos de
-              terceros, ni uses la red o el chat para acoso, spam o fraude.
+              terceros, ni uses la red para acoso, spam o fraude.
             </p>
           </section>
 
           <section className="space-y-2">
             <h2 className="text-lg font-medium text-ink">
-              5. Red de usuarios y chat
+              5. Red de usuarios y cava pública
             </h2>
             <p className="text-ink-soft">
-              Aparecer en el directorio es voluntario (“Aparecer en la red”).
-              Los chats son entre usuarios adultos. Cavatale no garantiza la
-              conducta de terceros; reporta abusos a{" "}
+              Aparecer en el directorio y compartir tu cava son voluntarios
+              (“Aparecer en la red” / “Cava pública”). Si haces pública tu cava,
+              otros usuarios pueden ver tus vinos y calificaciones, nunca
+              precios ni el mapa de botellas. Cavatale no garantiza la conducta
+              de terceros; reporta abusos a{" "}
               <a
                 href="mailto:hello@lumien.org"
                 className="text-ink underline-offset-2 hover:underline"
               >
                 hello@lumien.org
               </a>
-              . Tu inventario privado de cava no se publica en la red.
+              .
             </p>
           </section>
 

@@ -7,31 +7,37 @@ export type NetworkProfile = {
   city: string | null;
   bio: string | null;
   network_visible: boolean;
+  cava_public: boolean;
   network_updated_at: string | null;
+  /** Present on directory rows when bottle counts were loaded. */
+  bottle_count?: number;
 };
 
 export type OwnNetworkProfile = NetworkProfile & {
   bottle_pledge?: boolean;
 };
 
-export type ChatMessage = {
+/** Safe wine fields from public_wines — never price or cellar layout. */
+export type PublicWine = {
   id: string;
-  conversation_id: string;
-  sender_id: string;
-  body: string;
-  created_at: string;
-};
-
-export type ConversationPreview = {
-  id: string;
-  last_message_at: string;
-  other: NetworkProfile | null;
-  lastBody: string | null;
-  unreadCount: number;
+  user_id: string;
+  country: string;
+  region: string;
+  type: string;
+  winery: string;
+  name: string;
+  aging: string;
+  grape: string;
+  vintage: number | null;
+  vivino: number | null;
+  cavatale_rating: number | null;
 };
 
 const PROFILE_COLS =
-  "id, display_name, country, city, bio, network_visible, network_updated_at";
+  "id, display_name, country, city, bio, network_visible, cava_public, network_updated_at";
+
+const PUBLIC_WINE_COLS =
+  "id, user_id, country, region, type, winery, name, aging, grape, vintage, vivino, cavatale_rating";
 
 export async function fetchOwnNetworkProfile(
   userId: string
@@ -51,6 +57,7 @@ export async function updateOwnNetworkProfile(
   userId: string,
   patch: {
     network_visible?: boolean;
+    cava_public?: boolean;
     country?: string | null;
     city?: string | null;
     bio?: string | null;
@@ -86,7 +93,8 @@ export async function updateOwnNetworkProfile(
   return { error: null };
 }
 
-export async function listNetworkProfiles(opts: {
+/** Directory: people who made their cava pública. */
+export async function listPublicCavaProfiles(opts: {
   excludeUserId?: string;
   country?: string;
   city?: string;
@@ -98,7 +106,7 @@ export async function listNetworkProfiles(opts: {
   let q = supabase
     .from("profiles")
     .select(PROFILE_COLS)
-    .eq("network_visible", true)
+    .eq("cava_public", true)
     .order("network_updated_at", { ascending: false, nullsFirst: false });
 
   if (opts.excludeUserId) {
@@ -116,182 +124,63 @@ export async function listNetworkProfiles(opts: {
 
   const { data, error } = await q.limit(100);
   if (error) throw new Error(error.message);
-  return (data as NetworkProfile[]) ?? [];
+  const profiles = (data as NetworkProfile[]) ?? [];
+  if (profiles.length === 0) return [];
+
+  const ids = profiles.map((p) => p.id);
+  const counts = await fetchPublicCavaBottleCounts(ids);
+  return profiles.map((p) => ({
+    ...p,
+    bottle_count: counts[p.id] ?? 0,
+  }));
 }
 
-export async function getOrCreateDm(
-  otherUserId: string
-): Promise<{ conversationId: string | null; error: string | null }> {
-  if (!isSupabaseConfigured()) {
-    return {
-      conversationId: null,
-      error: "La red no está disponible (Supabase no configurado).",
-    };
-  }
+export async function fetchPublicCavaBottleCounts(
+  ownerIds: string[]
+): Promise<Record<string, number>> {
+  if (!isSupabaseConfigured() || ownerIds.length === 0) return {};
   const supabase = createClient();
-  const { data, error } = await supabase.rpc("get_or_create_dm", {
-    other_user_id: otherUserId,
+  const { data, error } = await supabase.rpc("public_cava_bottle_counts", {
+    owner_ids: ownerIds,
   });
-  if (error) return { conversationId: null, error: error.message };
-  return { conversationId: data as string, error: null };
-}
-
-export async function listMyConversations(
-  userId: string
-): Promise<ConversationPreview[]> {
-  if (!isSupabaseConfigured()) return [];
-  const supabase = createClient();
-
-  const { data: memberships, error: memErr } = await supabase
-    .from("conversation_members")
-    .select("conversation_id")
-    .eq("user_id", userId);
-  if (memErr) throw new Error(memErr.message);
-  const ids = (memberships ?? []).map((m) => m.conversation_id as string);
-  if (ids.length === 0) return [];
-
-  const { data: convos, error: convErr } = await supabase
-    .from("conversations")
-    .select("id, last_message_at")
-    .in("id", ids)
-    .order("last_message_at", { ascending: false });
-  if (convErr) throw new Error(convErr.message);
-
-  const { data: allMembers, error: allMemErr } = await supabase
-    .from("conversation_members")
-    .select("conversation_id, user_id")
-    .in("conversation_id", ids);
-  if (allMemErr) throw new Error(allMemErr.message);
-
-  const otherByConv = new Map<string, string>();
-  for (const m of allMembers ?? []) {
-    if (m.user_id === userId) continue;
-    otherByConv.set(m.conversation_id as string, m.user_id as string);
-  }
-
-  const otherIds = [...new Set(otherByConv.values())];
-  const profileMap = new Map<string, NetworkProfile>();
-  if (otherIds.length > 0) {
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select(PROFILE_COLS)
-      .in("id", otherIds);
-    for (const p of profiles ?? []) {
-      profileMap.set(p.id as string, p as NetworkProfile);
-    }
-  }
-
-  const unreadMap = await fetchMyUnreadCounts();
-
-  const previews: ConversationPreview[] = [];
-  for (const c of convos ?? []) {
-    const otherId = otherByConv.get(c.id as string);
-    let lastBody: string | null = null;
-    const { data: lastMsg } = await supabase
-      .from("messages")
-      .select("body")
-      .eq("conversation_id", c.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    lastBody = (lastMsg?.body as string | undefined) ?? null;
-
-    const id = c.id as string;
-    previews.push({
-      id,
-      last_message_at: c.last_message_at as string,
-      other: otherId ? profileMap.get(otherId) ?? null : null,
-      lastBody,
-      unreadCount: unreadMap[id] ?? 0,
-    });
-  }
-  return previews;
-}
-
-/** Per-conversation unread counts. Empty if migration 009 not applied yet. */
-export async function fetchMyUnreadCounts(): Promise<Record<string, number>> {
-  if (!isSupabaseConfigured()) return {};
-  const supabase = createClient();
-  const { data, error } = await supabase.rpc("my_unread_counts");
   if (error) return {};
   const map: Record<string, number> = {};
   for (const row of data ?? []) {
-    const id = (row as { conversation_id: string }).conversation_id;
-    const n = Number((row as { unread_count: number | string }).unread_count);
-    if (id && n > 0) map[id] = n;
+    const id = (row as { user_id: string }).user_id;
+    const n = Number((row as { bottle_count: number | string }).bottle_count);
+    if (id) map[id] = Number.isFinite(n) ? n : 0;
   }
   return map;
 }
 
-export async function fetchTotalUnread(): Promise<number> {
-  const map = await fetchMyUnreadCounts();
-  return Object.values(map).reduce((sum, n) => sum + n, 0);
-}
-
-/** Mark conversation as read for the current user. No-op if migration missing. */
-export async function markConversationRead(
-  conversationId: string
-): Promise<{ error: string | null }> {
-  if (!isSupabaseConfigured()) return { error: null };
+export async function fetchPublicProfile(
+  userId: string
+): Promise<NetworkProfile | null> {
+  if (!isSupabaseConfigured()) return null;
   const supabase = createClient();
-  const { error } = await supabase.rpc("mark_conversation_read", {
-    conv_id: conversationId,
-  });
-  // Graceful if 009 not applied yet (function missing)
-  if (error) {
-    const msg = error.message.toLowerCase();
-    if (
-      msg.includes("could not find") ||
-      msg.includes("does not exist") ||
-      msg.includes("schema cache")
-    ) {
-      return { error: null };
-    }
-    return { error: error.message };
-  }
-  return { error: null };
+  const { data, error } = await supabase
+    .from("profiles")
+    .select(PROFILE_COLS)
+    .eq("id", userId)
+    .eq("cava_public", true)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as NetworkProfile | null) ?? null;
 }
 
-export async function listMessages(
-  conversationId: string
-): Promise<ChatMessage[]> {
+export async function listPublicCellarWines(
+  ownerId: string
+): Promise<PublicWine[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = createClient();
   const { data, error } = await supabase
-    .from("messages")
-    .select("id, conversation_id, sender_id, body, created_at")
-    .eq("conversation_id", conversationId)
-    .order("created_at", { ascending: true })
-    .limit(200);
+    .from("public_wines")
+    .select(PUBLIC_WINE_COLS)
+    .eq("user_id", ownerId)
+    .order("name", { ascending: true })
+    .limit(500);
   if (error) throw new Error(error.message);
-  return (data as ChatMessage[]) ?? [];
-}
-
-export async function sendMessage(
-  conversationId: string,
-  senderId: string,
-  body: string
-): Promise<{ error: string | null; message?: ChatMessage }> {
-  const trimmed = body.trim();
-  if (!trimmed) return { error: "Escribe un mensaje." };
-  if (trimmed.length > 2000) return { error: "Máximo 2000 caracteres." };
-  if (!isSupabaseConfigured()) {
-    return { error: "No se puede enviar: la red no está disponible." };
-  }
-
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("messages")
-    .insert({
-      conversation_id: conversationId,
-      sender_id: senderId,
-      body: trimmed,
-    })
-    .select("id, conversation_id, sender_id, body, created_at")
-    .single();
-
-  if (error) return { error: error.message };
-  return { error: null, message: data as ChatMessage };
+  return (data as PublicWine[]) ?? [];
 }
 
 export function placeLabel(p: {

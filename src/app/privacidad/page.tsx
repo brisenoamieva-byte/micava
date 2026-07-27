@@ -64,12 +64,10 @@ export default function PrivacidadPage() {
               </li>
               <li>
                 <strong className="text-ink">Red (opt-in):</strong> si activas
-                “Aparecer en la red”, país, ciudad y bio que indiques, visibles
-                a otros usuarios de la red.
-              </li>
-              <li>
-                <strong className="text-ink">Mensajes:</strong> contenido de los
-                chats 1 a 1 que envíes dentro de Cavatale.
+                “Aparecer en la red” o “Cava pública”, el nombre, país, ciudad y
+                bio que indiques pueden ser visibles a otros usuarios. Si
+                activas “Cava pública”, también se muestran tus vinos (sin
+                precios ni mapa de botellas).
               </li>
               <li>
                 <strong className="text-ink">Uso técnico:</strong> datos
@@ -91,8 +89,8 @@ export default function PrivacidadPage() {
                 vino).
               </li>
               <li>
-                Mostrarte en el directorio y permitir chat solo si activaste la
-                red.
+                Mostrarte en el directorio y, si activaste “Cava pública”,
+                permitir que otros vean tus vinos (sin precios).
               </li>
               <li>Mejorar la seguridad, estabilidad y experiencia del producto.</li>
               <li>
@@ -130,10 +128,10 @@ export default function PrivacidadPage() {
             <p className="text-ink-soft">
               Usamos proveedores de infraestructura para alojar la app y la
               base de datos (p. ej. Supabase / hosting en la nube). Tus datos de
-              cava, perfil y mensajes se almacenan de forma asociada a tu
-              cuenta, con controles de acceso (incluida seguridad a nivel de
-              fila cuando aplica). Las fotos de etiquetas se guardan en
-              almacenamiento privado de tu cuenta.
+              cava y perfil se almacenan de forma asociada a tu cuenta, con
+              controles de acceso (incluida seguridad a nivel de fila cuando
+              aplica). Las fotos de etiquetas se guardan en almacenamiento
+              privado de tu cuenta.
             </p>
           </section>
 
@@ -142,14 +140,14 @@ export default function PrivacidadPage() {
             <p className="text-ink-soft">
               No vendemos datos personales. Compartimos información solo: (a)
               contigo, dentro de tu cuenta; (b) con otros usuarios de Cavatale
-              si activaste la red (perfil público limitado) o si chateas con
-              ellos; (c) con proveedores que nos ayudan a operar el servicio,
-              bajo obligaciones de confidencialidad; (d) cuando la ley lo
-              exija.
+              si activaste la red o hiciste pública tu cava (perfil y, en ese
+              caso, vinos sin precios); (c) con proveedores que nos ayudan a
+              operar el servicio, bajo obligaciones de confidencialidad; (d)
+              cuando la ley lo exija.
             </p>
             <p className="text-ink-soft">
-              Tu inventario privado (mapa de botellas y detalles de cava) no se
-              publica en la red social de Cavatale.
+              El mapa de botellas, precios y datos de compra no se publican en
+              la red. Solo compartes vinos si activas “Cava pública”.
             </p>
           </section>
 

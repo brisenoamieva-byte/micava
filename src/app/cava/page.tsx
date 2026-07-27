@@ -20,7 +20,6 @@ import { WineFormModal } from "@/components/WineFormModal";
 import { WineList } from "@/components/WineList";
 import { useCellar } from "@/lib/cellar-store";
 import { useAuth } from "@/lib/auth-store";
-import { fetchTotalUnread } from "@/lib/network";
 import { uploadLabelImage } from "@/lib/label-image";
 import {
   buildInviteFriendText,
@@ -87,7 +86,6 @@ export default function CavaPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("lista");
   const [mode, setMode] = useState<AppMode>("cava");
-  const [networkUnread, setNetworkUnread] = useState(0);
   /** Where to return after leaving Detalle (mapa vs lista). */
   const [detailReturn, setDetailReturn] = useState<MobilePanel>("lista");
   const [formOpen, setFormOpen] = useState(false);
@@ -133,29 +131,6 @@ export default function CavaPage() {
       /* ignore */
     }
   }, []);
-
-  // Red tab unread badge (works even when NetworkPanel is unmounted).
-  useEffect(() => {
-    if (!user || !configured) {
-      setNetworkUnread(0);
-      return;
-    }
-    let cancelled = false;
-    const tick = async () => {
-      try {
-        const total = await fetchTotalUnread();
-        if (!cancelled) setNetworkUnread(total);
-      } catch {
-        if (!cancelled) setNetworkUnread(0);
-      }
-    };
-    void tick();
-    const id = window.setInterval(() => void tick(), 20000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(id);
-    };
-  }, [user, configured, mode]);
 
   function dismissGuide() {
     setGuideDismissed(true);
@@ -442,17 +417,7 @@ export default function CavaPage() {
                 ].join(" ")}
                 onClick={() => setMode("network")}
               >
-                <span className="inline-flex items-center gap-1.5">
-                  Red
-                  {networkUnread > 0 ? (
-                    <span
-                      className="inline-flex min-w-[1.25rem] items-center justify-center rounded-[8px] bg-[var(--wine)] px-1.5 py-0.5 text-[10px] font-medium leading-none text-[rgba(255,252,247,0.96)]"
-                      aria-label={`${networkUnread} mensajes no leídos`}
-                    >
-                      {networkUnread > 99 ? "99+" : networkUnread}
-                    </span>
-                  ) : null}
-                </span>
+                Red
               </button>
             </div>
           </div>
@@ -562,7 +527,7 @@ export default function CavaPage() {
 
         {mode === "network" ? (
           <div className="mt-6">
-            <NetworkPanel onUnreadTotalChange={setNetworkUnread} />
+            <NetworkPanel />
           </div>
         ) : mode === "stats" ? (
           <div className="mt-6 space-y-5">
@@ -959,19 +924,7 @@ export default function CavaPage() {
                   }
                 }}
               >
-                <span className="inline-flex flex-col items-center gap-0.5">
-                  <span className="inline-flex items-center gap-1">
-                    {label}
-                    {id === "network" && networkUnread > 0 ? (
-                      <span
-                        className="inline-flex min-w-[1.1rem] items-center justify-center rounded-[6px] bg-[var(--wine)] px-1 py-0.5 text-[9px] font-medium leading-none text-[rgba(255,252,247,0.96)]"
-                        aria-label={`${networkUnread} mensajes no leídos`}
-                      >
-                        {networkUnread > 99 ? "99+" : networkUnread}
-                      </span>
-                    ) : null}
-                  </span>
-                </span>
+                <span>{label}</span>
               </button>
             ))}
           </div>

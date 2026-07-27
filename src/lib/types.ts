@@ -146,7 +146,7 @@ export type DepartExtras = {
 };
 
 /**
- * A table encounter saved to the bitácora — story + memory, not a cellar bottle.
+ * A table encounter saved to the bitácora — story snapshot, not a cellar bottle.
  * Identity and kimi fields are snapshotted so the tale survives without adding to cava.
  */
 export type Encounter = {
@@ -170,9 +170,9 @@ export type Encounter = {
   kimiPairingNote: string | null;
   kimiCheckedAt: string | null;
   kimiConfidence: MatchConfidence | null;
-  /** Restaurant / mesa / ciudad — shown in the list. */
+  /** Unused in UI; kept nullable for DB compatibility. */
   place: string | null;
-  /** Compañía, por qué esta noche — short sybarite memory. */
+  /** Unused in UI; kept nullable for DB compatibility. */
   note: string | null;
 };
 

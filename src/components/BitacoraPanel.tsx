@@ -21,6 +21,10 @@ function formatWhen(iso: string): string {
   }
 }
 
+function storyPreview(e: Encounter): string | null {
+  return e.kimiTalkHook || e.kimiSummary || null;
+}
+
 export function BitacoraPanel({ entries, onRemove }: Props) {
   const [openId, setOpenId] = useState<string | null>(null);
   const open = entries.find((e) => e.id === openId) ?? null;
@@ -33,10 +37,10 @@ export function BitacoraPanel({ entries, onRemove }: Props) {
           Encuentros en la mesa — historias que no viven en el mapa.
         </p>
         <div className="mt-6 rounded-[12px] border border-dashed border-[var(--line)] px-4 py-8 text-center">
-          <p className="display text-xl text-ink">Aún no hay mesas anotadas</p>
+          <p className="display text-xl text-ink">Aún no hay encuentros</p>
           <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-ink-soft">
-            Cuando pidas una botella en un restaurante, ábrela en Encuentro:
-            escucha su historia y guárdala aquí — ritual de mesa, no inventario.
+            En Encuentro escanea o nombra la botella, cuenta su historia y
+            guárdala aquí con un toque.
           </p>
         </div>
       </section>
@@ -47,13 +51,13 @@ export function BitacoraPanel({ entries, onRemove }: Props) {
     <section className="panel p-4 sm:p-5">
       <h2 className="display text-2xl text-ink">Bitácora</h2>
       <p className="mt-0.5 text-sm text-ink-soft">
-        Diario de mesas · {entries.length} encuentro
-        {entries.length === 1 ? "" : "s"}
+        {entries.length} encuentro{entries.length === 1 ? "" : "s"}
       </p>
 
       <ol className="mt-4 space-y-2">
         {entries.map((e) => {
           const isOpen = openId === e.id;
+          const preview = storyPreview(e);
           return (
             <li key={e.id}>
               <button
@@ -73,17 +77,11 @@ export function BitacoraPanel({ entries, onRemove }: Props) {
                     {e.name}
                   </p>
                   <p className="truncate text-xs text-ink-soft">
-                    {formatWhen(e.at)}
-                    {e.place ? ` · ${e.place}` : ""}
+                    {[e.winery, formatWhen(e.at)].filter(Boolean).join(" · ")}
                   </p>
-                  {e.note && !isOpen ? (
-                    <p className="mt-0.5 line-clamp-1 text-xs text-ink">
-                      {e.note}
-                    </p>
-                  ) : null}
-                  {!e.note && e.kimiTalkHook && !isOpen ? (
-                    <p className="mt-0.5 line-clamp-1 text-xs italic text-ink-soft">
-                      {e.kimiTalkHook}
+                  {preview && !isOpen ? (
+                    <p className="mt-0.5 line-clamp-1 text-xs text-ink-soft">
+                      {preview}
                     </p>
                   ) : null}
                 </div>
@@ -92,9 +90,7 @@ export function BitacoraPanel({ entries, onRemove }: Props) {
                     <span className="text-[var(--wine)]">
                       {formatCavataleRating(e.cavataleRating)}
                     </span>
-                  ) : (
-                    <span className="text-ink-soft">—</span>
-                  )}
+                  ) : null}
                 </div>
               </button>
 
@@ -105,20 +101,10 @@ export function BitacoraPanel({ entries, onRemove }: Props) {
                       .filter(Boolean)
                       .join(" · ")}
                   </p>
-                  {open.place || open.note ? (
-                    <div>
-                      <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                        Esta noche
-                      </p>
-                      {open.place ? (
-                        <p className="mt-1 text-sm text-ink">{open.place}</p>
-                      ) : null}
-                      {open.note ? (
-                        <p className="mt-0.5 text-sm leading-relaxed text-ink">
-                          {open.note}
-                        </p>
-                      ) : null}
-                    </div>
+                  {open.cavataleRating != null ? (
+                    <p className="text-sm text-[var(--wine)]">
+                      Cavatale {formatCavataleRating(open.cavataleRating)}
+                    </p>
                   ) : null}
                   {open.kimiTalkHook ? (
                     <div className="rounded-[10px] border border-[rgba(110,31,44,0.22)] bg-[rgba(110,31,44,0.06)] px-2.5 py-2.5">

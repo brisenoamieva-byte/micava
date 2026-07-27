@@ -17,7 +17,7 @@ import {
 import type { Encounter, EncounterDraft, WineDraft } from "@/lib/types";
 import { formatCavataleRating } from "@/lib/wines";
 
-type Step = "identify" | "story" | "memory";
+type Step = "identify" | "story";
 
 type Props = {
   open: boolean;
@@ -79,8 +79,6 @@ export function EncuentroModal({
   const [error, setError] = useState("");
   const [kimiLoading, setKimiLoading] = useState(false);
   const [thinHint, setThinHint] = useState(false);
-  const [place, setPlace] = useState("");
-  const [note, setNote] = useState("");
   const [saved, setSaved] = useState(false);
   const scanInputRef = useRef<HTMLInputElement>(null);
   const scanAbortRef = useRef<AbortController | null>(null);
@@ -96,8 +94,6 @@ export function EncuentroModal({
     setError("");
     setKimiLoading(false);
     setThinHint(false);
-    setPlace("");
-    setNote("");
     setSaved(false);
     scanAbortRef.current?.abort();
     researchAbortRef.current?.abort();
@@ -271,17 +267,12 @@ export function EncuentroModal({
     research.kimiSummary || research.kimiCuriosity || research.kimiTalkHook
   );
 
-  function goToMemory() {
+  function handleSave(alsoAdd: boolean) {
+    if (saved) return;
     if (!hasStory) {
       setError("Cuenta la historia primero — es el corazón del encuentro.");
       return;
     }
-    setError("");
-    setStep("memory");
-  }
-
-  function handleSave(alsoAdd: boolean) {
-    if (saved) return;
     onSave({
       wineId: null,
       name: identity.name.trim(),
@@ -300,8 +291,8 @@ export function EncuentroModal({
       kimiPairingNote: research.kimiPairingNote,
       kimiCheckedAt: research.kimiCheckedAt,
       kimiConfidence: research.kimiConfidence,
-      place: place.trim() || null,
-      note: note.trim() || null,
+      place: null,
+      note: null,
     });
     setSaved(true);
     if (alsoAdd && onAlsoAddToCava) {
@@ -341,16 +332,12 @@ export function EncuentroModal({
             <h2 id="encuentro-title" className="display mt-1 text-2xl text-ink">
               {step === "identify"
                 ? "Contar una botella"
-                : step === "story"
-                  ? "La historia en la mesa"
-                  : "Memoria de esta noche"}
+                : "La historia en la mesa"}
             </h2>
             <p className="mt-1 text-sm text-ink-soft">
               {step === "identify"
                 ? "Historia para esta mesa · sin sumarla a tu cava"
-                : step === "story"
-                  ? "Primero el gancho para decir en voz alta — luego el relato completo."
-                  : "Guarda el encuentro en tu bitácora. Sumar a la cava es opcional."}
+                : "Primero el gancho para decir en voz alta — luego el relato completo."}
             </p>
           </div>
           <button
@@ -620,85 +607,25 @@ export function EncuentroModal({
                   ) : null}
                   <button
                     type="button"
-                    className="btn btn-primary min-h-[48px] w-full text-base"
-                    onClick={goToMemory}
+                    className="btn btn-primary min-h-[48px] w-full text-base disabled:opacity-60"
+                    disabled={saved}
+                    onClick={() => handleSave(false)}
                   >
-                    Guardar en mi bitácora…
+                    Guardar en mi bitácora
                   </button>
+                  {onAlsoAddToCava ? (
+                    <button
+                      type="button"
+                      className="btn btn-ghost min-h-[44px] w-full text-sm disabled:opacity-60"
+                      disabled={saved}
+                      onClick={() => handleSave(true)}
+                    >
+                      Guardar y sumar a mi cava
+                    </button>
+                  ) : null}
                 </div>
               ) : null}
             </div>
-          </div>
-        ) : null}
-
-        {step === "memory" ? (
-          <div className="space-y-3">
-            <div className="rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.55)] px-3 py-2.5">
-              <p className="font-medium text-ink">{identity.name}</p>
-              {research.cavataleRating != null ? (
-                <p className="text-xs text-[var(--wine)]">
-                  Cavatale {formatCavataleRating(research.cavataleRating)}
-                </p>
-              ) : null}
-              {research.kimiTalkHook ? (
-                <p className="mt-1.5 text-sm leading-snug text-ink">
-                  <span className="text-[11px] uppercase tracking-[0.12em] text-ink-soft">
-                    Gancho ·{" "}
-                  </span>
-                  {research.kimiTalkHook}
-                </p>
-              ) : null}
-            </div>
-            <label className="block">
-              <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                Lugar
-              </span>
-              <input
-                className={fieldClass}
-                value={place}
-                onChange={(e) => setPlace(e.target.value)}
-                placeholder="Restaurante, mesa, ciudad…"
-                maxLength={120}
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                Compañía · por qué esta noche
-              </span>
-              <textarea
-                className={`${fieldClass} min-h-[88px] resize-y py-2.5`}
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Una línea para recordar la mesa…"
-                maxLength={280}
-                rows={3}
-              />
-            </label>
-            <button
-              type="button"
-              className="btn btn-primary min-h-[48px] w-full text-base disabled:opacity-60"
-              disabled={saved}
-              onClick={() => handleSave(false)}
-            >
-              Guardar en mi bitácora
-            </button>
-            {onAlsoAddToCava ? (
-              <button
-                type="button"
-                className="btn btn-ghost min-h-[44px] w-full text-sm disabled:opacity-60"
-                disabled={saved}
-                onClick={() => handleSave(true)}
-              >
-                También sumar a mi cava
-              </button>
-            ) : null}
-            <button
-              type="button"
-              className="w-full text-center text-xs text-ink-soft underline-offset-2 hover:underline"
-              onClick={() => setStep("story")}
-            >
-              Volver a la historia
-            </button>
           </div>
         ) : null}
       </div>

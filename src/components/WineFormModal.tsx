@@ -12,6 +12,8 @@ import {
 } from "@/lib/wines";
 import { wineToDraft } from "@/lib/cellar-store";
 import {
+  fetchEnrichLabel,
+  fetchScanLabel,
   imageFileToDataUrl,
   mergeScanPatchIntoDraft,
   missingScanFieldLabels,
@@ -112,6 +114,7 @@ export function WineFormModal({
   const [catalogQuery, setCatalogQuery] = useState("");
   const [fromExisting, setFromExisting] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [enriching, setEnriching] = useState(false);
   const [scanHint, setScanHint] = useState("");
   const [labelImageDataUrl, setLabelImageDataUrl] = useState<string | null>(
     null
@@ -119,6 +122,7 @@ export function WineFormModal({
   const [lastScanFile, setLastScanFile] = useState<File | null>(null);
   const scanInputRef = useRef<HTMLInputElement>(null);
   const scanAbortRef = useRef<AbortController | null>(null);
+  const enrichAbortRef = useRef<AbortController | null>(null);
 
   const catalog = useMemo(() => buildCatalog(wines), [wines]);
 
@@ -166,11 +170,14 @@ export function WineFormModal({
     setCatalogQuery("");
     setFromExisting(false);
     setScanning(false);
+    setEnriching(false);
     setScanHint("");
     setLabelImageDataUrl(null);
     setLastScanFile(null);
     scanAbortRef.current?.abort();
     scanAbortRef.current = null;
+    enrichAbortRef.current?.abort();
+    enrichAbortRef.current = null;
     if (editing) {
       setStep("form");
       setDraft(wineToDraft(editing));
@@ -192,6 +199,7 @@ export function WineFormModal({
   useEffect(() => {
     return () => {
       scanAbortRef.current?.abort();
+      enrichAbortRef.current?.abort();
     };
   }, []);
 
@@ -232,42 +240,53 @@ export function WineFormModal({
     if (!file || scanning) return;
     setLastScanFile(file);
     setScanning(true);
+    setEnriching(false);
     setError("");
     setScanHint("");
     scanAbortRef.current?.abort();
+    enrichAbortRef.current?.abort();
     const abort = new AbortController();
     scanAbortRef.current = abort;
-    const timeoutId = window.setTimeout(() => abort.abort(), 55_000);
+    // Vision-only should finish well under this; enrich runs separately.
+    const timeoutId = window.setTimeout(() => abort.abort(), 35_000);
+
+    function applyFieldsHint(
+      fields: ScanLabelFields,
+      proposedPrice: number | null,
+      suffix?: string
+    ) {
+      const conf =
+        fields.confidence === "high"
+          ? "Alta confianza"
+          : fields.confidence === "medium"
+            ? "Revisa los datos"
+            : "Baja confianza — corrige a mano";
+      const missing = missingScanFieldLabels(fields);
+      setScanHint(
+        [
+          conf,
+          proposedPrice != null
+            ? `Precio propuesto ${formatPrice(proposedPrice)} (editable)`
+            : null,
+          missing.length
+            ? `Falta completar: ${missing.join(", ")}`
+            : "Ficha completa (revisa igual)",
+          fields.notes || null,
+          suffix || null,
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      );
+    }
 
     try {
       const { dataUrl } = await imageFileToDataUrl(file);
       if (abort.signal.aborted) throw new DOMException("Aborted", "AbortError");
 
-      const res = await fetch("/api/scan-label", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageDataUrl: dataUrl }),
-        signal: abort.signal,
-      });
-      const raw = await res.text();
-      let payload: { error?: string; fields?: ScanLabelFields } = {};
-      try {
-        payload = JSON.parse(raw) as {
-          error?: string;
-          fields?: ScanLabelFields;
-        };
-      } catch {
-        throw new Error(
-          res.status === 504 || res.status === 408
-            ? "El escaneo tardó demasiado. Intenta de nuevo con mejor luz."
-            : res.ok
-              ? "La IA respondió en un formato inesperado. Reintenta."
-              : "El servidor falló al escanear. Reintenta en un momento."
-        );
-      }
+      const { status, payload } = await fetchScanLabel(dataUrl, abort.signal);
 
       // Partial identity: apply what we got without wiping typed fields; warn.
-      if (res.status === 422 && payload.fields) {
+      if (status === 422 && payload.fields) {
         const patch = scanFieldsToDraftPatch(payload.fields);
         setDraft((prev) => {
           const merged = mergeScanPatchIntoDraft(prev, {
@@ -296,12 +315,12 @@ export function WineFormModal({
         return;
       }
 
-      if (!res.ok || !payload.fields) {
+      if (status !== 200 || !payload.fields?.name) {
         const msg = payload.error || "No se pudo leer la etiqueta.";
-        if (res.status === 429) {
+        if (status === 429) {
           throw new Error("Demasiadas consultas. Espera un momento y reintenta.");
         }
-        if (res.status >= 500) {
+        if (status >= 500) {
           throw new Error(
             msg.includes("Kimi") || msg.includes("API")
               ? msg
@@ -311,7 +330,8 @@ export function WineFormModal({
         throw new Error(msg);
       }
 
-      const patch = scanFieldsToDraftPatch(payload.fields);
+      const fields = payload.fields;
+      const patch = scanFieldsToDraftPatch(fields);
       let proposedPrice: number | null = null;
       setDraft((prev) => {
         const merged = mergeScanPatchIntoDraft(prev, patch);
@@ -326,27 +346,50 @@ export function WineFormModal({
       setLabelImageDataUrl(dataUrl);
       setFromExisting(false);
       setStep("form");
-      const conf =
-        payload.fields.confidence === "high"
-          ? "Alta confianza"
-          : payload.fields.confidence === "medium"
-            ? "Revisa los datos"
-            : "Baja confianza — corrige a mano";
-      const missing = missingScanFieldLabels(payload.fields);
-      setScanHint(
-        [
-          conf,
-          proposedPrice != null
-            ? `Precio propuesto ${formatPrice(proposedPrice)} (editable)`
-            : null,
-          missing.length
-            ? `Falta completar: ${missing.join(", ")}`
-            : "Ficha completa (revisa igual)",
-          payload.fields.notes || null,
-        ]
-          .filter(Boolean)
-          .join(" · ")
+      applyFieldsHint(
+        fields,
+        proposedPrice,
+        payload.needsEnrich ? "Buscando Vivino y precio…" : undefined
       );
+
+      // Identity is already on screen — enrich market data in the background.
+      if (payload.needsEnrich) {
+        const enrichAbort = new AbortController();
+        enrichAbortRef.current = enrichAbort;
+        setEnriching(true);
+        const enrichTimeout = window.setTimeout(
+          () => enrichAbort.abort(),
+          35_000
+        );
+        void (async () => {
+          try {
+            const enriched = await fetchEnrichLabel(
+              fields,
+              payload.enrichHint,
+              enrichAbort.signal
+            );
+            if (!enriched || enrichAbort.signal.aborted) return;
+            const enrichPatch = scanFieldsToDraftPatch(enriched);
+            let newPrice: number | null = null;
+            setDraft((prev) => {
+              newPrice =
+                prev.price == null && enrichPatch.price != null
+                  ? enrichPatch.price
+                  : null;
+              return mergeScanPatchIntoDraft(prev, enrichPatch);
+            });
+            applyFieldsHint(enriched, newPrice);
+          } catch {
+            /* keep vision-only result */
+          } finally {
+            window.clearTimeout(enrichTimeout);
+            if (enrichAbortRef.current === enrichAbort) {
+              enrichAbortRef.current = null;
+            }
+            setEnriching(false);
+          }
+        })();
+      }
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") {
         setError(
@@ -556,7 +599,7 @@ export function WineFormModal({
                   <ThinkingIndicator
                     tone="cream"
                     size="sm"
-                    label="Identificando y buscando calificación…"
+                    label="Identificando etiqueta…"
                   />
                 ) : (
                   "Escanear etiqueta"
@@ -617,7 +660,7 @@ export function WineFormModal({
                   <ThinkingIndicator
                     tone="wine"
                     size="sm"
-                    label="Identificando y buscando calificación…"
+                    label="Identificando etiqueta…"
                   />
                 ) : editing ? (
                   "Rellenar desde foto"
@@ -626,7 +669,13 @@ export function WineFormModal({
                 )}
               </button>
               {scanHint ? (
-                <p className="text-xs text-ink-soft">{scanHint}</p>
+                <p className="text-xs text-ink-soft">
+                  {enriching && !scanHint.includes("Buscando")
+                    ? `${scanHint} · Buscando Vivino y precio…`
+                    : scanHint}
+                </p>
+              ) : enriching ? (
+                <p className="text-xs text-ink-soft">Buscando Vivino y precio…</p>
               ) : null}
               {error ? (
                 <button

@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 import { guardKimiApi } from "@/lib/api-guard";
-import { kimiChatWithWebSearch } from "@/lib/kimi-web-search";
 import {
   addKimiUsage,
   parseKimiUsage,
   recordKimiUsage,
   type KimiTokenUsage,
 } from "@/lib/kimi-usage";
+import {
+  needsMarketEnrich,
+  type EnrichHint,
+} from "@/lib/scan-label-enrich";
 import {
   extractJsonObject,
   parseScanLabelResult,
@@ -15,7 +18,7 @@ import {
 import { wineCountriesForPrompt } from "@/lib/wine-countries";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 45;
 
 const KIMI_BASE = "https://api.moonshot.ai/v1";
 const MODEL = process.env.KIMI_MODEL?.trim() || "kimi-k2.6";
@@ -25,7 +28,7 @@ const MAX_BYTES = 6 * 1024 * 1024;
 const COUNTRY_PROMPT = wineCountriesForPrompt();
 
 /**
- * Pass 1: vision. Not OCR-only — identify wines from artwork when text is missing.
+ * Pass 1: vision only. Market data (Vivino/price) is filled by /api/enrich-label.
  */
 const VISION_SYSTEM = `Eres un sommelier / experto en identificación de vinos por ETIQUETA VISUAL.
 
@@ -56,20 +59,6 @@ Definiciones:
 - searchQuery (string): 1 consulta corta en inglés o español para buscar en internet ese vino exacto + Vivino/precio (ej. "Monte Xanic Cabernet 2020 Vivino price Mexico"). Si name="", arma query con pistas visuales.
 
 Si la imagen no parece una etiqueta de vino, name="" y confidence="low".`;
-
-const ENRICH_SYSTEM = `Eres un investigador de vinos para Cavatale (México).
-Debes USAR la búsqueda web ($web_search) para confirmar identidad, rating Vivino y precio de referencia en MXN.
-Responde SOLO con JSON válido (sin markdown) con EXACTAMENTE:
-name, winery, country, region, type, grape, aging, vintage, vivino, price, confidence, notes.
-
-Reglas:
-- Busca primero en Vivino / sitios de vino / tiendas MX (La Europea, Vinoteca, Amazon MX, etc.).
-- country: exactamente uno de: ${COUNTRY_PROMPT}. Usa el nombre en español de la lista.
-- vivino: número 1–5 (un decimal ok) del vino/cosecha si aparece; si solo hay rango, toma el más citado; si no hay dato fiable, null.
-- price: entero MXN de menudeo típico actual o reciente; si solo USD/EUR, convierte aprox. a MXN; si no hay, null.
-- No inventes ratings ni precios. Prefiere null a inventar.
-- Si la búsqueda corrige el nombre/bodega/país, actualízalos.
-- notes: qué fuentes usaste en una frase corta (sin URLs largas).`;
 
 type KimiChatResponse = {
   choices?: Array<{ message?: { content?: string | null } }>;
@@ -118,12 +107,7 @@ async function readImageDataUrl(request: Request): Promise<string> {
   return dataUrl;
 }
 
-type VisionExtra = {
-  matchMethod?: string;
-  searchQuery?: string;
-};
-
-function parseVisionExtras(raw: unknown): VisionExtra {
+function parseVisionExtras(raw: unknown): EnrichHint {
   if (!raw || typeof raw !== "object") return {};
   const o = raw as Record<string, unknown>;
   return {
@@ -134,54 +118,23 @@ function parseVisionExtras(raw: unknown): VisionExtra {
   };
 }
 
-function buildSearchQuery(fields: ScanLabelFields, extras: VisionExtra): string {
-  if (extras.searchQuery) return extras.searchQuery;
-  const parts = [
-    fields.name,
-    fields.winery,
-    fields.vintage != null ? String(fields.vintage) : "",
-    fields.region,
-    "Vivino",
-    "precio México",
-  ].filter(Boolean);
-  return parts.join(" ");
-}
-
-function mergeEnrichment(
-  base: ScanLabelFields,
-  enriched: ScanLabelFields
+function applyMethodNote(
+  fields: ScanLabelFields,
+  matchMethod?: string
 ): ScanLabelFields {
-  const pickStr = (a: string, b: string) => (b.trim() ? b : a);
-  const pickNum = (a: number | null, b: number | null) =>
-    b != null ? b : a;
+  const methodNote =
+    matchMethod === "visual"
+      ? "Identificado por diseño visual"
+      : matchMethod === "mixed"
+        ? "Identificado por texto + diseño"
+        : matchMethod === "text"
+          ? "Identificado por texto de etiqueta"
+          : "";
 
+  if (!methodNote || fields.notes.includes("Identificado")) return fields;
   return {
-    name: pickStr(base.name, enriched.name) || base.name,
-    winery: pickStr(base.winery, enriched.winery),
-    country:
-      enriched.country && enriched.country !== "Otro"
-        ? enriched.country
-        : base.country,
-    region: pickStr(base.region, enriched.region),
-    type: enriched.type || base.type,
-    grape: pickStr(base.grape, enriched.grape),
-    aging: pickStr(base.aging, enriched.aging),
-    vintage: pickNum(base.vintage, enriched.vintage),
-    vivino: pickNum(base.vivino, enriched.vivino),
-    price: pickNum(base.price, enriched.price),
-    confidence:
-      enriched.confidence === "high" || base.confidence === "high"
-        ? enriched.vivino != null || enriched.price != null
-          ? enriched.confidence === "low"
-            ? base.confidence
-            : enriched.confidence
-          : base.confidence === "high"
-            ? "high"
-            : enriched.confidence
-        : enriched.confidence !== "low"
-          ? enriched.confidence
-          : base.confidence,
-    notes: [base.notes, enriched.notes].filter(Boolean).join(" · ").slice(0, 280),
+    ...fields,
+    notes: [methodNote, fields.notes].filter(Boolean).join(" · ").slice(0, 280),
   };
 }
 
@@ -190,8 +143,7 @@ async function visionIdentify(
   imageDataUrl: string
 ): Promise<{
   fields: ScanLabelFields;
-  extras: VisionExtra;
-  raw: unknown;
+  extras: EnrichHint;
   usage: KimiTokenUsage | null;
 }> {
   const kimiRes = await fetch(`${KIMI_BASE}/chat/completions`, {
@@ -249,59 +201,7 @@ async function visionIdentify(
   const raw = extractJsonObject(content);
   const fields = parseScanLabelResult(raw);
   const extras = parseVisionExtras(raw);
-  return { fields, extras, raw, usage };
-}
-
-async function enrichWithWeb(
-  apiKey: string,
-  fields: ScanLabelFields,
-  extras: VisionExtra
-): Promise<{ fields: ScanLabelFields | null; usage: KimiTokenUsage | null }> {
-  // Skip if we already have both market fields with decent identity
-  if (
-    fields.vivino != null &&
-    fields.price != null &&
-    fields.confidence === "high"
-  ) {
-    return { fields: null, usage: null };
-  }
-
-  const query = buildSearchQuery(fields, extras);
-  if (!query.trim() && !fields.name) return { fields: null, usage: null };
-
-  const user = `Identidad tentativa del vino (puede venir de foto con poco texto):
-- name: ${fields.name || "(desconocido)"}
-- winery: ${fields.winery || ""}
-- country: ${fields.country}
-- region: ${fields.region}
-- type: ${fields.type}
-- grape: ${fields.grape}
-- aging: ${fields.aging}
-- vintage: ${fields.vintage ?? ""}
-- matchMethod: ${extras.matchMethod || ""}
-- notes visuales: ${fields.notes || ""}
-- consulta sugerida: ${query}
-
-Usa $web_search (varias búsquedas si hace falta: Vivino rating, precio México) y devuelve el JSON final con vivino y price rellenados cuando existan datos públicos.`;
-
-  const result = await kimiChatWithWebSearch({
-    apiKey,
-    model: MODEL,
-    system: ENRICH_SYSTEM,
-    user,
-    maxRounds: 4,
-    maxTokens: 1536,
-  });
-
-  if (!result.content) return { fields: null, usage: result.usage };
-
-  try {
-    // Model may wrap JSON; strip if tools left prose
-    const raw = extractJsonObject(result.content);
-    return { fields: parseScanLabelResult(raw), usage: result.usage };
-  } catch {
-    return { fields: null, usage: result.usage };
-  }
+  return { fields, extras, usage };
 }
 
 export async function POST(request: Request) {
@@ -326,7 +226,7 @@ export async function POST(request: Request) {
   let sessionUsage: KimiTokenUsage | null = null;
   let vision: {
     fields: ScanLabelFields;
-    extras: VisionExtra;
+    extras: EnrichHint;
     usage: KimiTokenUsage | null;
   };
   try {
@@ -355,52 +255,7 @@ export async function POST(request: Request) {
     );
   }
 
-  let fields = vision.fields;
-
-  if (!fields.name) {
-    await recordKimiUsage({
-      userId: guard.userId,
-      route: USAGE_ROUTE,
-      model: MODEL,
-      usage: sessionUsage,
-    });
-    return NextResponse.json(
-      {
-        error:
-          fields.notes ||
-          "No pude identificar el vino (ni por texto ni por diseño). Prueba más luz, de frente, o la contraetiqueta.",
-        fields,
-      },
-      { status: 422 }
-    );
-  }
-
-  // Pass 2: web search for Vivino + price (and identity confirmation)
-  try {
-    const enriched = await enrichWithWeb(apiKey, fields, vision.extras);
-    sessionUsage = addKimiUsage(sessionUsage, enriched.usage);
-    if (enriched.fields?.name) {
-      fields = mergeEnrichment(fields, enriched.fields);
-    }
-  } catch {
-    // Keep vision-only result; market fields may stay null
-  }
-
-  const methodNote =
-    vision.extras.matchMethod === "visual"
-      ? "Identificado por diseño visual"
-      : vision.extras.matchMethod === "mixed"
-        ? "Identificado por texto + diseño"
-        : vision.extras.matchMethod === "text"
-          ? "Identificado por texto de etiqueta"
-          : "";
-
-  if (methodNote && !fields.notes.includes("Identificado")) {
-    fields = {
-      ...fields,
-      notes: [methodNote, fields.notes].filter(Boolean).join(" · ").slice(0, 280),
-    };
-  }
+  const fields = applyMethodNote(vision.fields, vision.extras.matchMethod);
 
   await recordKimiUsage({
     userId: guard.userId,
@@ -409,5 +264,28 @@ export async function POST(request: Request) {
     usage: sessionUsage,
   });
 
-  return NextResponse.json({ fields });
+  if (!fields.name) {
+    return NextResponse.json(
+      {
+        error:
+          fields.notes ||
+          "No pude identificar el vino (ni por texto ni por diseño). Prueba más luz, de frente, o la contraetiqueta.",
+        fields,
+        needsEnrich: false,
+      },
+      { status: 422 }
+    );
+  }
+
+  const needsEnrich = needsMarketEnrich(fields);
+  return NextResponse.json({
+    fields,
+    needsEnrich,
+    enrichHint: needsEnrich
+      ? {
+          matchMethod: vision.extras.matchMethod || "",
+          searchQuery: vision.extras.searchQuery || "",
+        }
+      : undefined,
+  });
 }

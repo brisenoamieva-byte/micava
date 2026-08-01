@@ -9,10 +9,11 @@ import {
   type KimiResearch,
 } from "@/lib/kimi-research";
 import {
+  fetchEnrichLabel,
+  fetchScanLabel,
   imageFileToDataUrl,
   mergeScanPatchIntoDraft,
   scanFieldsToDraftPatch,
-  type ScanLabelFields,
 } from "@/lib/scan-label";
 import type { Encounter, EncounterDraft, WineDraft } from "@/lib/types";
 import { formatCavataleRating } from "@/lib/wines";
@@ -75,6 +76,7 @@ export function EncuentroModal({
   const [identity, setIdentity] = useState<EncounterDraft>(emptyIdentity);
   const [research, setResearch] = useState<KimiResearch>(emptyKimiResearch);
   const [scanning, setScanning] = useState(false);
+  const [enriching, setEnriching] = useState(false);
   const [scanHint, setScanHint] = useState("");
   const [error, setError] = useState("");
   const [kimiLoading, setKimiLoading] = useState(false);
@@ -82,6 +84,7 @@ export function EncuentroModal({
   const [saved, setSaved] = useState(false);
   const scanInputRef = useRef<HTMLInputElement>(null);
   const scanAbortRef = useRef<AbortController | null>(null);
+  const enrichAbortRef = useRef<AbortController | null>(null);
   const researchAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -90,18 +93,21 @@ export function EncuentroModal({
     setIdentity(emptyIdentity());
     setResearch(emptyKimiResearch);
     setScanning(false);
+    setEnriching(false);
     setScanHint("");
     setError("");
     setKimiLoading(false);
     setThinHint(false);
     setSaved(false);
     scanAbortRef.current?.abort();
+    enrichAbortRef.current?.abort();
     researchAbortRef.current?.abort();
   }, [open]);
 
   useEffect(() => {
     return () => {
       scanAbortRef.current?.abort();
+      enrichAbortRef.current?.abort();
       researchAbortRef.current?.abort();
     };
   }, []);
@@ -111,39 +117,22 @@ export function EncuentroModal({
   async function handleScanFile(file: File | undefined) {
     if (!file || scanning) return;
     setScanning(true);
+    setEnriching(false);
     setError("");
     setScanHint("");
     scanAbortRef.current?.abort();
+    enrichAbortRef.current?.abort();
     const abort = new AbortController();
     scanAbortRef.current = abort;
-    const timeoutId = window.setTimeout(() => abort.abort(), 55_000);
+    const timeoutId = window.setTimeout(() => abort.abort(), 35_000);
 
     try {
       const { dataUrl } = await imageFileToDataUrl(file);
       if (abort.signal.aborted) throw new DOMException("Aborted", "AbortError");
 
-      const res = await fetch("/api/scan-label", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageDataUrl: dataUrl }),
-        signal: abort.signal,
-      });
-      const raw = await res.text();
-      let payload: { error?: string; fields?: ScanLabelFields } = {};
-      try {
-        payload = JSON.parse(raw) as {
-          error?: string;
-          fields?: ScanLabelFields;
-        };
-      } catch {
-        throw new Error(
-          res.status === 504 || res.status === 408
-            ? "El escaneo tardó demasiado. Intenta de nuevo con mejor luz."
-            : "No se pudo leer la etiqueta. Reintenta."
-        );
-      }
+      const { status, payload } = await fetchScanLabel(dataUrl, abort.signal);
 
-      if ((res.ok || res.status === 422) && payload.fields) {
+      if ((status === 200 || status === 422) && payload.fields) {
         const patch = scanFieldsToDraftPatch(payload.fields);
         const merged = mergeScanPatchIntoDraft(toWineDraft(identity), patch);
         setIdentity({
@@ -157,22 +146,75 @@ export function EncuentroModal({
           vintage: merged.vintage,
         });
         setScanHint(
-          res.status === 422
+          status === 422
             ? "Baja confianza — revisa el nombre y la bodega"
             : payload.fields.confidence === "high"
-              ? "Alta confianza — revisa y continúa"
+              ? payload.needsEnrich
+                ? "Alta confianza — confirmando datos de mercado…"
+                : "Alta confianza — revisa y continúa"
               : "Revisa los datos antes de contar la historia"
         );
-        if (res.status === 422) {
+        if (status === 422) {
           setError(
             payload.error ||
               "No identifiqué el vino con certeza. Completa o corrige a mano."
           );
         }
+
+        if (status === 200 && payload.needsEnrich && payload.fields.name) {
+          const enrichAbort = new AbortController();
+          enrichAbortRef.current = enrichAbort;
+          setEnriching(true);
+          const enrichTimeout = window.setTimeout(
+            () => enrichAbort.abort(),
+            35_000
+          );
+          const baseFields = payload.fields;
+          void (async () => {
+            try {
+              const enriched = await fetchEnrichLabel(
+                baseFields,
+                payload.enrichHint,
+                enrichAbort.signal
+              );
+              if (!enriched || enrichAbort.signal.aborted) return;
+              const enrichPatch = scanFieldsToDraftPatch(enriched);
+              setIdentity((prev) => {
+                const next = mergeScanPatchIntoDraft(
+                  toWineDraft(prev),
+                  enrichPatch
+                );
+                return {
+                  name: next.name,
+                  winery: next.winery,
+                  country: next.country,
+                  region: next.region,
+                  type: next.type,
+                  grape: next.grape,
+                  aging: next.aging,
+                  vintage: next.vintage,
+                };
+              });
+              setScanHint(
+                enriched.confidence === "high"
+                  ? "Alta confianza — revisa y continúa"
+                  : "Revisa los datos antes de contar la historia"
+              );
+            } catch {
+              /* keep vision identity */
+            } finally {
+              window.clearTimeout(enrichTimeout);
+              if (enrichAbortRef.current === enrichAbort) {
+                enrichAbortRef.current = null;
+              }
+              setEnriching(false);
+            }
+          })();
+        }
         return;
       }
 
-      if (!res.ok || !payload.fields) {
+      if (status !== 200 || !payload.fields) {
         throw new Error(payload.error || "No se pudo leer la etiqueta.");
       }
     } catch (e) {
@@ -375,7 +417,13 @@ export function EncuentroModal({
               )}
             </button>
             {scanHint ? (
-              <p className="text-xs text-ink-soft">{scanHint}</p>
+              <p className="text-xs text-ink-soft">
+                {enriching && !scanHint.includes("confirmando")
+                  ? `${scanHint} · Confirmando datos…`
+                  : scanHint}
+              </p>
+            ) : enriching ? (
+              <p className="text-xs text-ink-soft">Confirmando datos de mercado…</p>
             ) : null}
 
             <p className="text-center text-xs text-ink-soft">o escribe el nombre</p>

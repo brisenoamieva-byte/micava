@@ -10,7 +10,6 @@ import {
   type KimiResearch,
 } from "@/lib/kimi-research";
 import {
-  addKimiUsage,
   parseKimiUsage,
   recordKimiUsage,
   type KimiTokenUsage,
@@ -94,23 +93,6 @@ NO empieces con variantes de:
 4. summary, curiosity, talkHook y pairings NO repiten la misma idea.
 5. No digas que consultaste Vivino/internet en vivo.
 6. Español natural (México/LatAm). Sin emojis. Sin markdown dentro de los strings.`;
-
-const RETRY_USER_SUFFIX = `
-
-REESCRITURA OBLIGATORIA: tu borrador anterior sonaba a ficha de catálogo o era demasiado genérico/delgado.
-- Abre summary con una PERSONA o un DETALLE concreto de ESTA botella — nunca con DO/región/tipología.
-- curiosity y talkHook deben aportar hechos distintos (no parafrasear el summary).
-- Si no conoces gente de esa bodega, dilo en 2–3 frases honestas; no inventes.
-- Mantén coherencia: mismos hechos en todos los campos.
-- Devuelve SOLO el JSON completo otra vez.`;
-
-const RETRY_ENCOUNTER_SUFFIX = `
-
-REESCRITURA OBLIGATORIA (modo encuentro / mesa esta noche):
-- talkHook: exactamente 1 frase oral, provocadora, para decir YA con la copa en la mano. Cero preguntas de cata.
-- Abre summary con PERSONA o detalle concreto — nunca DO/región/tipología.
-- curiosity y talkHook hechos distintos; sin inventar.
-- Devuelve SOLO el JSON completo otra vez.`;
 
 type ResearchMode = "cellar" | "encounter";
 
@@ -259,7 +241,6 @@ async function callKimi(
 function finalizeResearch(content: string): {
   research: Omit<KimiResearch, "kimiCheckedAt">;
   thinStory: boolean;
-  shouldRetry: boolean;
 } {
   const parsed = polishKimiResearchNarratives(
     parseKimiResearchFromModelText(content)
@@ -268,7 +249,6 @@ function finalizeResearch(content: string): {
   return {
     research: parsed,
     thinStory: quality.thin,
-    shouldRetry: quality.shouldRetry,
   };
 }
 
@@ -363,23 +343,8 @@ export async function POST(request: Request) {
     );
   }
 
-  if (finalized.shouldRetry) {
-    const retrySuffix =
-      mode === "encounter" ? RETRY_ENCOUNTER_SUFFIX : RETRY_USER_SUFFIX;
-    const second = await callKimi(apiKey, userPrompt + retrySuffix);
-    sessionUsage = addKimiUsage(sessionUsage, second.usage);
-    if (second.ok) {
-      try {
-        const retry = finalizeResearch(second.content);
-        // Prefer the less thin rewrite; fall back to first if retry is worse.
-        if (!retry.thinStory || finalized.thinStory) {
-          finalized = retry;
-        }
-      } catch {
-        /* keep first */
-      }
-    }
-  }
+  // Single pass — no automatic rewrite (was doubling latency).
+  // Client can re-request with userCorrection when thinStory is true.
 
   await recordKimiUsage({
     userId: guard.userId,

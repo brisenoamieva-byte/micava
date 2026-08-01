@@ -96,7 +96,7 @@ export async function kimiChatWithWebSearch(options: {
     model,
     system,
     user,
-    maxRounds = 4,
+    maxRounds = 2,
     maxTokens = 2048,
   } = options;
 

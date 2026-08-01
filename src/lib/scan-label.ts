@@ -180,6 +180,84 @@ export function missingScanFieldLabels(fields: ScanLabelFields): string[] {
     .map((x) => x.label);
 }
 
+export type ScanLabelEnrichHint = {
+  matchMethod?: string;
+  searchQuery?: string;
+};
+
+export type ScanLabelApiSuccess = {
+  fields: ScanLabelFields;
+  needsEnrich: boolean;
+  enrichHint?: ScanLabelEnrichHint;
+  error?: string;
+};
+
+/** Vision-only identify. Market data comes from fetchEnrichLabel. */
+export async function fetchScanLabel(
+  imageDataUrl: string,
+  signal?: AbortSignal
+): Promise<{
+  status: number;
+  payload: ScanLabelApiSuccess & { error?: string };
+}> {
+  const res = await fetch("/api/scan-label", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ imageDataUrl }),
+    signal,
+  });
+  const raw = await res.text();
+  let payload: ScanLabelApiSuccess & { error?: string } = {
+    fields: {
+      name: "",
+      winery: "",
+      country: "Otro",
+      region: "",
+      type: "Tinto",
+      grape: "",
+      aging: "",
+      vintage: null,
+      vivino: null,
+      price: null,
+      confidence: "low",
+      notes: "",
+    },
+    needsEnrich: false,
+  };
+  try {
+    payload = JSON.parse(raw) as ScanLabelApiSuccess & { error?: string };
+  } catch {
+    throw new Error(
+      res.status === 504 || res.status === 408
+        ? "El escaneo tardó demasiado. Intenta de nuevo con mejor luz."
+        : res.ok
+          ? "La IA respondió en un formato inesperado. Reintenta."
+          : "El servidor falló al escanear. Reintenta en un momento."
+    );
+  }
+  return { status: res.status, payload };
+}
+
+/** Background Vivino/price pass after identity is already shown. */
+export async function fetchEnrichLabel(
+  fields: ScanLabelFields,
+  enrichHint?: ScanLabelEnrichHint,
+  signal?: AbortSignal
+): Promise<ScanLabelFields | null> {
+  const res = await fetch("/api/enrich-label", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fields, enrichHint }),
+    signal,
+  });
+  if (!res.ok) return null;
+  const payload = (await res.json()) as {
+    fields?: ScanLabelFields;
+    enriched?: boolean;
+  };
+  return payload.fields ?? null;
+}
+
 /** Resize + JPEG-compress for cheaper vision calls. */
 export async function imageFileToDataUrl(
   file: File,

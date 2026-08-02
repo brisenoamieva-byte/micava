@@ -775,7 +775,11 @@ export function CellarProvider({ children }: { children: ReactNode }) {
           if (wineIdentityKey(w) !== key) return w;
           return {
             ...w,
-            cavataleRating: research.cavataleRating,
+            // API resolves sticky vs recalculated score; never wipe an existing rating with null.
+            cavataleRating:
+              research.cavataleRating != null
+                ? research.cavataleRating
+                : w.cavataleRating,
             kimiVivino: research.kimiVivino,
             kimiPrice: research.kimiPrice,
             kimiSummary: research.kimiSummary,

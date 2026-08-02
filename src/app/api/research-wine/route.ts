@@ -6,6 +6,7 @@ import {
   normalizeUserCorrectionNote,
   parseKimiResearchFromModelText,
   polishKimiResearchNarratives,
+  resolveOfficialCavataleRating,
   wineIdentityForResearch,
   type KimiResearch,
 } from "@/lib/kimi-research";
@@ -32,23 +33,30 @@ Prioridad narrativa (en este orden):
 3) Solo si faltan personas concretas: un detalle humano del proyecto o del paisaje vivido — nunca un folleto genérico de la DO.
 
 Responde SOLO con JSON válido (sin markdown) con estas claves:
-cavataleRating, vivino, price, confidence, summary, curiosity, talkHook, pairings, pairingNote.
+ratingParts, cavataleRating, vivino, price, confidence, summary, curiosity, talkHook, pairings, pairingNote.
 
-## Rating Cavatale (OBLIGATORIO cuando tengas base; score oficial de la plataforma)
+## Rating Cavatale (score oficial — preciso, no improvisado)
 
-- cavataleRating (number|null): 1.0–5.0 con UN decimal. NO copies Vivino. NO inventes.
-  Juicio: ¿vale la pena en la copa Y en la mesa?
+NO inventes un decimal “a ojo”. Primero califica CUATRO ejes en medios puntos (1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5):
 
-  Ponderación:
-  1) Sabor y calidad en copa (~30%)
-  2) Historia y autenticidad (~30%)
-  3) Experiencia de mesa (~25%)
-  4) Originalidad e interés (~15%)
+ratingParts (objeto OBLIGATORIO si la identidad es clara):
+- taste: sabor/calidad en copa (¿está bien hecho el vino?)
+- story: historia y autenticidad humana (personas, proyecto, honestidad del relato)
+- table: experiencia de mesa (¿abre conversación, interesa contarlo?)
+- originality: originalidad e interés (poco común, ángulo propio, no genérico)
 
-  Lectura: buen sabor + poca historia → ~3.7–4.0; gran historia + sabor flojo → techo ~3.5–3.9; buen sabor + historia + mesa → ~4.2–4.6; excepcional → ≥4.7.
-  Sé preciso con décimas. Evita .0/.5 por pereza.
-  Identidad dudosa o sin señales serias → null (mejor null que un número flojo).
-  NUNCA menciones Vivino ni el score comunitario dentro de summary/curiosity/talkHook/pairingNote. Vivino vive solo en el campo vivino.
+Anclas (sé disciplinado; no regales 4.5+):
+- 2–2.5: flojo / dudoso / genérico
+- 3–3.5: correcto, sin gran gancho
+- 3.5–4: bueno en copa O en historia, no excepcional en ambos
+- 4–4.5: muy bueno en copa Y con historia/mesa real
+- 4.5–5: excepcional y memorable (raro; reserva para casos claros)
+
+cavataleRating: puedes incluirlo, pero el servidor lo RECALCULA así:
+  0.30*taste + 0.30*story + 0.25*table + 0.15*originality (un decimal).
+Identidad dudosa o sin señales serias → ratingParts null y cavataleRating null.
+Si la ficha ya trae "Rating Cavatale guardado": NO recalcules. Devuelve ese mismo número en cavataleRating y ratingParts puede ir null.
+NUNCA menciones Vivino ni el score comunitario dentro de summary/curiosity/talkHook/pairingNote. Vivino vive solo en el campo vivino.
 
 ## Estimaciones de referencia (secundarias)
 
@@ -118,6 +126,8 @@ type Body = {
    * Default / omit = cellar Contar historia.
    */
   mode?: ResearchMode | string | null;
+  /** Force a new official score even if one is already stored. */
+  recalculateRating?: boolean;
 };
 
 const ENCOUNTER_TALKHOOK_BIAS = `
@@ -145,7 +155,11 @@ type KimiChatResponse = {
   };
 };
 
-function buildUserPrompt(identity: string, mode: ResearchMode): string {
+function buildUserPrompt(
+  identity: string,
+  mode: ResearchMode,
+  opts: { ratingLocked: boolean }
+): string {
   const talkHookHint =
     mode === "encounter"
       ? "talkHook (1 frase oral para decir YA en esta mesa, con la copa en la mano — provocación humana, no cata)"
@@ -156,11 +170,46 @@ function buildUserPrompt(identity: string, mode: ResearchMode): string {
       ? "Esta botella está en la mesa AHORA (restaurante / cena). Prioriza a las personas detrás del vino (fundadores, dueños, familia, enólogo/a) si las conoces; si no, sé honesto y cuenta lo más íntimo y concreto que sí sepas — sin inventar."
       : "Esta botella está a punto de abrirse (o regalarse). Prioriza a las personas detrás del vino (fundadores, dueños, familia, enólogo/a) si las conoces; si no, sé honesto y cuenta lo más íntimo y concreto que sí sepas — sin inventar.";
 
-  return `${opener}
+  if (opts.ratingLocked) {
+    return `${opener}
 
-Dame JSON con: Rating Cavatale (~30% sabor/calidad en copa, ~30% historia/autenticidad, ~25% experiencia de mesa, ~15% originalidad/interés), summary (historia íntima; NUNCA abrir con denominación/región genérica), curiosity (dato que se repite), ${talkHookHint}, pairings + pairingNote, y estimaciones vivino/price solo si las conoces bien. No metas Vivino en los textos narrativos.
+MODO SOLO HISTORIA: esta botella YA tiene Rating Cavatale oficial guardado.
+- Reescribe summary, curiosity, ${talkHookHint}, pairings y pairingNote.
+- cavataleRating: copia EXACTAMENTE el "Rating Cavatale guardado" de la ficha.
+- ratingParts: null (no recalcules ejes).
+- Puedes actualizar vivino/price solo si estás seguro; si no, null.
+No metas Vivino en los textos narrativos.
 ${mode === "encounter" ? ENCOUNTER_TALKHOOK_BIAS : ""}
 Ficha:\n\n${identity}`;
+  }
+
+  return `${opener}
+
+Dame JSON con:
+1) ratingParts {taste, story, table, originality} en MEDIOS PUNTOS (1–5). Sé estricto con las anclas; no regales notas altas.
+2) cavataleRating (el servidor lo recalcula con 30/30/25/15; puedes poner tu estimado).
+3) summary (historia íntima; NUNCA abrir con denominación/región genérica), curiosity, ${talkHookHint}, pairings + pairingNote.
+4) vivino/price solo si los conoces bien.
+No metas Vivino en los textos narrativos.
+${mode === "encounter" ? ENCOUNTER_TALKHOOK_BIAS : ""}
+Ficha:\n\n${identity}`;
+}
+
+function finalizeResearch(content: string): {
+  research: Omit<KimiResearch, "kimiCheckedAt">;
+  thinStory: boolean;
+  ratingParts: ReturnType<typeof parseKimiResearchFromModelText>["ratingParts"];
+} {
+  const parsed = polishKimiResearchNarratives(
+    parseKimiResearchFromModelText(content)
+  );
+  const { ratingParts, ...research } = parsed;
+  const quality = assessKimiStoryQuality(research);
+  return {
+    research,
+    thinStory: quality.thin,
+    ratingParts,
+  };
 }
 
 async function callKimi(
@@ -238,20 +287,6 @@ async function callKimi(
   return { ok: true, content, usage };
 }
 
-function finalizeResearch(content: string): {
-  research: Omit<KimiResearch, "kimiCheckedAt">;
-  thinStory: boolean;
-} {
-  const parsed = polishKimiResearchNarratives(
-    parseKimiResearchFromModelText(content)
-  );
-  const quality = assessKimiStoryQuality(parsed);
-  return {
-    research: parsed,
-    thinStory: quality.thin,
-  };
-}
-
 export async function POST(request: Request) {
   const guard = await guardKimiApi(request);
   if (!guard.ok) return guard.response;
@@ -301,10 +336,17 @@ export async function POST(request: Request) {
   });
 
   const mode = resolveMode(body.mode);
+  const forceRecalculate = Boolean(body.recalculateRating);
+  const existingRating =
+    body.cavataleRating != null && Number.isFinite(body.cavataleRating)
+      ? body.cavataleRating
+      : null;
+  const ratingLocked = existingRating != null && !forceRecalculate;
   const correctionBlock = correctionNote
     ? buildUserCorrectionPromptBlock(correctionNote)
     : "";
-  const userPrompt = buildUserPrompt(identity, mode) + correctionBlock;
+  const userPrompt =
+    buildUserPrompt(identity, mode, { ratingLocked }) + correctionBlock;
   const first = await callKimi(apiKey, userPrompt);
   let sessionUsage: KimiTokenUsage | null = first.usage;
 
@@ -343,8 +385,13 @@ export async function POST(request: Request) {
     );
   }
 
-  // Single pass — no automatic rewrite (was doubling latency).
-  // Client can re-request with userCorrection when thinStory is true.
+  // Official score: weighted axes on first pass; sticky afterward (unless recalculate).
+  const officialRating = resolveOfficialCavataleRating({
+    existing: existingRating,
+    forceRecalculate,
+    parts: finalized.ratingParts,
+    modelRating: finalized.research.cavataleRating,
+  });
 
   await recordKimiUsage({
     userId: guard.userId,
@@ -355,10 +402,12 @@ export async function POST(request: Request) {
 
   const research = {
     ...finalized.research,
+    cavataleRating: officialRating,
     kimiCheckedAt: new Date().toISOString(),
   };
   return NextResponse.json({
     research,
     thinStory: finalized.thinStory,
+    ratingLocked: ratingLocked && !forceRecalculate,
   });
 }

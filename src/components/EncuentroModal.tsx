@@ -6,6 +6,7 @@ import { ThinkingIndicator } from "@/components/ThinkingIndicator";
 import {
   assessKimiStoryQuality,
   emptyKimiResearch,
+  stabilizeCavataleRating,
   type KimiResearch,
 } from "@/lib/kimi-research";
 import {
@@ -271,6 +272,7 @@ export function EncuentroModal({
           grape: identity.grape.trim(),
           aging: identity.aging.trim(),
           vintage: identity.vintage,
+          cavataleRating: research.cavataleRating,
         }),
         signal: abort.signal,
       });
@@ -291,7 +293,13 @@ export function EncuentroModal({
         }
         throw new Error(payload.error || "No se pudo contar la historia.");
       }
-      setResearch(payload.research);
+      setResearch({
+        ...payload.research,
+        cavataleRating: stabilizeCavataleRating(
+          research.cavataleRating,
+          payload.research.cavataleRating
+        ),
+      });
       const quality = assessKimiStoryQuality(payload.research);
       setThinHint(Boolean(payload.thinStory) || quality.thin);
     } catch (e) {
@@ -654,7 +662,8 @@ export function EncuentroModal({
                         {formatCavataleRating(research.cavataleRating)}
                       </p>
                       <p className="mt-1.5 text-xs text-ink-soft">
-                        Oficial Cavatale · independiente de Vivino.
+                        Oficial Cavatale · rúbrica fija (sabor/historia/mesa/
+                        originalidad); no cambia si solo actualizas el relato.
                       </p>
                     </div>
                   ) : null}

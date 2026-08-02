@@ -30,6 +30,109 @@ export const emptyKimiResearch: KimiResearch = {
   kimiConfidence: null,
 };
 
+/**
+ * Official Cavatale score is set once and kept stable across story refreshes.
+ * Only fill when the bottle has no rating yet (null), unless forceRecalculate.
+ */
+export function stabilizeCavataleRating(
+  existing: number | null | undefined,
+  incoming: number | null | undefined,
+  opts?: { forceRecalculate?: boolean }
+): number | null {
+  if (!opts?.forceRecalculate && existing != null && Number.isFinite(existing)) {
+    const locked = Math.round(existing * 10) / 10;
+    if (locked >= 1 && locked <= 5) return locked;
+  }
+  if (incoming != null && Number.isFinite(incoming)) {
+    const next = Math.round(incoming * 10) / 10;
+    if (next >= 1 && next <= 5) return next;
+  }
+  return null;
+}
+
+/** Four judged axes; final score is a fixed weighted formula (not a free LLM decimal). */
+export type CavataleRatingParts = {
+  taste: number;
+  story: number;
+  table: number;
+  originality: number;
+};
+
+export const CAVATALE_RATING_WEIGHTS = {
+  taste: 0.3,
+  story: 0.3,
+  table: 0.25,
+  originality: 0.15,
+} as const;
+
+/** Snap to half-points 1.0–5.0 so component scores stay comparable across runs. */
+export function snapHalfPoint(value: number | null | undefined): number | null {
+  if (value == null || !Number.isFinite(value)) return null;
+  const snapped = Math.round(value * 2) / 2;
+  if (snapped < 1 || snapped > 5) return null;
+  return snapped;
+}
+
+/** Deterministic official score from the four axes. */
+export function computeCavataleRatingFromParts(
+  parts: CavataleRatingParts
+): number {
+  const raw =
+    parts.taste * CAVATALE_RATING_WEIGHTS.taste +
+    parts.story * CAVATALE_RATING_WEIGHTS.story +
+    parts.table * CAVATALE_RATING_WEIGHTS.table +
+    parts.originality * CAVATALE_RATING_WEIGHTS.originality;
+  return Math.round(raw * 10) / 10;
+}
+
+export function parseCavataleRatingParts(
+  raw: unknown
+): CavataleRatingParts | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const taste = snapHalfPoint(
+    asOptionalNumber(o.taste ?? o.sabor ?? o.copa ?? o.flavor)
+  );
+  const story = snapHalfPoint(
+    asOptionalNumber(o.story ?? o.historia ?? o.authenticity ?? o.autenticidad)
+  );
+  const table = snapHalfPoint(
+    asOptionalNumber(o.table ?? o.mesa ?? o.experience ?? o.experiencia)
+  );
+  const originality = snapHalfPoint(
+    asOptionalNumber(
+      o.originality ?? o.interes ?? o.interest ?? o.originalidad
+    )
+  );
+  if (
+    taste == null ||
+    story == null ||
+    table == null ||
+    originality == null
+  ) {
+    return null;
+  }
+  return { taste, story, table, originality };
+}
+
+/**
+ * Prefer locked existing score; else weighted parts; else model decimal.
+ */
+export function resolveOfficialCavataleRating(options: {
+  existing?: number | null;
+  forceRecalculate?: boolean;
+  parts?: CavataleRatingParts | null;
+  modelRating?: number | null;
+}): number | null {
+  const fromParts = options.parts
+    ? computeCavataleRatingFromParts(options.parts)
+    : null;
+  const incoming = fromParts ?? options.modelRating ?? null;
+  return stabilizeCavataleRating(options.existing, incoming, {
+    forceRecalculate: options.forceRecalculate,
+  });
+}
+
 export function withKimiDefaults<T extends Partial<Wine>>(
   wine: T
 ): T &
@@ -204,17 +307,24 @@ export function parseKimiPairingsBlob(
 export function parseKimiResearchPayload(raw: unknown): Omit<
   KimiResearch,
   "kimiCheckedAt"
-> {
+> & { ratingParts: CavataleRatingParts | null } {
   if (!raw || typeof raw !== "object") {
     throw new Error("Respuesta de investigación inválida.");
   }
   const o = raw as Record<string, unknown>;
 
-  const cavataleRating = clampScore(
+  const ratingParts = parseCavataleRatingParts(
+    o.ratingParts ?? o.cavataleParts ?? o.scores ?? o.rating_parts
+  );
+  const fromParts = ratingParts
+    ? computeCavataleRatingFromParts(ratingParts)
+    : null;
+  const modelRating = clampScore(
     asOptionalNumber(
       o.cavataleRating ?? o.cavatale_rating ?? o.ratingCavatale
     )
   );
+  const cavataleRating = fromParts ?? modelRating;
 
   let kimiVivino = clampScore(
     asOptionalNumber(o.vivino ?? o.kimiVivino ?? o.vivinoEstimate)
@@ -238,6 +348,7 @@ export function parseKimiResearchPayload(raw: unknown): Omit<
 
   return {
     cavataleRating,
+    ratingParts,
     kimiVivino,
     kimiPrice,
     kimiSummary: asString(o.summary ?? o.notes ?? o.kimiSummary) || null,
@@ -261,7 +372,7 @@ export function parseKimiResearchPayload(raw: unknown): Omit<
 export function parseKimiResearchFromModelText(text: string): Omit<
   KimiResearch,
   "kimiCheckedAt"
-> {
+> & { ratingParts: CavataleRatingParts | null } {
   return parseKimiResearchPayload(extractJsonObject(text));
 }
 

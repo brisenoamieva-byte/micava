@@ -15,10 +15,10 @@
   --wine-soft: #a04d56;
   --leaf: #2f4234;
   --oak: #8a6a45;
-  /* Vivid table-light accent — use sparingly (~2% of UI) */
-  --spark: #e8a317;
-  --spark-deep: #c4780a;
-  --spark-soft: rgba(232, 163, 23, 0.22);
+  /* Electric teal — modern clash against wine; use sparingly (~2% of UI) */
+  --spark: #12c4b5;
+  --spark-deep: #0a8f85;
+  --spark-soft: rgba(18, 196, 181, 0.24);
   --glow: rgba(106, 26, 40, 0.22);
   --shadow: 0 20px 56px rgba(28, 20, 16, 0.16);
   --radius: 14px;
@@ -132,7 +132,7 @@ body {
   background:
     radial-gradient(1100px 640px at 8% -8%, rgba(106, 26, 40, 0.2), transparent 56%),
     radial-gradient(820px 540px at 96% 4%, rgba(47, 66, 52, 0.15), transparent 52%),
-    radial-gradient(640px 420px at 70% 0%, rgba(232, 163, 23, 0.1), transparent 50%),
+    radial-gradient(640px 420px at 70% 0%, rgba(18, 196, 181, 0.11), transparent 50%),
     radial-gradient(720px 480px at 48% 108%, rgba(138, 106, 69, 0.12), transparent 55%),
     linear-gradient(165deg, #ebe4d6 0%, var(--bg) 42%, #c9c0b0 100%);
   font-family: var(--font-outfit), system-ui, sans-serif;
@@ -245,7 +245,7 @@ select {
   background: linear-gradient(165deg, var(--wine) 0%, var(--wine-deep) 100%);
   box-shadow:
     0 12px 30px var(--glow),
-    0 0 0 1px rgba(232, 163, 23, 0.45),
+    0 0 0 1px rgba(18, 196, 181, 0.5),
     0 0 24px var(--spark-soft);
 }
 
@@ -419,7 +419,7 @@ select {
   background:
     linear-gradient(
       145deg,
-      rgba(232, 163, 23, 0.14) 0%,
+      rgba(18, 196, 181, 0.14) 0%,
       rgba(106, 26, 40, 0.08) 38%,
       rgba(248, 245, 238, 0.94) 72%
     );

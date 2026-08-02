@@ -209,7 +209,7 @@ export function DepartTasteModal({
               <>
                 {discovery.talkHook ? (
                   <div className="tale-hook">
-                    <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--wine)]">
+                    <p className="tale-hook-label text-[11px] uppercase tracking-[0.16em]">
                       {action === "opened"
                         ? "Para contar"
                         : "Cuéntale esto"}

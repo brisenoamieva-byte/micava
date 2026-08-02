@@ -15,6 +15,10 @@
   --wine-soft: #a04d56;
   --leaf: #2f4234;
   --oak: #8a6a45;
+  /* Vivid table-light accent — use sparingly (~2% of UI) */
+  --spark: #e8a317;
+  --spark-deep: #c4780a;
+  --spark-soft: rgba(232, 163, 23, 0.22);
   --glow: rgba(106, 26, 40, 0.22);
   --shadow: 0 20px 56px rgba(28, 20, 16, 0.16);
   --radius: 14px;
@@ -33,6 +37,8 @@
   --color-wine-soft: var(--wine-soft);
   --color-leaf: var(--leaf);
   --color-oak: var(--oak);
+  --color-spark: var(--spark);
+  --color-spark-deep: var(--spark-deep);
   --font-sans: var(--font-outfit);
   --font-display: var(--font-cormorant);
 }
@@ -126,6 +132,7 @@ body {
   background:
     radial-gradient(1100px 640px at 8% -8%, rgba(106, 26, 40, 0.2), transparent 56%),
     radial-gradient(820px 540px at 96% 4%, rgba(47, 66, 52, 0.15), transparent 52%),
+    radial-gradient(640px 420px at 70% 0%, rgba(232, 163, 23, 0.1), transparent 50%),
     radial-gradient(720px 480px at 48% 108%, rgba(138, 106, 69, 0.12), transparent 55%),
     linear-gradient(165deg, #ebe4d6 0%, var(--bg) 42%, #c9c0b0 100%);
   font-family: var(--font-outfit), system-ui, sans-serif;
@@ -236,6 +243,10 @@ select {
 
 .btn-primary:hover {
   background: linear-gradient(165deg, var(--wine) 0%, var(--wine-deep) 100%);
+  box-shadow:
+    0 12px 30px var(--glow),
+    0 0 0 1px rgba(232, 163, 23, 0.45),
+    0 0 24px var(--spark-soft);
 }
 
 .btn-ghost {
@@ -342,15 +353,15 @@ select {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: var(--wine-soft);
+  background: var(--spark);
   box-shadow: 0 0 0 1px rgba(250, 247, 241, 0.35);
   animation: thinkingSpark 2.4s var(--ease) infinite;
 }
 
 .thinking-indicator[data-tone="cream"] .thinking-spark,
 .btn-primary .thinking-spark {
-  background: rgba(250, 247, 241, 0.95);
-  box-shadow: 0 0 0 1px rgba(110, 31, 44, 0.25);
+  background: var(--spark);
+  box-shadow: 0 0 6px var(--spark-soft);
 }
 
 .thinking-dot:nth-child(1) {
@@ -393,7 +404,7 @@ select {
   border-radius: 0 3px 3px 0;
   background: linear-gradient(
     180deg,
-    var(--wine-soft),
+    var(--spark),
     var(--wine) 55%,
     var(--wine-deep)
   );
@@ -403,21 +414,39 @@ select {
 .tale-hook {
   position: relative;
   border-radius: 12px;
-  border: 1px solid rgba(106, 26, 40, 0.34);
-  padding: 1rem 1.1rem 1.1rem;
+  border: 1px solid rgba(106, 26, 40, 0.28);
+  padding: 1rem 1.1rem 1.1rem 1.2rem;
   background:
     linear-gradient(
       145deg,
-      rgba(106, 26, 40, 0.14) 0%,
-      rgba(248, 245, 238, 0.92) 52%,
-      rgba(232, 224, 210, 0.7) 100%
+      rgba(232, 163, 23, 0.14) 0%,
+      rgba(106, 26, 40, 0.08) 38%,
+      rgba(248, 245, 238, 0.94) 72%
     );
-  box-shadow: 0 10px 28px rgba(106, 26, 40, 0.1);
+  box-shadow:
+    0 10px 28px rgba(106, 26, 40, 0.08),
+    inset 0 1px 0 rgba(255, 252, 247, 0.7);
   animation: revealIn 0.75s var(--ease) 0.08s both;
+}
+
+.tale-hook::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 12%;
+  bottom: 12%;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(180deg, var(--spark), var(--spark-deep));
+  box-shadow: 0 0 12px var(--spark-soft);
 }
 
 .tale-hook .display {
   color: var(--ink);
+}
+
+.tale-hook-label {
+  color: var(--spark-deep);
 }
 
 @keyframes revealIn {
@@ -499,8 +528,9 @@ select {
 
 .mobile-nav-btn[aria-current="page"] {
   color: var(--wine-deep);
-  border-color: rgba(106, 26, 40, 0.32);
-  background: rgba(106, 26, 40, 0.1);
+  border-color: rgba(106, 26, 40, 0.28);
+  background: rgba(106, 26, 40, 0.08);
+  box-shadow: inset 0 -2px 0 0 var(--spark);
 }
 
 .price-range {

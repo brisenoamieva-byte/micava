@@ -581,7 +581,7 @@ export function WineDetail({
             <div className="mt-4 space-y-4">
               {wine.kimiTalkHook ? (
                 <div className="tale-hook">
-                  <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--wine)]">
+                  <p className="tale-hook-label text-[11px] uppercase tracking-[0.16em]">
                     Para contar
                   </p>
                   <p className="display mt-2 text-[1.3rem] leading-snug sm:text-[1.45rem]">

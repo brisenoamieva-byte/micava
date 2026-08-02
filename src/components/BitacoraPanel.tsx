@@ -108,7 +108,7 @@ export function BitacoraPanel({ entries, onRemove }: Props) {
                   ) : null}
                   {open.kimiTalkHook ? (
                     <div className="tale-hook px-2.5 py-2.5">
-                      <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--wine)]">
+                      <p className="tale-hook-label text-[11px] uppercase tracking-[0.14em]">
                         Para contar
                       </p>
                       <p className="display mt-1.5 text-[1.15rem] leading-snug">

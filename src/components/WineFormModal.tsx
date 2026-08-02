@@ -30,7 +30,7 @@ type Props = {
   initialSlot?: string;
   /** When adding: start on chooser (default) or blank form. */
   initialStep?: "pick" | "form";
-  /** Prefill identity (e.g. from Encuentro → también sumar a cava). */
+  /** Prefill identity (e.g. from Escanear botella → también sumar a cava). */
   prefillDraft?: WineDraft | null;
   editing?: Wine | null;
   onClose: () => void;
@@ -505,7 +505,7 @@ export function WineFormModal({
                       : "Elige uno que ya tengas, o agrega uno distinto."
                   : fromExisting
                     ? prefillDraft
-                      ? "Datos del encuentro · elige mueble y casilla para sumarlo."
+                      ? "Datos del escaneo · elige mueble y casilla para sumarlo."
                       : "Datos copiados · elige mueble y ubicación."
                     : "Completa los datos de un vino que aún no está en tu cava."}
             </p>

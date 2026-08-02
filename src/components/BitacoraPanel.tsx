@@ -34,12 +34,12 @@ export function BitacoraPanel({ entries, onRemove }: Props) {
       <section className="panel-quiet p-4 sm:p-5">
         <h2 className="display text-2xl text-ink">Bitácora</h2>
         <p className="mt-0.5 text-sm text-ink-soft">
-          Encuentros en la mesa — historias que no viven en el mapa.
+          Historias de botellas que escaneaste — fuera del mapa.
         </p>
         <div className="mt-6 rounded-[12px] border border-dashed border-[var(--line)] px-4 py-8 text-center">
-          <p className="display text-xl text-ink">Aún no hay encuentros</p>
+          <p className="display text-xl text-ink">Aún no hay historias</p>
           <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-ink-soft">
-            En Encuentro escanea o nombra la botella, cuenta su historia y
+            En Escanear botella identifica el vino, cuenta su historia y
             guárdala aquí con un toque.
           </p>
         </div>
@@ -51,7 +51,7 @@ export function BitacoraPanel({ entries, onRemove }: Props) {
     <section className="panel-quiet p-4 sm:p-5">
       <h2 className="display text-2xl text-ink">Bitácora</h2>
       <p className="mt-0.5 text-sm text-ink-soft">
-        {entries.length} encuentro{entries.length === 1 ? "" : "s"}
+        {entries.length} historia{entries.length === 1 ? "" : "s"}
       </p>
 
       <ol className="mt-4 space-y-2">
@@ -109,7 +109,7 @@ export function BitacoraPanel({ entries, onRemove }: Props) {
                   {open.kimiTalkHook ? (
                     <div className="rounded-[10px] border border-[rgba(110,31,44,0.22)] bg-[rgba(110,31,44,0.06)] px-2.5 py-2.5">
                       <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--wine)]">
-                        Para decir en la mesa
+                        Para contar
                       </p>
                       <p className="mt-1.5 text-[15px] leading-snug text-ink">
                         {open.kimiTalkHook}
@@ -143,7 +143,7 @@ export function BitacoraPanel({ entries, onRemove }: Props) {
                       onClick={() => {
                         if (
                           confirm(
-                            "¿Quitar este encuentro de tu bitácora? La historia se pierde."
+                            "¿Quitar esta historia de tu bitácora? Se pierde."
                           )
                         ) {
                           onRemove(open.id);

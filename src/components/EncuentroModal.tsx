@@ -312,7 +312,7 @@ export function EncuentroModal({
   function handleSave(alsoAdd: boolean) {
     if (saved) return;
     if (!hasStory) {
-      setError("Cuenta la historia primero — es el corazón del encuentro.");
+      setError("Cuenta la historia primero para guardar o sumarla a tu cava.");
       return;
     }
     onSave({
@@ -369,17 +369,17 @@ export function EncuentroModal({
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--wine)]">
-              Encuentro
+              Escanear botella
             </p>
             <h2 id="encuentro-title" className="display mt-1 text-2xl text-ink">
               {step === "identify"
-                ? "Contar una botella"
-                : "La historia en la mesa"}
+                ? "¿Qué botella es?"
+                : "La historia"}
             </h2>
             <p className="mt-1 text-sm text-ink-soft">
               {step === "identify"
-                ? "Historia para esta mesa · sin sumarla a tu cava"
-                : "Primero el gancho para decir en voz alta — luego el relato completo."}
+                ? "Escanea o escribe el nombre · puedes guardar la historia sin sumarla a tu cava"
+                : "Historia, dato curioso y algo para contar sobre esta botella."}
             </p>
           </div>
           <button
@@ -562,11 +562,11 @@ export function EncuentroModal({
               {!hasStory && !kimiLoading ? (
                 <div>
                   <h3 className="display text-[1.65rem] leading-tight text-ink">
-                    ¿Qué se dice en esta mesa?
+                    ¿Qué cuenta esta botella?
                   </h3>
                   <p className="mt-2 max-w-md text-sm leading-relaxed text-ink-soft">
-                    Una frase para lanzar con la copa en la mano — y detrás, la
-                    historia completa. Ritual de mesa, no del mapa.
+                    Un gancho para contar y, detrás, la historia completa — sin
+                    necesidad de cena ni mesa.
                   </p>
                   <button
                     type="button"
@@ -574,7 +574,7 @@ export function EncuentroModal({
                     disabled={kimiLoading}
                     onClick={() => void handleResearch()}
                   >
-                    Contar la historia de este vino
+                    Contar la historia
                   </button>
                 </div>
               ) : null}
@@ -585,7 +585,7 @@ export function EncuentroModal({
                 <div className="mt-2 space-y-4">
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--wine)]">
-                      Esta mesa
+                      Esta botella
                     </p>
                     <button
                       type="button"
@@ -607,7 +607,7 @@ export function EncuentroModal({
                   {research.kimiTalkHook ? (
                     <div className="rounded-[12px] border border-[rgba(110,31,44,0.28)] bg-[rgba(110,31,44,0.07)] px-3.5 py-4">
                       <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--wine)]">
-                        Para decir en la mesa
+                        Para contar
                       </p>
                       <p className="display mt-2 text-[1.35rem] leading-snug text-ink sm:text-[1.5rem]">
                         {research.kimiTalkHook}

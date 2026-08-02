@@ -213,7 +213,7 @@ export default function CavaPage() {
     Boolean(selected) &&
     !selectedHasStory;
 
-  /** Soft prompt once the cava has a few bottles — share lives outside Más. */
+  /** Soft prompt once the cava has a few bottles — share stays in Más / nudge. */
   const showShareNudge =
     ready &&
     Boolean(user) &&
@@ -482,20 +482,10 @@ export default function CavaPage() {
                 type="button"
                 className="btn btn-ghost min-h-[40px] px-3 text-sm"
                 onClick={openEncuentro}
-                title="Historia para esta mesa · sin sumarla a tu cava"
+                title="Escanea una botella y conoce su historia"
               >
-                Encuentro
+                Escanear botella
               </button>
-              {user ? (
-                <button
-                  type="button"
-                  className="btn btn-ghost min-h-[40px] px-3 text-sm"
-                  onClick={openShareCava}
-                  title="Link público de tu cava"
-                >
-                  Compartir
-                </button>
-              ) : null}
               <details className="relative">
                 <summary className="flex min-h-[40px] cursor-pointer list-none items-center px-1 text-sm underline-offset-2 hover:text-ink hover:underline [&::-webkit-details-marker]:hidden">
                   Más
@@ -515,13 +505,15 @@ export default function CavaPage() {
                   >
                     Bitácora
                   </button>
-                  <button
-                    type="button"
-                    className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
-                    onClick={openShareCava}
-                  >
-                    Link de mi cava
-                  </button>
+                  {user ? (
+                    <button
+                      type="button"
+                      className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
+                      onClick={openShareCava}
+                    >
+                      Compartir cava
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"

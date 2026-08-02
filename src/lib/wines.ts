@@ -244,7 +244,15 @@ export {
 
 export function typeAccent(type: string): string {
   const t = type.toLowerCase();
-  if (t.includes("blanco")) return "#c4a35a";
-  if (t.includes("rosado")) return "#b85c6e";
-  return "#6e1f2c";
+  if (t.includes("blanc")) return "#8a6a45"; /* oak */
+  if (t.includes("ros")) return "#a04d56"; /* wine-soft */
+  if (
+    t.includes("espum") ||
+    t.includes("spark") ||
+    t.includes("cava") ||
+    t.includes("champ")
+  ) {
+    return "#2f4234"; /* leaf */
+  }
+  return "#6a1a28"; /* wine */
 }

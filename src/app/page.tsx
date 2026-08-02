@@ -63,10 +63,10 @@ export default function HomePage() {
           </div>
 
           <div className="relative max-w-xl">
-            <h1 className="fade-up leading-none text-[#141210]">
+            <h1 className="fade-up leading-none text-ink">
               <BrandWordmark size="hero" />
             </h1>
-            <p className="fade-up-delay mt-5 max-w-lg text-base leading-relaxed text-[#4f4a43] sm:mt-6 sm:text-lg md:text-[1.25rem] md:leading-snug">
+            <p className="fade-up-delay mt-5 max-w-lg text-base leading-relaxed text-ink-soft sm:mt-6 sm:text-lg md:text-[1.25rem] md:leading-snug">
               Cada botella guarda un lugar, unas manos, una decisión. Cavatale
               deja que el vino hable: cuida tu cava y, al descorchar, te entrega
               la historia que abre la conversación.

@@ -48,8 +48,8 @@ export function WineList({
               "grid w-full grid-cols-[auto_1fr_auto] items-center gap-2.5 rounded-[10px] border px-2.5 py-3 text-left transition sm:gap-3 sm:px-3 sm:py-2.5",
               "min-h-[52px]",
               active
-                ? "border-[var(--wine)] bg-[rgba(122,36,48,0.08)]"
-                : "border-transparent hover:border-[var(--line)] hover:bg-[rgba(255,252,247,0.55)]",
+                ? "border-[rgba(106,26,40,0.4)] bg-[rgba(106,26,40,0.1)] shadow-[inset_3px_0_0_var(--wine)]"
+                : "border-transparent hover:border-[var(--line)] hover:bg-[rgba(248,245,238,0.65)]",
             ].join(" ")}
           >
             <CountryFlag country={wine.country} size="md" />

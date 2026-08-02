@@ -610,11 +610,11 @@ export function EncuentroModal({
                     </button>
                   </div>
                   {research.kimiTalkHook ? (
-                    <div className="rounded-[12px] border border-[rgba(110,31,44,0.28)] bg-[rgba(110,31,44,0.07)] px-3.5 py-4">
+                    <div className="tale-hook">
                       <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--wine)]">
                         Para contar
                       </p>
-                      <p className="display mt-2 text-[1.35rem] leading-snug text-ink sm:text-[1.5rem]">
+                      <p className="display mt-2 text-[1.4rem] leading-snug sm:text-[1.55rem]">
                         {research.kimiTalkHook}
                       </p>
                     </div>

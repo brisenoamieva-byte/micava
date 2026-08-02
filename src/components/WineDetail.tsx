@@ -576,8 +576,18 @@ export function WineDetail({
 
           {hasDiscoveryStory ? (
             <div className="mt-4 space-y-4">
+              {wine.kimiTalkHook ? (
+                <div className="tale-hook">
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--wine)]">
+                    Para contar
+                  </p>
+                  <p className="display mt-2 text-[1.3rem] leading-snug sm:text-[1.45rem]">
+                    {wine.kimiTalkHook}
+                  </p>
+                </div>
+              ) : null}
               {wine.kimiSummary ? (
-                <div>
+                <div className="reveal-in-delay">
                   <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
                     Historia
                   </p>
@@ -587,22 +597,12 @@ export function WineDetail({
                 </div>
               ) : null}
               {wine.kimiCuriosity ? (
-                <div>
+                <div className="reveal-in-delay">
                   <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
                     Dato curioso
                   </p>
                   <p className="mt-1.5 text-sm leading-relaxed text-ink">
                     {wine.kimiCuriosity}
-                  </p>
-                </div>
-              ) : null}
-              {wine.kimiTalkHook ? (
-                <div className="rounded-[10px] border border-[rgba(110,31,44,0.2)] bg-[rgba(255,252,247,0.65)] px-3 py-3">
-                  <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                    Para conversar
-                  </p>
-                  <p className="mt-1.5 text-sm leading-relaxed text-ink italic">
-                    {wine.kimiTalkHook}
                   </p>
                 </div>
               ) : null}

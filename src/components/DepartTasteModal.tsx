@@ -207,8 +207,20 @@ export function DepartTasteModal({
             ) : null}
             {!loadingStory && hasBits(discovery) ? (
               <>
+                {discovery.talkHook ? (
+                  <div className="tale-hook">
+                    <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--wine)]">
+                      {action === "opened"
+                        ? "Para contar"
+                        : "Cuéntale esto"}
+                    </p>
+                    <p className="display mt-2 text-[1.25rem] leading-snug">
+                      {discovery.talkHook}
+                    </p>
+                  </div>
+                ) : null}
                 {discovery.story ? (
-                  <div>
+                  <div className="reveal-in-delay">
                     <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
                       Historia
                     </p>
@@ -218,24 +230,12 @@ export function DepartTasteModal({
                   </div>
                 ) : null}
                 {discovery.curiosity ? (
-                  <div>
+                  <div className="reveal-in-delay">
                     <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
                       Dato curioso
                     </p>
                     <p className="mt-1.5 text-sm leading-relaxed text-ink">
                       {discovery.curiosity}
-                    </p>
-                  </div>
-                ) : null}
-                {discovery.talkHook ? (
-                  <div className="rounded-[10px] border border-[rgba(110,31,44,0.22)] bg-[rgba(110,31,44,0.06)] px-3 py-3">
-                    <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                      {action === "opened"
-                        ? "Para conversar en la mesa"
-                        : "Cuéntale esto"}
-                    </p>
-                    <p className="mt-1.5 text-sm leading-relaxed text-ink italic">
-                      {discovery.talkHook}
                     </p>
                   </div>
                 ) : null}

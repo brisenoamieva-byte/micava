@@ -240,7 +240,11 @@ export function EncuentroModal({
       return;
     }
     setError("");
+    setThinHint(false);
+    setResearch(emptyKimiResearch);
     setStep("story");
+    // Start research immediately — no second "Contar historia" click.
+    void handleResearch();
   }
 
   async function handleResearch() {
@@ -533,9 +537,10 @@ export function EncuentroModal({
 
             <button
               type="submit"
-              className="btn btn-primary min-h-[48px] w-full text-base"
+              className="btn btn-primary min-h-[48px] w-full text-base disabled:opacity-60"
+              disabled={kimiLoading}
             >
-              Continuar · Contar historia
+              Contar historia
             </button>
           </form>
         ) : null}

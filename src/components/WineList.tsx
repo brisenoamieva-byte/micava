@@ -43,7 +43,7 @@ export function WineList({
     <div
       className={[
         "min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain pr-1",
-        // Mobile: cap height in document flow. Desktop: fill the panel via flex-1.
+        // Mobile: cap height in document flow. Desktop: fill shared .desktop-panels row via flex-1.
         compact ? "max-h-[min(62dvh,560px)]" : "",
       ].join(" ")}
     >
@@ -83,7 +83,7 @@ export function WineList({
                   ? `Cavatale ${formatCavataleRating(wine.cavataleRating)}`
                   : "—"}
               </span>
-              <span className="block">{formatPrice(wine.price)}</span>
+              <span className="block">{formatPrice(wine.price, wine.priceCurrency)}</span>
             </span>
           </button>
         );

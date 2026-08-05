@@ -357,7 +357,7 @@ export default function CavaPage() {
   };
 
   return (
-    <main className="grain relative min-h-screen min-h-[100dvh]">
+    <main className="grain relative min-h-screen min-h-[100dvh] xl:flex xl:h-dvh xl:min-h-0 xl:flex-col xl:overflow-hidden">
       {showHowTo ? (
         <div
           className="fixed inset-0 z-[80] flex items-end justify-center p-4 sm:items-center"
@@ -393,7 +393,14 @@ export default function CavaPage() {
           </div>
         </div>
       ) : null}
-      <div className="relative z-10 mx-auto max-w-[1400px] px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))] md:px-8 xl:pb-10">
+      <div
+        className={[
+          "relative z-10 mx-auto flex w-full max-w-[1400px] flex-1 flex-col px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))] md:px-8 xl:min-h-0 xl:pb-6",
+          mode === "cava" && ready && wines.length > 0
+            ? "xl:overflow-hidden"
+            : "xl:overflow-y-auto",
+        ].join(" ")}
+      >
         {!isOnline ? (
           <div
             role="status"
@@ -430,7 +437,7 @@ export default function CavaPage() {
             </button>
           </div>
         ) : null}
-        <header className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <header className="flex shrink-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
           <div className="min-w-0">
             <BrandMark size="md" />
             <DisplayNameEditor />
@@ -723,7 +730,7 @@ export default function CavaPage() {
         ) : null}
         <div
           className={[
-            "mt-5 space-y-4 sm:mt-6",
+            "mt-5 shrink-0 space-y-4 sm:mt-6",
             mobilePanel === "detalle" ? "hidden xl:block" : "",
           ].join(" ")}
         >
@@ -777,10 +784,11 @@ export default function CavaPage() {
           />
         </div>
 
+        <div className="flex min-h-0 flex-1 flex-col">
         <ResizableDesktopPanels
           map={
-            <section className="panel-focus p-5">
-              <div className="mb-4 flex items-baseline justify-between gap-3">
+            <section className="panel-focus flex min-h-0 flex-col overflow-y-auto p-5">
+              <div className="mb-4 flex shrink-0 items-baseline justify-between gap-3">
                 <h2 className="display text-2xl text-ink">
                   {activeCellar ? activeCellar.name : t("cava.cellarMap")}
                 </h2>
@@ -817,7 +825,7 @@ export default function CavaPage() {
             </section>
           }
           inventory={
-            <section className="panel-quiet flex h-full min-h-[420px] flex-col p-5">
+            <section className="panel-quiet flex min-h-0 flex-col overflow-hidden p-5">
               <div className="mb-4 flex shrink-0 items-baseline justify-between gap-3">
                 <h2 className="display text-2xl text-ink">{t("cava.inventory")}</h2>
                 <p className="text-sm text-ink-soft">{visible.length}</p>
@@ -831,7 +839,7 @@ export default function CavaPage() {
             </section>
           }
           detail={
-            <section className="panel-focus min-w-0 overflow-hidden p-5">
+            <section className="panel-focus flex min-h-0 min-w-0 flex-col overflow-y-auto p-5">
               <WineDetail {...detailProps} />
             </section>
           }
@@ -922,7 +930,7 @@ export default function CavaPage() {
           )}
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-ink-soft xl:mt-6">
+        <div className="mt-4 flex shrink-0 flex-wrap items-center gap-3 text-xs text-ink-soft xl:mt-3">
           {wines.length > 0 ? (
             <button
               type="button"
@@ -939,6 +947,7 @@ export default function CavaPage() {
               : t("cava.savedCloud")}
           </span>
           {user ? <KimiUsageHint /> : null}
+        </div>
         </div>
           </>
         )}

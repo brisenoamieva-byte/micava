@@ -132,10 +132,10 @@ export function ResizableDesktopPanels({ map, inventory, detail }: Props) {
   }
 
   return (
-    <div className="desktop-only mt-6">
+    <div className="desktop-panels-host desktop-only mt-6 flex min-h-0 flex-1 flex-col">
       <div
         ref={wrapRef}
-        className="desktop-panels"
+        className="desktop-panels min-h-0 flex-1"
         style={{
           gridTemplateColumns: `${cols[0]}fr ${cols[1]}fr ${cols[2]}fr`,
         }}
@@ -164,7 +164,7 @@ export function ResizableDesktopPanels({ map, inventory, detail }: Props) {
           {detail}
         </div>
       </div>
-      <p className="mt-2 text-right text-[11px] text-ink-soft">
+      <p className="mt-2 shrink-0 text-right text-[11px] text-ink-soft">
         Arrastra los bordes entre paneles para ajustar anchos ·{" "}
         <button
           type="button"

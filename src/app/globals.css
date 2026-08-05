@@ -822,20 +822,38 @@ select {
     display: block;
   }
 
+  /* Host fills remaining viewport height (flex child of cava page). */
+  .desktop-panels-host.desktop-only {
+    display: flex;
+  }
+
+  /* Shared row height from host; columns scroll inside — list must not grow the page. */
   .desktop-panels {
     display: grid;
     gap: 0;
     align-items: stretch;
-    min-height: 420px;
+    grid-template-rows: minmax(0, 1fr);
+    min-height: 0;
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
+  }
+
+  .desktop-panels > .min-w-0 {
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
 
   .desktop-panels > .min-w-0 > .panel,
   .desktop-panels > .min-w-0 > .panel-focus,
-  .desktop-panels > .min-w-0 > .panel-quiet,
-  .desktop-panels > .min-w-0 .panel,
-  .desktop-panels > .min-w-0 .panel-focus,
-  .desktop-panels > .min-w-0 .panel-quiet {
-    height: 100%;
+  .desktop-panels > .min-w-0 > .panel-quiet {
+    flex: 1 1 0;
+    min-height: 0;
+    height: auto;
+    overflow: hidden;
   }
 
   .desktop-resize-handle {

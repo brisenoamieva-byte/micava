@@ -42,9 +42,11 @@ export function WineList({
   return (
     <div
       className={[
-        "min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain pr-1",
-        // Mobile: cap height in document flow. Desktop: fill shared .desktop-panels row via flex-1.
-        compact ? "max-h-[min(62dvh,560px)]" : "",
+        "space-y-1 overflow-y-auto overscroll-contain pr-1",
+        // Mobile: cap height in document flow. Desktop: fill shared panel via flex-1.
+        compact
+          ? "max-h-[min(62dvh,560px)]"
+          : "flex min-h-0 flex-1 flex-col",
       ].join(" ")}
     >
       {wines.map((wine) => {

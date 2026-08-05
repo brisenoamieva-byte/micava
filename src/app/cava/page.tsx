@@ -789,10 +789,10 @@ export default function CavaPage() {
           />
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <ResizableDesktopPanels
           map={
-            <section className="panel-focus flex min-h-0 flex-col overflow-y-auto p-5">
+            <section className="panel-focus min-h-0 overflow-y-auto p-5">
               <div className="mb-4 flex shrink-0 items-baseline justify-between gap-3">
                 <h2 className="display text-2xl text-ink">
                   {activeCellar ? activeCellar.name : t("cava.cellarMap")}
@@ -830,7 +830,7 @@ export default function CavaPage() {
             </section>
           }
           inventory={
-            <section className="panel-quiet flex min-h-0 flex-col overflow-hidden p-5">
+            <section className="panel-quiet min-h-0 overflow-hidden p-5">
               <div className="mb-4 flex shrink-0 items-baseline justify-between gap-3">
                 <h2 className="display text-2xl text-ink">{t("cava.inventory")}</h2>
                 <p className="text-sm text-ink-soft">{visible.length}</p>
@@ -844,13 +844,13 @@ export default function CavaPage() {
             </section>
           }
           detail={
-            <section className="panel-focus flex min-h-0 min-w-0 flex-col overflow-y-auto p-5">
+            <section className="panel-focus min-h-0 min-w-0 overflow-y-auto p-5">
               <WineDetail {...detailProps} />
             </section>
           }
         />
 
-        <div className="mobile-only mt-5">
+        <div className="mobile-only mt-5 shrink-0">
           {mobilePanel === "mapa" && (
             <section className="panel-focus p-3 sm:p-4">
               <div className="mb-3 flex items-baseline justify-between gap-3">
@@ -934,6 +934,7 @@ export default function CavaPage() {
             </section>
           )}
         </div>
+        </div>
 
         <div className="mt-4 flex shrink-0 flex-wrap items-center gap-3 text-xs text-ink-soft xl:mt-3">
           {wines.length > 0 ? (
@@ -952,7 +953,6 @@ export default function CavaPage() {
               : t("cava.savedCloud")}
           </span>
           {user ? <KimiUsageHint /> : null}
-        </div>
         </div>
           </>
         )}

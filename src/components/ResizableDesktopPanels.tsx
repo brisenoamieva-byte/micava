@@ -132,10 +132,10 @@ export function ResizableDesktopPanels({ map, inventory, detail }: Props) {
   }
 
   return (
-    <div className="desktop-panels-host desktop-only mt-6 flex min-h-0 flex-1 flex-col">
+    <div className="desktop-panels-host desktop-only mt-6">
       <div
         ref={wrapRef}
-        className="desktop-panels min-h-0 flex-1"
+        className="desktop-panels"
         style={{
           gridTemplateColumns: `${cols[0]}fr ${cols[1]}fr ${cols[2]}fr`,
         }}

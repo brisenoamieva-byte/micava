@@ -8,6 +8,7 @@ import {
 } from "react";
 import type { Filters, SortOption, Wine } from "@/lib/types";
 import { grapesInCellar } from "@/lib/grapes";
+import { useLocale, useT, wineTypeLabel } from "@/lib/i18n";
 import {
   countryFlagEmoji,
   formatPrice,
@@ -24,16 +25,6 @@ type Props = {
 
 const fieldClass =
   "w-full min-h-[44px] rounded-[10px] border border-[rgba(20,18,16,0.1)] bg-[rgba(255,252,247,0.65)] px-3 py-2.5 outline-none transition focus:border-[rgba(122,36,48,0.45)]";
-
-const sortOptions: { value: SortOption; label: string }[] = [
-  { value: "cavatale-desc", label: "Cavatale ↓" },
-  { value: "cavatale-asc", label: "Cavatale ↑" },
-  { value: "vivino-desc", label: "Vivino ↓" },
-  { value: "vivino-asc", label: "Vivino ↑" },
-  { value: "price-desc", label: "Precio ↓" },
-  { value: "price-asc", label: "Precio ↑" },
-  { value: "default", label: "Original" },
-];
 
 function niceCeil(n: number): number {
   if (n <= 500) return 500;
@@ -142,15 +133,32 @@ function DualRangeField({
 }
 
 function ScoreRangeTitle({ name }: { name: string }) {
+  const t = useT();
   return (
     <>
-      Calificación{" "}
+      {t("filters.rating")}{" "}
       <span className="sm:block">{name}</span>
     </>
   );
 }
 
 export function FiltersBar({ filters, onChange, total, wines }: Props) {
+  const t = useT();
+  const { dict } = useLocale();
+
+  const sortOptions = useMemo(
+    (): { value: SortOption; label: string }[] => [
+      { value: "cavatale-desc", label: t("filters.sortCavataleDesc") },
+      { value: "cavatale-asc", label: t("filters.sortCavataleAsc") },
+      { value: "vivino-desc", label: t("filters.sortVivinoDesc") },
+      { value: "vivino-asc", label: t("filters.sortVivinoAsc") },
+      { value: "price-desc", label: t("filters.sortPriceDesc") },
+      { value: "price-asc", label: t("filters.sortPriceAsc") },
+      { value: "default", label: t("filters.sortOriginal") },
+    ],
+    [t]
+  );
+
   const forCountry = useMemo(
     () => winesForFacet(wines, filters, ["country"]),
     [wines, filters]
@@ -297,16 +305,18 @@ export function FiltersBar({ filters, onChange, total, wines }: Props) {
     });
   }
 
+  const anyLabel = t("filters.any");
+
   const priceLabel = priceUnfiltered
-    ? "Cualquiera"
+    ? anyLabel
     : `${formatPrice(minValue)} – ${formatPrice(maxValue)}${atPriceCeil ? "+" : ""}`;
 
   const vivinoLabel = vivinoUnfiltered
-    ? "Cualquiera"
+    ? anyLabel
     : `${vivinoMin.toFixed(1)} – ${vivinoMax.toFixed(1)}`;
 
   const cavataleLabel = cavataleUnfiltered
-    ? "Cualquiera"
+    ? anyLabel
     : `${cavataleMin.toFixed(1)} – ${cavataleMax.toFixed(1)}`;
 
   const countryCounts = useMemo(() => {
@@ -331,12 +341,12 @@ export function FiltersBar({ filters, onChange, total, wines }: Props) {
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6 lg:items-end">
           <label className="col-span-2 min-w-0 sm:col-span-3 lg:col-span-2">
             <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
-              Buscar
+              {t("common.search")}
             </span>
             <input
               value={filters.query}
               onChange={(e) => patch({ query: e.target.value })}
-              placeholder="Nombre, uva, región…"
+              placeholder={t("filters.searchShortPlaceholder")}
               className={fieldClass}
               enterKeyHint="search"
               autoCapitalize="off"
@@ -346,7 +356,7 @@ export function FiltersBar({ filters, onChange, total, wines }: Props) {
 
           <label className="min-w-0">
             <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
-              Ordenar
+              {t("filters.sort")}
             </span>
             <select
               value={filters.sort}
@@ -363,14 +373,14 @@ export function FiltersBar({ filters, onChange, total, wines }: Props) {
 
           <label className="min-w-0">
             <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
-              País
+              {t("filters.country")}
             </span>
             <select
               value={filters.country}
               onChange={(e) => patch({ country: e.target.value })}
               className={fieldClass}
             >
-              <option value="">Todos</option>
+              <option value="">{t("filters.all")}</option>
               {countries.map((c) => (
                 <option key={c} value={c}>
                   {countryFlagEmoji[c] ? `${countryFlagEmoji[c]} ${c}` : c}
@@ -382,17 +392,17 @@ export function FiltersBar({ filters, onChange, total, wines }: Props) {
 
           <label className="min-w-0">
             <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
-              Tipo
+              {t("filters.type")}
             </span>
             <select
               value={filters.type}
               onChange={(e) => patch({ type: e.target.value })}
               className={fieldClass}
             >
-              <option value="">Todos</option>
-              {types.map((t) => (
-                <option key={t} value={t}>
-                  {t} ({typeCounts.get(t) ?? 0})
+              <option value="">{t("filters.all")}</option>
+              {types.map((typeValue) => (
+                <option key={typeValue} value={typeValue}>
+                  {wineTypeLabel(dict, typeValue)} ({typeCounts.get(typeValue) ?? 0})
                 </option>
               ))}
             </select>
@@ -400,14 +410,14 @@ export function FiltersBar({ filters, onChange, total, wines }: Props) {
 
           <label className="min-w-0">
             <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
-              Uva
+              {t("filters.grape")}
             </span>
             <select
               value={filters.grape}
               onChange={(e) => patch({ grape: e.target.value })}
               className={fieldClass}
             >
-              <option value="">Todas</option>
+              <option value="">{t("filters.allGrapes")}</option>
               {grapes.map((g) => (
                 <option key={g.name} value={g.name}>
                   {g.name} ({g.count})
@@ -420,7 +430,7 @@ export function FiltersBar({ filters, onChange, total, wines }: Props) {
         {/* Tres rangos: Calificación Vivino · Calificación Cavatale · Precio */}
         <div className="grid grid-cols-1 items-stretch gap-x-2.5 gap-y-4 sm:grid-cols-3 sm:gap-y-2.5">
           <DualRangeField
-            label={<ScoreRangeTitle name="Vivino" />}
+            label={<ScoreRangeTitle name={t("wine.vivino")} />}
             bounds={vivinoBounds}
             minValue={vivinoMin}
             maxValue={vivinoMax}
@@ -429,12 +439,12 @@ export function FiltersBar({ filters, onChange, total, wines }: Props) {
             formatBound={(n) => n.toFixed(1)}
             onMin={onMinVivinoSlide}
             onMax={onMaxVivinoSlide}
-            minAria="Calificación Vivino mínima"
-            maxAria="Calificación Vivino máxima"
+            minAria={t("filters.minVivinoAria")}
+            maxAria={t("filters.maxVivinoAria")}
           />
 
           <DualRangeField
-            label={<ScoreRangeTitle name="Cavatale" />}
+            label={<ScoreRangeTitle name={t("wine.rating")} />}
             bounds={cavataleBounds}
             minValue={cavataleMin}
             maxValue={cavataleMax}
@@ -443,12 +453,12 @@ export function FiltersBar({ filters, onChange, total, wines }: Props) {
             formatBound={(n) => n.toFixed(1)}
             onMin={onMinCavataleSlide}
             onMax={onMaxCavataleSlide}
-            minAria="Calificación Cavatale mínima"
-            maxAria="Calificación Cavatale máxima"
+            minAria={t("filters.minCavataleAria")}
+            maxAria={t("filters.maxCavataleAria")}
           />
 
           <DualRangeField
-            label="Precio"
+            label={t("wine.price")}
             bounds={priceBounds}
             minValue={minValue}
             maxValue={maxValue}
@@ -458,12 +468,14 @@ export function FiltersBar({ filters, onChange, total, wines }: Props) {
             maxBoundSuffix="+"
             onMin={onMinPriceSlide}
             onMax={onMaxPriceSlide}
-            minAria="Precio mínimo"
-            maxAria="Precio máximo"
+            minAria={t("filters.minPriceAria")}
+            maxAria={t("filters.maxPriceAria")}
           />
         </div>
 
-        <p className="text-sm text-ink-soft">{total} resultados</p>
+        <p className="text-sm text-ink-soft">
+          {t("filters.results", { count: total })}
+        </p>
       </div>
     </div>
   );

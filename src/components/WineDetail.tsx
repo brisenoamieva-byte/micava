@@ -22,6 +22,7 @@ import {
 } from "@/lib/rating-verify";
 import { formatCavataleRating, formatPrice, formatVivino, typeAccent } from "@/lib/wines";
 import { buildWineShareText, shareOrCopyText } from "@/lib/share-wine";
+import { useLocale, useT, wineTypeLabel } from "@/lib/i18n";
 import { AiTheaterStatus } from "@/components/AiTheaterStatus";
 import { ThinkingIndicator } from "@/components/ThinkingIndicator";
 
@@ -57,7 +58,7 @@ type Props = {
 export function WineDetail({
   wine,
   onBack,
-  backLabel = "Volver",
+  backLabel = "",
   embeddedInSheet = false,
   onEdit,
   onRemove,
@@ -69,6 +70,8 @@ export function WineDetail({
   onApplyKimiResearch,
   onMove,
 }: Props) {
+  const t = useT();
+  const { dict, locale } = useLocale();
   const [verifyOpen, setVerifyOpen] = useState(false);
   const [ratingInput, setRatingInput] = useState("");
   const [source, setSource] = useState<RatingSource>("vivino");
@@ -130,6 +133,8 @@ export function WineDetail({
     };
   }, [wine?.labelImageUrl]);
 
+  const resolvedBackLabel = backLabel || t("common.back");
+
   if (!wine) {
     return (
       <div>
@@ -139,11 +144,11 @@ export function WineDetail({
             className="mobile-only mb-3 inline-flex min-h-[44px] items-center rounded-[10px] px-1 text-sm font-medium text-ink-soft underline-offset-2 hover:text-ink hover:underline"
             onClick={onBack}
           >
-            ← {backLabel}
+            ← {resolvedBackLabel}
           </button>
         ) : null}
         <div className="flex h-full min-h-[200px] items-center justify-center px-4 text-center text-sm text-ink-soft sm:min-h-[280px]">
-          Selecciona un vino desde el mapa o la lista
+          {t("wine.selectFromMap")}
         </div>
       </div>
     );
@@ -155,37 +160,37 @@ export function WineDetail({
 
   const facts: { label: string; value: ReactNode }[] = [
     {
-      label: "País",
+      label: t("wine.country"),
       value: <CountryFlag country={wine.country} size="sm" showLabel />,
     },
-    { label: "Región", value: wine.region || "—" },
-    { label: "Tipo", value: wine.type || "—" },
-    { label: "Bodega", value: wine.winery || "—" },
+    { label: t("wine.region"), value: wine.region || "—" },
+    { label: t("wine.type"), value: wine.type ? wineTypeLabel(dict, wine.type) : "—" },
+    { label: t("wine.winery"), value: wine.winery || "—" },
     {
-      label: "Uva",
+      label: t("wine.grape"),
       value: wine.grape
         ? classified.length > 0
           ? classified.join(" · ")
           : wine.grape
         : "—",
     },
-    { label: "Año", value: wine.vintage ? String(wine.vintage) : "—" },
-    { label: "Añejamiento", value: wine.aging || "—" },
+    { label: t("wine.year"), value: wine.vintage ? String(wine.vintage) : "—" },
+    { label: t("wine.aging"), value: wine.aging || "—" },
     {
-      label: "Ubicación",
+      label: t("wine.location"),
       value:
         wine.slot === "abajo"
-          ? "Abajo / fuera"
+          ? t("wine.belowOut")
           : wine.slot
-            ? `Slot ${wine.slot}`
-            : "Sin ubicación",
+            ? t("wine.slotLabel", { slot: wine.slot })
+            : t("wine.noLocation"),
     },
   ];
 
   function saveVerification() {
     const value = Number(ratingInput.replace(",", "."));
     if (!Number.isFinite(value) || value < 1 || value > 5) {
-      alert("Ingresa una calificación entre 1.0 y 5.0");
+      alert(t("wine.ratingRangeAlert"));
       return;
     }
     onVerifyRating?.(wine!, {
@@ -275,7 +280,7 @@ export function WineDetail({
     const text = buildWineShareText(wine);
     const result = await shareOrCopyText(text, wine.name);
     if (result === "copied") {
-      setShareHint("Copiado");
+      setShareHint(t("common.copied"));
       window.setTimeout(() => setShareHint(null), 2000);
     }
   }
@@ -321,6 +326,7 @@ export function WineDetail({
           price: wine.price,
           ...(userCorrection ? { userCorrection } : {}),
           ...(recalculateRating ? { recalculateRating: true } : {}),
+          locale,
         }),
         signal: abort.signal,
       });
@@ -362,7 +368,9 @@ export function WineDetail({
         payload.thinStory === true || isThinKimiStory(research);
       setThinStoryHint(thin);
       setShareHint(
-        n > 1 ? `Historia aplicada a ${n} botellas iguales` : "Historia lista"
+        n > 1
+          ? t("wine.storyApplied", { count: n })
+          : t("wine.storyReady")
       );
       window.setTimeout(() => setShareHint(null), 3500);
       if (correctionFromSubmit) {
@@ -446,17 +454,17 @@ export function WineDetail({
           className="mobile-only mb-3 inline-flex min-h-[44px] items-center rounded-[10px] px-1 text-sm font-medium text-ink-soft underline-offset-2 hover:text-ink hover:underline"
           onClick={onBack}
         >
-          ← {backLabel}
+          ← {resolvedBackLabel}
         </button>
       ) : null}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="micro-label text-ink-soft">Detalle</p>
+          <p className="micro-label text-ink-soft">{t("wine.detail")}</p>
           <h2 className="display mt-2 text-[1.85rem] leading-tight text-ink sm:text-3xl">
             {wine.name}
           </h2>
           <p className="mt-1 text-sm text-ink-soft">
-            {wine.winery || "Bodega sin registrar"} · {wine.vintage ?? "s/a"}
+            {wine.winery || t("wine.noWinery")} · {wine.vintage ?? t("wine.naVintage")}
           </p>
         </div>
         <CountryFlag country={wine.country} size="lg" />
@@ -468,24 +476,24 @@ export function WineDetail({
             className="inline-block h-2 w-2 rounded-full"
             style={{ background: typeAccent(wine.type) }}
           />
-          {wine.type}
+          {wineTypeLabel(dict, wine.type)}
         </span>
         {wine.cavataleRating != null ? (
           <span className="display text-2xl leading-none text-ink sm:text-[1.75rem]">
             {formatCavataleRating(wine.cavataleRating)}
             <span className="ml-1.5 align-middle font-sans text-[11px] font-normal uppercase tracking-[0.14em] text-ink-soft">
-              Cavatale
+              {t("wine.rating")}
             </span>
           </span>
         ) : null}
         <span className="text-xs text-ink-soft">
-          Vivino {formatVivino(wine.vivino)}
+          {t("wine.vivino")} {formatVivino(wine.vivino)}
           <span className="mx-1.5 text-[var(--line)]">·</span>
           {formatPrice(wine.price)}
           {wine.externalRating != null ? (
             <>
               <span className="mx-1.5 text-[var(--line)]">·</span>
-              Verificado {formatVivino(wine.externalRating)}
+              {t("wine.verified")} {formatVivino(wine.externalRating)}
               {delta != null && delta !== 0 ? (
                 <span>
                   {" "}
@@ -505,17 +513,19 @@ export function WineDetail({
         >
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="micro-label text-[var(--wine)]">Descubrimiento</p>
+              <p className="micro-label text-[var(--wine)]">{t("wine.discovery")}</p>
               {hasDiscoveryStory ? (
                 <p className="mt-1 text-xs text-ink-soft">
-                  Última consulta: {formatCheckedAt(wine.kimiCheckedAt)}
+                  {t("wine.lastQuery", {
+                    date: formatCheckedAt(wine.kimiCheckedAt),
+                  })}
                   {wine.kimiConfidence
                     ? ` · ${confidenceLabel[wine.kimiConfidence]}`
                     : ""}
                 </p>
               ) : (
                 <h3 className="display mt-1.5 text-[1.65rem] leading-tight text-ink sm:text-2xl">
-                  ¿Qué cuenta esta botella?
+                  {t("wine.whatStory")}
                 </h3>
               )}
             </div>
@@ -528,9 +538,9 @@ export function WineDetail({
                 onClick={() => void handleKimiResearch()}
               >
                 {kimiLoading ? (
-                  <ThinkingIndicator tone="wine" size="sm" label="Contando…" />
+                  <ThinkingIndicator tone="wine" size="sm" label={t("wine.telling")} />
                 ) : (
-                  "Actualizar"
+                  t("common.refresh")
                 )}
               </button>
             ) : null}
@@ -545,7 +555,7 @@ export function WineDetail({
                 disabled={kimiLoading}
                 onClick={() => void handleKimiResearch()}
               >
-                Reintentar
+                {t("common.retry")}
               </button>
             </div>
           ) : null}
@@ -572,7 +582,7 @@ export function WineDetail({
                 disabled={kimiLoading}
                 onClick={() => void handleKimiResearch()}
               >
-                Contar la historia de este vino
+                {t("wine.tellWineStory")}
               </button>
             </div>
           ) : null}
@@ -582,7 +592,7 @@ export function WineDetail({
               {wine.kimiTalkHook ? (
                 <div className="tale-hook">
                   <p className="tale-hook-label text-[11px] uppercase tracking-[0.16em]">
-                    Para contar
+                    {t("wine.talkHook")}
                   </p>
                   <p className="display mt-2 text-[1.3rem] leading-snug sm:text-[1.45rem]">
                     {wine.kimiTalkHook}
@@ -592,7 +602,7 @@ export function WineDetail({
               {wine.kimiSummary ? (
                 <div className="reveal-in-delay">
                   <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                    Historia
+                    {t("wine.story")}
                   </p>
                   <p className="mt-1.5 text-[15px] leading-relaxed text-ink sm:text-base">
                     {wine.kimiSummary}
@@ -602,7 +612,7 @@ export function WineDetail({
               {wine.kimiCuriosity ? (
                 <div className="reveal-in-delay">
                   <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                    Dato curioso
+                    {t("wine.curiosity")}
                   </p>
                   <p className="mt-1.5 text-sm leading-relaxed text-ink">
                     {wine.kimiCuriosity}
@@ -618,7 +628,7 @@ export function WineDetail({
                     disabled={kimiLoading}
                     onClick={() => void handleKimiResearch()}
                   >
-                    Actualizar
+                    {t("common.refresh")}
                   </button>{" "}
                   suele dar otra versión.
                 </p>
@@ -639,12 +649,12 @@ export function WineDetail({
                         }
                       }}
                     >
-                      ¿Algo incorrecto?
+                      {t("wine.somethingWrong")}
                     </button>
                   ) : (
                     <div className="space-y-2">
                       <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                        Reportar un error
+                        {t("wine.reportError")}
                       </p>
                       <p className="text-xs leading-relaxed text-ink-soft">
                         Señala qué está mal (dato concreto). No inventamos
@@ -652,7 +662,7 @@ export function WineDetail({
                         tomará como verdad automática.
                       </p>
                       <label className="sr-only" htmlFor="kimi-correction-note">
-                        Qué dato está mal
+                        {t("wine.correctionAria")}
                       </label>
                       <textarea
                         id="kimi-correction-note"
@@ -660,7 +670,7 @@ export function WineDetail({
                         maxLength={500}
                         value={correctionDraft}
                         disabled={kimiLoading}
-                        placeholder="Corrige o aclara el dato concreto…"
+                        placeholder={t("wine.correctionPlaceholder")}
                         className="w-full resize-y rounded-[10px] border border-[rgba(110,31,44,0.22)] bg-[rgba(255,252,247,0.8)] px-3 py-2 text-sm leading-relaxed text-ink placeholder:text-ink-soft/70 focus:border-[rgba(110,31,44,0.45)] focus:outline-none"
                         onChange={(e) => {
                           setCorrectionDraft(e.target.value);
@@ -679,7 +689,7 @@ export function WineDetail({
                           disabled={kimiLoading}
                           onClick={() => handleSubmitCorrection()}
                         >
-                          Pedir revisión
+                          {t("wine.requestReview")}
                         </button>
                         <button
                           type="button"
@@ -690,7 +700,7 @@ export function WineDetail({
                             setCorrectionError("");
                           }}
                         >
-                          Cancelar
+                          {t("common.cancel")}
                         </button>
                       </div>
                     </div>
@@ -703,7 +713,7 @@ export function WineDetail({
                 className="btn btn-primary min-h-[48px] w-full text-base"
                 onClick={() => void handleShare()}
               >
-                {shareHint ?? "Compartir historia"}
+                {shareHint ?? t("wine.shareStory")}
               </button>
             </div>
           ) : null}
@@ -711,7 +721,7 @@ export function WineDetail({
           {hasKimi && wine.cavataleRating != null ? (
             <div className="mt-4 rounded-[10px] border border-[rgba(110,31,44,0.28)] bg-[rgba(110,31,44,0.08)] px-3 py-3">
               <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--wine)]">
-                Calificación Cavatale
+                {t("wine.rating")}
               </p>
               <p className="mt-1 display text-3xl leading-none text-ink">
                 {formatCavataleRating(wine.cavataleRating)}
@@ -735,7 +745,7 @@ export function WineDetail({
                   }
                 }}
               >
-                Recalcular calificación
+                {t("wine.recalculateRating")}
               </button>
             </div>
           ) : null}
@@ -933,7 +943,7 @@ export function WineDetail({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={labelSrc}
-            alt={`Etiqueta de ${wine.name}`}
+            alt={t("wine.labelAlt", { name: wine.name })}
             className="max-h-72 w-full object-contain bg-[rgba(20,18,16,0.04)]"
           />
         </div>
@@ -952,7 +962,7 @@ export function WineDetail({
       </dl>
 
       <div className="mt-5 border-t border-[var(--line)] pt-4">
-        <p className="micro-label text-ink-soft">Maridaje sugerido</p>
+        <p className="micro-label text-ink-soft">{t("wine.suggestedPairing")}</p>
         <p className="mt-1 text-xs text-ink-soft">
           {pairing.source === "ia"
             ? `IA · ${pairing.note}`
@@ -990,7 +1000,7 @@ export function WineDetail({
               onClick={() => setVerifyOpen((o) => !o)}
               aria-expanded={verifyOpen}
             >
-              {verifyOpen ? "Cancelar" : "Verificar"}
+              {verifyOpen ? t("common.cancel") : t("wine.verify")}
             </button>
           </div>
 
@@ -1123,7 +1133,7 @@ export function WineDetail({
                 className="btn btn-primary min-h-[44px] w-full"
                 onClick={saveVerification}
               >
-                Guardar verificación
+                {t("wine.saveVerification")}
               </button>
             </div>
           ) : null}
@@ -1140,7 +1150,7 @@ export function WineDetail({
                   className="btn btn-primary min-h-[44px] min-w-0 w-full px-3"
                   onClick={() => onOpened(wine)}
                 >
-                  La abrí
+                  {t("wine.opened")}
                 </button>
               ) : null}
               {onGifted ? (
@@ -1149,7 +1159,7 @@ export function WineDetail({
                   className="btn btn-ghost min-h-[44px] min-w-0 w-full px-3"
                   onClick={() => onGifted(wine)}
                 >
-                  La regalé
+                  {t("wine.gifted")}
                 </button>
               ) : null}
             </div>
@@ -1162,7 +1172,7 @@ export function WineDetail({
                   className="btn btn-ghost min-h-[44px] min-w-0 w-full px-3"
                   onClick={() => onMove(wine)}
                 >
-                  Mover de mueble
+                  {t("wine.moveFurniture")}
                 </button>
               ) : null}
               <button
@@ -1170,7 +1180,7 @@ export function WineDetail({
                 className="btn btn-ghost min-h-[44px] min-w-0 w-full px-3"
                 onClick={() => void handleShare()}
               >
-                {shareHint ?? "Compartir"}
+                {shareHint ?? t("common.share")}
               </button>
               {onEdit ? (
                 <button
@@ -1178,7 +1188,7 @@ export function WineDetail({
                   className="btn btn-ghost min-h-[44px] min-w-0 w-full px-3"
                   onClick={() => onEdit(wine)}
                 >
-                  Editar
+                  {t("common.edit")}
                 </button>
               ) : null}
               {onRemove ? (
@@ -1188,14 +1198,14 @@ export function WineDetail({
                   onClick={() => {
                     if (
                       confirm(
-                        `¿Quitar “${wine.name}” de la cava?\nSe liberará su ubicación si tenía slot.`
+                        t("wine.confirmRemoveNamed", { name: wine.name })
                       )
                     ) {
                       onRemove(wine);
                     }
                   }}
                 >
-                  Quitar
+                  {t("wine.remove")}
                 </button>
               ) : null}
             </div>

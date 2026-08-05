@@ -100,7 +100,22 @@ NO empieces con variantes de:
 3. Si la ficha es incompleta o la identidad es dudosa: confidence "low" o "medium", cavataleRating null si hace falta, summary corto y honesto — no rellenes con catálogo.
 4. summary, curiosity, talkHook y pairings NO repiten la misma idea.
 5. No digas que consultaste Vivino/internet en vivo.
-6. Español natural (México/LatAm). Sin emojis. Sin markdown dentro de los strings.`;
+6. Idioma natural (México/LatAm por defecto). Sin emojis. Sin markdown dentro de los strings.`;
+
+const LANG_ES = `
+
+IDIOMA DE SALIDA (obligatorio):
+Escribe summary, curiosity, talkHook, pairingNote y cada ítem de pairings en español natural (México/LatAm).`;
+
+const LANG_EN = `
+
+OUTPUT LANGUAGE (required):
+Write summary, curiosity, talkHook, pairingNote, and every pairings item in natural English (US/international wine table tone). Keep dish names concrete; Mexican/LatAm dishes are fine when they fit. Do not write Spanish in those fields.`;
+
+function resolveLocale(raw: Body["locale"]): "es" | "en" {
+  const m = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+  return m === "en" || m.startsWith("en-") ? "en" : "es";
+}
 
 type ResearchMode = "cellar" | "encounter";
 
@@ -128,6 +143,8 @@ type Body = {
   mode?: ResearchMode | string | null;
   /** Force a new official score even if one is already stored. */
   recalculateRating?: boolean;
+  /** UI locale: "en" | "es" (default es). Narratives follow this language. */
+  locale?: string | null;
 };
 
 const ENCOUNTER_TALKHOOK_BIAS = `
@@ -214,7 +231,8 @@ function finalizeResearch(content: string): {
 
 async function callKimi(
   apiKey: string,
-  userContent: string
+  userContent: string,
+  locale: "es" | "en"
 ): Promise<
   | { ok: true; content: string; usage: KimiTokenUsage | null }
   | { ok: false; status: number; error: string; detail?: string; usage: KimiTokenUsage | null }
@@ -234,7 +252,10 @@ async function callKimi(
         response_format: { type: "json_object" },
         max_tokens: 2048,
         messages: [
-          { role: "system", content: SYSTEM },
+          {
+            role: "system",
+            content: SYSTEM + (locale === "en" ? LANG_EN : LANG_ES),
+          },
           { role: "user", content: userContent },
         ],
       }),
@@ -336,6 +357,7 @@ export async function POST(request: Request) {
   });
 
   const mode = resolveMode(body.mode);
+  const locale = resolveLocale(body.locale);
   const forceRecalculate = Boolean(body.recalculateRating);
   const existingRating =
     body.cavataleRating != null && Number.isFinite(body.cavataleRating)
@@ -347,7 +369,7 @@ export async function POST(request: Request) {
     : "";
   const userPrompt =
     buildUserPrompt(identity, mode, { ratingLocked }) + correctionBlock;
-  const first = await callKimi(apiKey, userPrompt);
+  const first = await callKimi(apiKey, userPrompt, locale);
   let sessionUsage: KimiTokenUsage | null = first.usage;
 
   if (!first.ok) {

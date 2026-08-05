@@ -20,6 +20,7 @@ import {
   buildPublicCellarShareText,
   shareOrCopyText,
 } from "@/lib/share-wine";
+import { useT } from "@/lib/i18n";
 
 const COUNTRY_SUGGESTIONS = [
   "México",
@@ -39,6 +40,7 @@ type Props = {
 };
 
 export function ShareCavaModal({ open, onClose }: Props) {
+  const t = useT();
   const { user, refreshProfile } = useAuth();
   const [own, setOwn] = useState<OwnNetworkProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,10 +73,10 @@ export function ShareCavaModal({ open, onClose }: Props) {
       setError(
         e instanceof Error
           ? e.message
-          : "No se pudo cargar tu perfil. ¿Corriste la migración SQL?"
+          : t("share.loadProfileFailed")
       );
     }
-  }, [user]);
+  }, [user, t]);
 
   useEffect(() => {
     if (!open || !user) return;
@@ -101,7 +103,7 @@ export function ShareCavaModal({ open, onClose }: Props) {
     }
     const normalized = normalizePublicHandle(formHandle);
     if (!normalized) {
-      setHandleHint("Elige un handle para compartir (ej. ricardo).");
+      setHandleHint(t("share.chooseHandle"));
       setHandleOk(false);
       return;
     }
@@ -112,12 +114,12 @@ export function ShareCavaModal({ open, onClose }: Props) {
       return;
     }
     if (own?.public_handle === normalized) {
-      setHandleHint(`Tu link será /u/${normalized}`);
+      setHandleHint(t("share.linkWillBe", { handle: normalized }));
       setHandleOk(true);
       return;
     }
     let cancelled = false;
-    const t = window.setTimeout(() => {
+    const timeoutId = window.setTimeout(() => {
       void (async () => {
         const { available, error: err } =
           await checkPublicHandleAvailable(normalized);
@@ -128,19 +130,19 @@ export function ShareCavaModal({ open, onClose }: Props) {
           return;
         }
         if (!available) {
-          setHandleHint("Ese handle ya está en uso.");
+          setHandleHint(t("share.handleTaken"));
           setHandleOk(false);
           return;
         }
-        setHandleHint(`Disponible — tu link será /u/${normalized}`);
+        setHandleHint(t("share.handleAvailable", { handle: normalized }));
         setHandleOk(true);
       })();
     }, 400);
     return () => {
       cancelled = true;
-      window.clearTimeout(t);
+      window.clearTimeout(timeoutId);
     };
-  }, [open, formHandle, formCavaPublic, own?.public_handle]);
+  }, [open, formHandle, formCavaPublic, own?.public_handle, t]);
 
   useEffect(() => {
     if (!open) return;
@@ -176,7 +178,7 @@ export function ShareCavaModal({ open, onClose }: Props) {
       }
       if (!handleOk && handleNormalized !== own?.public_handle) {
         setSaving(false);
-        setError(handleHint || "Revisa el handle antes de guardar.");
+        setError(handleHint || t("share.reviewHandle"));
         return;
       }
     }
@@ -196,8 +198,8 @@ export function ShareCavaModal({ open, onClose }: Props) {
     }
     setInfo(
       formCavaPublic
-        ? `Tu cava es pública como @${handleNormalized}. Ya puedes compartir el link.`
-        : "Tu cava volvió a ser privada."
+        ? t("share.madePublic", { handle: handleNormalized ?? "" })
+        : t("share.madePrivate")
     );
     await loadOwn();
     await refreshProfile();
@@ -214,13 +216,13 @@ export function ShareCavaModal({ open, onClose }: Props) {
     const url = cellarUrlFor(shareableHandle);
     const result = await shareOrCopyText(
       buildPublicCellarShareText(url),
-      "Mi cava · Cavatale"
+      t("share.shareTitle")
     );
     setInfo(null);
     if (result === "shared") {
-      setCopyStatus("Listo — elige a quién enviársela.");
+      setCopyStatus(t("share.shareReady"));
     } else if (result === "copied") {
-      setCopyStatus("Link copiado. Ya puedes pegarlo en un mensaje.");
+      setCopyStatus(t("share.linkCopied"));
     }
   }
 
@@ -229,10 +231,10 @@ export function ShareCavaModal({ open, onClose }: Props) {
     const url = cellarUrlFor(shareableHandle);
     try {
       await navigator.clipboard.writeText(url);
-      setCopyStatus("Link copiado. Ya puedes pegarlo en un mensaje.");
+      setCopyStatus(t("share.linkCopied"));
       setInfo(null);
     } catch {
-      setCopyStatus(`Copia este link: ${url}`);
+      setCopyStatus(t("share.copyThisLink", { url }));
     }
   }
 
@@ -252,29 +254,26 @@ export function ShareCavaModal({ open, onClose }: Props) {
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 id="share-cava-title" className="display text-2xl text-ink">
-              Compartir cava
+              {t("share.title")}
             </h2>
-            <p className="mt-1 text-sm text-ink-soft">
-              Activa un link público para que alguien vea tus vinos (sin
-              precios ni mapa).
-            </p>
+            <p className="mt-1 text-sm text-ink-soft">{t("share.subtitle")}</p>
           </div>
           <button
             type="button"
             className="btn btn-ghost min-h-[40px] px-3 text-sm"
             onClick={onClose}
           >
-            Cerrar
+            {t("common.close")}
           </button>
         </div>
 
         {!user ? (
           <p className="mt-4 text-sm text-ink-soft">
-            Inicia sesión para compartir tu cava.
+            {t("share.signInToShare")}
           </p>
         ) : loading ? (
           <div className="mt-4" aria-busy="true">
-            <ThinkingIndicator label="Cargando…" size="sm" />
+            <ThinkingIndicator label={t("common.loading")} size="sm" />
           </div>
         ) : (
           <div className="mt-4 space-y-4">
@@ -295,16 +294,10 @@ export function ShareCavaModal({ open, onClose }: Props) {
             ) : null}
 
             <div className="rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.55)] px-3 py-3 text-sm text-ink-soft">
-              <p className="font-medium text-ink">Qué ven con el link</p>
+              <p className="font-medium text-ink">{t("share.whatTheySee")}</p>
               <ul className="mt-1.5 list-disc space-y-1 pl-4 text-xs leading-relaxed">
-                <li>
-                  Nombre público, handle (@…), país/ciudad y bio (si los
-                  escribes).
-                </li>
-                <li>
-                  Vinos y calificaciones. Nunca precios ni el mapa. Tu correo
-                  no se muestra.
-                </li>
+                <li>{t("share.whatTheySeeList1")}</li>
+                <li>{t("share.whatTheySeeList2")}</li>
               </ul>
             </div>
 
@@ -318,9 +311,9 @@ export function ShareCavaModal({ open, onClose }: Props) {
                 onChange={(e) => setFormCavaPublic(e.target.checked)}
               />
               <span>
-                <span className="font-medium">Cava pública</span>
+                <span className="font-medium">{t("share.publicCava")}</span>
                 <span className="mt-0.5 block text-xs text-ink-soft">
-                  Quien tenga el link puede ver tus vinos. Necesitas un handle.
+                  {t("share.publicCavaHint")}
                 </span>
               </span>
             </label>
@@ -328,7 +321,7 @@ export function ShareCavaModal({ open, onClose }: Props) {
             {formCavaPublic ? (
               <div className="space-y-2">
                 <label className="block text-sm text-ink-soft">
-                  Handle público
+                  {t("share.publicHandle")}
                   <div className="mt-1 flex items-center gap-1">
                     <span className="text-ink" aria-hidden>
                       @
@@ -365,7 +358,7 @@ export function ShareCavaModal({ open, onClose }: Props) {
             ) : null}
 
             <label className="block text-sm text-ink-soft">
-              País
+              {t("share.country")}
               <input
                 list="share-cava-countries"
                 className="mt-1 w-full min-h-[44px] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.9)] px-3 py-2 text-ink"
@@ -393,7 +386,7 @@ export function ShareCavaModal({ open, onClose }: Props) {
             </label>
 
             <label className="block text-sm text-ink-soft">
-              {isMexicoCountry(formCountry) ? "Estado" : "Ciudad"}
+              {isMexicoCountry(formCountry) ? t("share.state") : t("share.city")}
               {isMexicoCountry(formCountry) ? (
                 <select
                   className="mt-1 w-full min-h-[44px] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.9)] px-3 py-2 text-ink"
@@ -406,7 +399,7 @@ export function ShareCavaModal({ open, onClose }: Props) {
                   }
                   onChange={(e) => setFormCity(e.target.value)}
                 >
-                  <option value="">Elige un estado…</option>
+                  <option value="">{t("share.chooseState")}</option>
                   {MEXICO_STATES.map((state) => (
                     <option key={state} value={state}>
                       {state}
@@ -418,20 +411,20 @@ export function ShareCavaModal({ open, onClose }: Props) {
                   className="mt-1 w-full min-h-[44px] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.9)] px-3 py-2 text-ink"
                   value={formCity}
                   onChange={(e) => setFormCity(e.target.value)}
-                  placeholder="Ciudad"
+                  placeholder={t("share.city")}
                 />
               )}
             </label>
 
             <label className="block text-sm text-ink-soft">
-              Bio <span className="text-xs">({formBio.length}/160)</span>
+              {t("share.bio")} <span className="text-xs">({formBio.length}/160)</span>
               <textarea
                 className="mt-1 w-full rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.9)] px-3 py-2 text-ink"
                 rows={3}
                 maxLength={160}
                 value={formBio}
                 onChange={(e) => setFormBio(e.target.value)}
-                placeholder="Qué te gusta tomar, región favorita…"
+                placeholder={t("share.bioPlaceholderLong")}
               />
             </label>
 
@@ -445,7 +438,7 @@ export function ShareCavaModal({ open, onClose }: Props) {
                 disabled={saving}
                 onClick={() => void saveShareSettings()}
               >
-                {saving ? "Guardando…" : "Guardar"}
+                {saving ? t("common.saving") : t("common.save")}
               </button>
               {shareableHandle ? (
                 <>
@@ -454,14 +447,14 @@ export function ShareCavaModal({ open, onClose }: Props) {
                     className="btn btn-primary min-h-[44px]"
                     onClick={() => void shareMyCellarLink()}
                   >
-                    Compartir
+                    {t("common.share")}
                   </button>
                   <button
                     type="button"
                     className="btn btn-ghost min-h-[44px]"
                     onClick={() => void copyMyCellarLink()}
                   >
-                    Copiar link
+                    {t("share.copyLink")}
                   </button>
                 </>
               ) : null}
@@ -469,8 +462,7 @@ export function ShareCavaModal({ open, onClose }: Props) {
 
             {own?.cava_public && own.public_handle ? (
               <p className="text-xs text-ink-soft">
-                Pública como @{own.public_handle}. Puedes volver a privada
-                cuando quieras.
+                {t("share.publicAs", { handle: own.public_handle })}
               </p>
             ) : null}
           </div>

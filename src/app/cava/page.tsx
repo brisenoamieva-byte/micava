@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { BrandMark } from "@/components/BrandMark";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { BitacoraPanel } from "@/components/BitacoraPanel";
 import { CellarMap } from "@/components/CellarMap";
 import { CellarUnitsBar } from "@/components/CellarUnitsBar";
@@ -22,6 +23,7 @@ import { WineFormModal } from "@/components/WineFormModal";
 import { WineList } from "@/components/WineList";
 import { useCellar } from "@/lib/cellar-store";
 import { useAuth } from "@/lib/auth-store";
+import { useT } from "@/lib/i18n";
 import { uploadLabelImage } from "@/lib/label-image";
 import {
   buildInviteFriendText,
@@ -95,6 +97,7 @@ export default function CavaPage() {
     isOnline,
   } = useCellar();
   const { signOut, user, configured } = useAuth();
+  const t = useT();
   const [filters, setFilters] = useState<Filters>(initialFilters);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("lista");
@@ -123,11 +126,7 @@ export default function CavaPage() {
 
   async function handleVaciarCava() {
     if (clearing) return;
-    if (
-      !confirm(
-        "¿Vaciar SOLO tu cava?\nSe borran las botellas de tu cuenta. La cava de otros usuarios no se toca.\nEsta acción no se puede deshacer."
-      )
-    ) {
+    if (!confirm(t("cava.clearConfirm"))) {
       return;
     }
     setClearing(true);
@@ -333,10 +332,10 @@ export default function CavaPage() {
   async function handleInviteFriend() {
     const result = await shareOrCopyText(
       buildInviteFriendText(),
-      "Invitar a Cavatale"
+      t("cava.inviteShareTitle")
     );
     if (result === "copied") {
-      setInviteHint("Copiado");
+      setInviteHint(t("common.copied"));
       window.setTimeout(() => setInviteHint(null), 2000);
     } else if (result === "shared") {
       setInviteHint(null);
@@ -367,7 +366,8 @@ export default function CavaPage() {
   const detailProps = {
     wine: selected,
     onBack: leaveDetail,
-    backLabel: detailReturn === "mapa" ? "Volver al mapa" : "Volver a la lista",
+    backLabel:
+      detailReturn === "mapa" ? t("cava.backToMap") : t("cava.backToList"),
     onEdit: openEdit,
     onRemove: (w: Wine) => handleDepart(w, "removed"),
     onOpened: (w: Wine) => openDepart(w, "opened"),
@@ -392,8 +392,7 @@ export default function CavaPage() {
             role="status"
             className="mb-4 rounded-[10px] border border-[rgba(110,31,44,0.22)] bg-[rgba(110,31,44,0.06)] px-3 py-2.5 text-sm text-ink"
           >
-            Sin conexión — los cambios se quedan en este dispositivo hasta que
-            vuelvas a la red.
+            {t("cava.offlineBanner")}
           </div>
         ) : syncError ? (
           <div
@@ -406,7 +405,7 @@ export default function CavaPage() {
               className="shrink-0 text-xs text-ink-soft underline-offset-2 hover:text-ink hover:underline"
               onClick={clearSyncError}
             >
-              Cerrar
+              {t("common.close")}
             </button>
           </div>
         ) : syncOk ? (
@@ -420,7 +419,7 @@ export default function CavaPage() {
               className="shrink-0 text-xs text-ink-soft underline-offset-2 hover:text-ink hover:underline"
               onClick={clearSyncOk}
             >
-              Cerrar
+              {t("common.close")}
             </button>
           </div>
         ) : null}
@@ -440,7 +439,7 @@ export default function CavaPage() {
                 ].join(" ")}
                 onClick={() => setMode("cava")}
               >
-                Cava
+                {t("cava.title")}
               </button>
               <button
                 type="button"
@@ -452,7 +451,7 @@ export default function CavaPage() {
                 ].join(" ")}
                 onClick={() => setMode("stats")}
               >
-                Pulso
+                {t("cava.pulse")}
               </button>
             </div>
           </div>
@@ -460,7 +459,8 @@ export default function CavaPage() {
             {ready ? (
               <>
                 <span>
-                  <strong className="text-ink">{stats.bottles}</strong> botellas
+                  <strong className="text-ink">{stats.bottles}</strong>{" "}
+                  {t("common.bottles")}
                 </span>
                 <span className="hidden sm:inline">
                   Cavatale{" "}
@@ -471,24 +471,25 @@ export default function CavaPage() {
               </>
             ) : null}
             <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-2">
+              <LanguageSwitcher compact />
               <button
                 type="button"
                 className="btn btn-primary min-h-[40px] px-3 text-sm"
                 onClick={() => openAdd()}
               >
-                + Agregar
+                + {t("cava.add")}
               </button>
               <button
                 type="button"
                 className="btn btn-ghost min-h-[40px] px-3 text-sm"
                 onClick={openEncuentro}
-                title="Escanea una botella y conoce su historia"
+                title={t("cava.scanTitle")}
               >
-                Escanear botella
+                {t("cava.scanBottle")}
               </button>
               <details className="relative">
                 <summary className="flex min-h-[40px] cursor-pointer list-none items-center px-1 text-sm underline-offset-2 hover:text-ink hover:underline [&::-webkit-details-marker]:hidden">
-                  Más
+                  {t("common.more")}
                 </summary>
                 <div className="absolute right-0 z-20 mt-1 min-w-[10.5rem] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.98)] p-1.5 shadow-sm backdrop-blur-sm">
                   <button
@@ -503,7 +504,7 @@ export default function CavaPage() {
                       });
                     }}
                   >
-                    Bitácora
+                    {t("cava.bitacora")}
                   </button>
                   {user ? (
                     <button
@@ -511,7 +512,7 @@ export default function CavaPage() {
                       className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
                       onClick={openShareCava}
                     >
-                      Compartir cava
+                      {t("cava.shareCava")}
                     </button>
                   ) : null}
                   <button
@@ -519,14 +520,14 @@ export default function CavaPage() {
                     className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
                     onClick={() => void handleInviteFriend()}
                   >
-                    {inviteHint ?? "Invitar"}
+                    {inviteHint ?? t("cava.invite")}
                   </button>
                   <button
                     type="button"
                     className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
                     onClick={() => setShowHowTo(true)}
                   >
-                    Cómo funciona
+                    {t("cava.howItWorks")}
                   </button>
                   <button
                     type="button"
@@ -537,7 +538,7 @@ export default function CavaPage() {
                       });
                     }}
                   >
-                    Salir
+                    {t("cava.signOut")}
                   </button>
                 </div>
               </details>
@@ -549,25 +550,22 @@ export default function CavaPage() {
 
         {showShareNudge ? (
           <div className="mt-4 rounded-[12px] border border-[rgba(110,31,44,0.22)] bg-[rgba(110,31,44,0.06)] p-4 text-sm text-ink">
-            <p className="font-medium">¿Compartes tu cava?</p>
-            <p className="mt-1 text-ink-soft">
-              Activa un link público para que alguien vea tus vinos — sin
-              precios ni mapa.
-            </p>
+            <p className="font-medium">{t("cava.shareNudgeTitle")}</p>
+            <p className="mt-1 text-ink-soft">{t("cava.shareNudgeBody")}</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <button
                 type="button"
                 className="btn btn-primary min-h-[40px] px-3 text-sm"
                 onClick={openShareCava}
               >
-                Compartir cava
+                {t("cava.shareCava")}
               </button>
               <button
                 type="button"
                 className="btn btn-ghost min-h-[40px] px-3 text-sm"
                 onClick={dismissShareNudge}
               >
-                Ahora no
+                {t("cava.shareNudgeLater")}
               </button>
             </div>
           </div>
@@ -575,38 +573,31 @@ export default function CavaPage() {
 
         {!configured ? (
           <div className="mt-4 rounded-[12px] border border-[var(--line)] bg-[rgba(255,252,247,0.7)] p-4 text-sm text-ink">
-            <p className="font-medium">Falta conectar Supabase</p>
+            <p className="font-medium">{t("cava.missingSupabaseTitle")}</p>
             <p className="mt-1 text-ink-soft">
-              Crea un proyecto gratis, ejecuta{" "}
-              <code className="text-ink">supabase/schema.sql</code> y añade{" "}
-              <code className="text-ink">NEXT_PUBLIC_SUPABASE_URL</code> y{" "}
-              <code className="text-ink">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> en
-              Vercel / <code className="text-ink">.env.local</code>.
+              {t("cava.missingSupabaseSetupBody")}
             </p>
           </div>
         ) : null}
 
         {canImportLocal ? (
           <div className="mt-4 rounded-[12px] border border-[rgba(110,31,44,0.25)] bg-[rgba(110,31,44,0.06)] p-4 text-sm text-ink">
-            <p className="font-medium">Hay botellas guardadas en este teléfono/navegador.</p>
-            <p className="mt-1 text-ink-soft">
-              Solo impórtalas si son tuyas. Si es la cava de otra persona en el
-              mismo dispositivo, toca “Ahora no”.
-            </p>
+            <p className="font-medium">{t("cava.localBottlesTitle")}</p>
+            <p className="mt-1 text-ink-soft">{t("cava.localImportBody")}</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <button
                 type="button"
                 className="btn btn-primary min-h-[40px] px-3 text-sm"
                 onClick={() => void importLocalCellar()}
               >
-                Importar a mi cuenta
+                {t("cava.importToAccount")}
               </button>
               <button
                 type="button"
                 className="btn btn-ghost min-h-[40px] px-3 text-sm"
                 onClick={dismissImportOffer}
               >
-                Ahora no
+                {t("cava.shareNudgeLater")}
               </button>
             </div>
           </div>
@@ -615,7 +606,7 @@ export default function CavaPage() {
         {/* Keep out of document flow — an in-flow "Cargando…" shifts the whole page when ready flips. */}
         {!ready ? (
           <p className="sr-only" aria-live="polite">
-            Cargando tu cava…
+            {t("cava.loading")}
           </p>
         ) : null}
 
@@ -639,7 +630,7 @@ export default function CavaPage() {
           <div className="mt-6 space-y-4" aria-busy="true" aria-live="polite">
             <p className="flex items-center gap-2 text-sm text-ink-soft">
               <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[var(--wine-soft)]" />
-              Cargando tu cava…
+              {t("cava.loading")}
             </p>
             <div className="h-10 animate-pulse rounded-[10px] bg-[rgba(110,31,44,0.06)]" />
             <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
@@ -667,7 +658,7 @@ export default function CavaPage() {
                   className="mt-2 text-xs text-ink-soft underline-offset-2 hover:underline"
                   onClick={() => setShowHowTo(false)}
                 >
-                  Cerrar guía
+                  {t("guide.closeGuide")}
                 </button>
               </div>
             ) : (
@@ -690,10 +681,10 @@ export default function CavaPage() {
               <section className="panel-focus p-3 sm:p-5">
                 <div className="mb-3 flex items-baseline justify-between gap-3 sm:mb-4">
                   <h2 className="display text-xl text-ink sm:text-2xl">
-                    {activeCellar ? activeCellar.name : "Mapa de la cava"}
+                    {activeCellar ? activeCellar.name : t("cava.cellarMap")}
                   </h2>
                   <p className="text-[10px] uppercase tracking-[0.16em] text-ink-soft sm:text-xs">
-                    Toca + para sumar
+                    {t("cava.tapToAdd")}
                   </p>
                 </div>
                 {activeCellar ? (
@@ -710,7 +701,7 @@ export default function CavaPage() {
                   />
                 ) : (
                   <p className="text-sm text-ink-soft">
-                    Crea un mueble para empezar a acomodar botellas.
+                    {t("cava.createUnitHint")}
                   </p>
                 )}
               </section>
@@ -736,7 +727,7 @@ export default function CavaPage() {
               className="mt-2 text-xs text-ink-soft underline-offset-2 hover:underline"
               onClick={dismissGuide}
             >
-              Cerrar guía
+              {t("guide.closeGuide")}
             </button>
           </div>
         ) : showStoryNext &&
@@ -780,13 +771,11 @@ export default function CavaPage() {
           {movingWineId ? (
             <div className="rounded-[10px] border border-[rgba(110,31,44,0.35)] bg-[rgba(250,249,245,0.96)] px-3 py-2.5">
               <p className="text-sm font-medium text-ink">
-                Moviendo ·{" "}
-                {wines.find((w) => w.id === movingWineId)?.name ?? "botella"}
+                {t("cava.moving")} ·{" "}
+                {wines.find((w) => w.id === movingWineId)?.name ??
+                  t("common.bottle")}
               </p>
-              <p className="text-xs text-ink-soft">
-                Ahora toca el hueco destino en el mapa. Puedes cambiar de mueble
-                arriba.
-              </p>
+              <p className="text-xs text-ink-soft">{t("cava.movingHint")}</p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <button
                   type="button"
@@ -799,15 +788,15 @@ export default function CavaPage() {
                   }}
                 >
                   {firstEmptyInActive
-                    ? "Ocupar espacio disponible"
-                    : "Sin huecos libres"}
+                    ? t("cava.occupySlot")
+                    : t("cava.noEmptySlots")}
                 </button>
                 <button
                   type="button"
                   className="text-xs font-medium text-[var(--wine)] underline-offset-2 hover:underline"
                   onClick={() => setMovingWineId(null)}
                 >
-                  Cancelar
+                  {t("common.cancel")}
                 </button>
               </div>
             </div>
@@ -825,10 +814,10 @@ export default function CavaPage() {
             <section className="panel-focus p-5">
               <div className="mb-4 flex items-baseline justify-between gap-3">
                 <h2 className="display text-2xl text-ink">
-                  {activeCellar ? activeCellar.name : "Mapa de la cava"}
+                  {activeCellar ? activeCellar.name : t("cava.cellarMap")}
                 </h2>
                 <p className="text-xs uppercase tracking-[0.16em] text-ink-soft">
-                  {stats.emptySlots} libres
+                  {t("cava.freeSlots", { count: stats.emptySlots })}
                 </p>
               </div>
               {activeCellar ? (
@@ -854,7 +843,7 @@ export default function CavaPage() {
                 />
               ) : (
                 <p className="text-sm text-ink-soft">
-                  Crea un mueble para empezar a acomodar botellas.
+                  {t("cava.createUnitHint")}
                 </p>
               )}
             </section>
@@ -862,7 +851,7 @@ export default function CavaPage() {
           inventory={
             <section className="panel-quiet flex min-h-[420px] flex-col p-5">
               <div className="mb-4 flex items-baseline justify-between gap-3">
-                <h2 className="display text-2xl text-ink">Inventario</h2>
+                <h2 className="display text-2xl text-ink">{t("cava.inventory")}</h2>
                 <p className="text-sm text-ink-soft">{visible.length}</p>
               </div>
               <WineList
@@ -885,10 +874,10 @@ export default function CavaPage() {
             <section className="panel-focus p-3 sm:p-4">
               <div className="mb-3 flex items-baseline justify-between gap-3">
                 <h2 className="display text-xl text-ink sm:text-2xl">
-                  {activeCellar ? activeCellar.name : "Mapa"}
+                  {activeCellar ? activeCellar.name : t("cava.map")}
                 </h2>
                 <p className="text-[10px] uppercase tracking-[0.16em] text-ink-soft sm:text-xs">
-                  + en huecos
+                  {t("cava.tapSlotsHint")}
                 </p>
               </div>
               {activeCellar ? (
@@ -913,7 +902,7 @@ export default function CavaPage() {
                 />
               ) : (
                 <p className="text-sm text-ink-soft">
-                  Crea un mueble para ver su rejilla.
+                  {t("cava.createUnitGridHint")}
                 </p>
               )}
             </section>
@@ -922,7 +911,9 @@ export default function CavaPage() {
           {mobilePanel === "lista" && (
             <section className="panel-quiet flex flex-col p-3 sm:p-4">
               <div className="mb-3 flex items-baseline justify-between gap-3">
-                <h2 className="display text-xl text-ink sm:text-2xl">Inventario</h2>
+                <h2 className="display text-xl text-ink sm:text-2xl">
+                  {t("cava.inventory")}
+                </h2>
                 <p className="text-sm text-ink-soft">{visible.length}</p>
               </div>
               <WineList
@@ -938,7 +929,7 @@ export default function CavaPage() {
           {mobilePanel === "detalle" && (
             <section
               className="panel-focus mobile-detail-sheet p-0"
-              aria-label="Detalle de botella"
+              aria-label={t("cava.bottleDetail")}
             >
               <div className="mobile-detail-sheet__bar">
                 <button
@@ -951,8 +942,8 @@ export default function CavaPage() {
                   </span>
                   <span>
                     {detailReturn === "mapa"
-                      ? "Volver al mapa"
-                      : "Volver a la lista"}
+                      ? t("cava.backToMap")
+                      : t("cava.backToList")}
                   </span>
                 </button>
               </div>
@@ -971,27 +962,27 @@ export default function CavaPage() {
               disabled={clearing}
               onClick={() => void handleVaciarCava()}
             >
-              {clearing ? "Vaciando…" : "Vaciar cava"}
+              {clearing ? t("cava.clearing") : t("cava.clearCellar")}
             </button>
           ) : null}
           <span>
             {user?.email
-              ? `Guardado en la nube · ${user.email}`
-              : "Los cambios se guardan en la nube."}
+              ? t("cava.savedCloudEmail", { email: user.email })
+              : t("cava.savedCloud")}
           </span>
           {user ? <KimiUsageHint /> : null}
         </div>
           </>
         )}
 
-        <nav className="mobile-nav" aria-label="Navegación de cava">
+        <nav className="mobile-nav" aria-label={t("cava.navLabel")}>
           <div className="mx-auto grid max-w-lg grid-cols-4 gap-0.5">
             {(
               [
-                ["lista", "Lista", "cava"],
-                ["mapa", "Mapa", "cava"],
-                ["detalle", "Detalle", "cava"],
-                ["stats", "Pulso", "stats"],
+                ["lista", t("cava.list"), "cava"],
+                ["mapa", t("cava.map"), "cava"],
+                ["detalle", t("cava.detail"), "cava"],
+                ["stats", t("cava.pulse"), "stats"],
               ] as const
             ).map(([id, label, targetMode]) => (
               <button

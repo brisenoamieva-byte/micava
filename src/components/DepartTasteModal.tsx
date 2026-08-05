@@ -5,6 +5,7 @@ import { AiTheaterStatus } from "@/components/AiTheaterStatus";
 import type { KimiResearch } from "@/lib/kimi-research";
 import { buildWineShareText, shareOrCopyText } from "@/lib/share-wine";
 import type { DepartAction, DepartExtras, Wine } from "@/lib/types";
+import { useLocale, useT } from "@/lib/i18n";
 
 type Props = {
   open: boolean;
@@ -14,18 +15,6 @@ type Props = {
   onConfirm: (extras: DepartExtras) => void;
   /** Persist discovery so it stays on the wine / history memory. */
   onSaveDiscovery?: (wine: Wine, research: KimiResearch) => void;
-};
-
-const titles: Record<DepartAction, string> = {
-  opened: "A abrir se ha dicho",
-  gifted: "Un buen regalo",
-  removed: "Quitar de la cava",
-};
-
-const submits: Record<DepartAction, string> = {
-  opened: "Guardar y sacar",
-  gifted: "Confirmar regalo",
-  removed: "Quitar",
 };
 
 type DiscoveryBits = {
@@ -54,6 +43,8 @@ export function DepartTasteModal({
   onConfirm,
   onSaveDiscovery,
 }: Props) {
+  const t = useT();
+  const { locale } = useLocale();
   const [myRating, setMyRating] = useState<number | null>(null);
   const [note, setNote] = useState("");
   const [discovery, setDiscovery] = useState<DiscoveryBits>({
@@ -64,6 +55,25 @@ export function DepartTasteModal({
   const [loadingStory, setLoadingStory] = useState(false);
   const [storyError, setStoryError] = useState("");
   const [shareHint, setShareHint] = useState<string | null>(null);
+
+  const titleKey =
+    action === "opened"
+      ? "depart.openedTitle"
+      : action === "gifted"
+        ? "depart.giftedTitle"
+        : "depart.removedTitle";
+  const submitKey =
+    action === "opened"
+      ? "depart.openedSubmit"
+      : action === "gifted"
+        ? "depart.giftedSubmit"
+        : "depart.removedSubmit";
+  const leadKey =
+    action === "opened"
+      ? "depart.openedLead"
+      : action === "gifted"
+        ? "depart.giftedLead"
+        : "depart.removedLead";
 
   useEffect(() => {
     if (!open || !wine) return;
@@ -99,6 +109,7 @@ export function DepartTasteModal({
             vivino: wineSnapshot.vivino,
             cavataleRating: wineSnapshot.cavataleRating,
             price: wineSnapshot.price,
+            locale,
           }),
         });
         const raw = await res.text();
@@ -111,12 +122,12 @@ export function DepartTasteModal({
         } catch {
           throw new Error(
             res.ok
-              ? "La IA respondió en un formato inesperado."
-              : "El servidor tardó demasiado o falló. Intenta de nuevo."
+              ? t("scan.unexpectedFormat")
+              : t("errors.generic")
           );
         }
         if (!res.ok || !payload.research) {
-          throw new Error(payload.error || "No se pudo contar la historia.");
+          throw new Error(payload.error || t("scan.couldNotTellStory"));
         }
         if (cancelled) return;
         const research = payload.research;
@@ -129,7 +140,7 @@ export function DepartTasteModal({
       } catch (e) {
         if (!cancelled) {
           setStoryError(
-            e instanceof Error ? e.message : "No se pudo cargar la historia."
+            e instanceof Error ? e.message : t("scan.couldNotTellStory")
           );
         }
       } finally {
@@ -163,7 +174,7 @@ export function DepartTasteModal({
     });
     const result = await shareOrCopyText(text, wine.name);
     if (result === "copied") {
-      setShareHint("Copiado para WhatsApp");
+      setShareHint(t("depart.copiedWhatsapp"));
       window.setTimeout(() => setShareHint(null), 2500);
     }
   }
@@ -189,15 +200,9 @@ export function DepartTasteModal({
           {wine.vintage ? ` · ${wine.vintage}` : ""}
         </p>
         <h2 id="depart-taste-title" className="display mt-1 text-3xl text-ink">
-          {titles[action]}
+          {t(titleKey)}
         </h2>
-        <p className="mt-1 text-sm text-ink-soft">
-          {action === "opened"
-            ? "Antes de que salga de la cava: una historia para la mesa."
-            : action === "gifted"
-              ? "Algo bonito que puedes contarle a quien la recibe."
-              : "Saldrá del inventario. Puedes dejar una nota breve."}
-        </p>
+        <p className="mt-1 text-sm text-ink-soft">{t(leadKey)}</p>
 
         {showDiscovery ? (
           <div className="mt-5 space-y-3 border-t border-[var(--line)] pt-4">
@@ -211,8 +216,8 @@ export function DepartTasteModal({
                   <div className="tale-hook">
                     <p className="tale-hook-label text-[11px] uppercase tracking-[0.16em]">
                       {action === "opened"
-                        ? "Para contar"
-                        : "Cuéntale esto"}
+                        ? t("wine.talkHook")
+                        : t("depart.tellThem")}
                     </p>
                     <p className="display mt-2 text-[1.25rem] leading-snug">
                       {discovery.talkHook}
@@ -222,7 +227,7 @@ export function DepartTasteModal({
                 {discovery.story ? (
                   <div className="reveal-in-delay">
                     <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                      Historia
+                      {t("wine.story")}
                     </p>
                     <p className="mt-1.5 text-sm leading-relaxed text-ink">
                       {discovery.story}
@@ -232,7 +237,7 @@ export function DepartTasteModal({
                 {discovery.curiosity ? (
                   <div className="reveal-in-delay">
                     <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                      Dato curioso
+                      {t("wine.curiosity")}
                     </p>
                     <p className="mt-1.5 text-sm leading-relaxed text-ink">
                       {discovery.curiosity}
@@ -244,14 +249,12 @@ export function DepartTasteModal({
                   className="btn btn-primary min-h-[48px] w-full text-base"
                   onClick={() => void handleShareStory()}
                 >
-                  {shareHint ?? "Compartir por WhatsApp"}
+                  {shareHint ?? t("depart.shareWhatsapp")}
                 </button>
               </>
             ) : null}
             {!loadingStory && !hasBits(discovery) && !storyError ? (
-              <p className="text-sm text-ink-soft">
-                Sin historia todavía — igual puedes guardar tu nota.
-              </p>
+              <p className="text-sm text-ink-soft">{t("depart.noStoryYet")}</p>
             ) : null}
           </div>
         ) : null}
@@ -261,8 +264,8 @@ export function DepartTasteModal({
             <fieldset className="mt-5">
               <legend className="mb-2 text-[11px] uppercase tracking-[0.14em] text-ink-soft">
                 {action === "opened"
-                  ? "Tu calificación"
-                  : "Calificación (opcional)"}
+                  ? t("depart.yourRating")
+                  : t("depart.ratingOptional")}
               </legend>
               <div className="flex flex-wrap gap-2">
                 {[1, 2, 3, 4, 5].map((n) => {
@@ -279,7 +282,7 @@ export function DepartTasteModal({
                           : "border-[var(--line)] bg-[rgba(255,252,247,0.7)] text-ink-soft hover:border-[rgba(110,31,44,0.3)]",
                       ].join(" ")}
                       aria-pressed={active}
-                      aria-label={`${n} de 5`}
+                      aria-label={t("depart.ratingAria", { n })}
                     >
                       {n}
                     </button>
@@ -288,14 +291,14 @@ export function DepartTasteModal({
               </div>
               <p className="mt-1.5 text-xs text-ink-soft">
                 {action === "opened"
-                  ? "1 poco · 3 bien · 5 lo repetiría"
-                  : "Si quieres, deja cómo lo recuerdas"}
+                  ? t("depart.ratingScale")
+                  : t("depart.ratingMemory")}
               </p>
             </fieldset>
 
             <label className="mt-4 block">
               <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                Nota breve
+                {t("depart.shortNote")}
               </span>
               <textarea
                 value={note}
@@ -303,8 +306,8 @@ export function DepartTasteModal({
                 rows={2}
                 placeholder={
                   action === "opened"
-                    ? "Ej. fresco, ideal con pasta; compraría otra"
-                    : "Ej. para el cumpleaños de Ana"
+                    ? t("depart.openedNotePlaceholder")
+                    : t("depart.giftedNotePlaceholder")
                 }
                 className="w-full rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.95)] px-3 py-2.5 text-sm outline-none focus:border-[rgba(122,36,48,0.45)]"
               />
@@ -321,10 +324,10 @@ export function DepartTasteModal({
             className="btn btn-ghost min-h-[44px]"
             onClick={onClose}
           >
-            Cancelar
+            {t("common.cancel")}
           </button>
           <button type="submit" className="btn btn-primary min-h-[44px]">
-            {submits[action]}
+            {t(submitKey)}
           </button>
         </div>
       </form>

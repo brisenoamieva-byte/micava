@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Outfit } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-store";
 import { CellarProvider } from "@/lib/cellar-store";
+import { LocaleProvider } from "@/lib/i18n";
 import { PasswordRecoveryRedirect } from "@/components/PasswordRecoveryRedirect";
 import { PwaRegister } from "@/components/PwaRegister";
 import "./globals.css";
@@ -80,13 +81,15 @@ export default function RootLayout({
       className={`${outfit.variable} ${cormorant.variable} h-full`}
     >
       <body className="min-h-full antialiased">
-        <AuthProvider>
-          <CellarProvider>
-            <PasswordRecoveryRedirect />
-            {children}
-            <PwaRegister />
-          </CellarProvider>
-        </AuthProvider>
+        <LocaleProvider>
+          <AuthProvider>
+            <CellarProvider>
+              <PasswordRecoveryRedirect />
+              {children}
+              <PwaRegister />
+            </CellarProvider>
+          </AuthProvider>
+        </LocaleProvider>
       </body>
     </html>
   );

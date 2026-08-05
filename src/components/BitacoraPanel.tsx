@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CountryFlag } from "@/components/CountryFlag";
 import type { Encounter } from "@/lib/types";
+import { useLocale, useT } from "@/lib/i18n";
 import { formatCavataleRating } from "@/lib/wines";
 
 type Props = {
@@ -10,9 +11,9 @@ type Props = {
   onRemove?: (id: string) => void;
 };
 
-function formatWhen(iso: string): string {
+function formatWhen(iso: string, locale: string): string {
   try {
-    return new Intl.DateTimeFormat("es-MX", {
+    return new Intl.DateTimeFormat(locale === "en" ? "en-US" : "es-MX", {
       dateStyle: "medium",
       timeStyle: "short",
     }).format(new Date(iso));
@@ -26,33 +27,35 @@ function storyPreview(e: Encounter): string | null {
 }
 
 export function BitacoraPanel({ entries, onRemove }: Props) {
+  const t = useT();
+  const { locale } = useLocale();
   const [openId, setOpenId] = useState<string | null>(null);
   const open = entries.find((e) => e.id === openId) ?? null;
 
   if (entries.length === 0) {
     return (
       <section className="panel-quiet p-4 sm:p-5">
-        <h2 className="display text-2xl text-ink">Bitácora</h2>
-        <p className="mt-0.5 text-sm text-ink-soft">
-          Historias de botellas que escaneaste — fuera del mapa.
-        </p>
+        <h2 className="display text-2xl text-ink">{t("bitacora.title")}</h2>
+        <p className="mt-0.5 text-sm text-ink-soft">{t("bitacora.subtitle")}</p>
         <div className="mt-6 rounded-[12px] border border-dashed border-[var(--line)] px-4 py-8 text-center">
-          <p className="display text-xl text-ink">Aún no hay historias</p>
+          <p className="display text-xl text-ink">{t("bitacora.noStoriesYet")}</p>
           <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-ink-soft">
-            En Escanear botella identifica el vino, cuenta su historia y
-            guárdala aquí con un toque.
+            {t("bitacora.emptyHint")}
           </p>
         </div>
       </section>
     );
   }
 
+  const countLabel =
+    entries.length === 1
+      ? t("bitacora.storiesCount", { count: entries.length })
+      : t("bitacora.storiesCountPlural", { count: entries.length });
+
   return (
     <section className="panel-quiet p-4 sm:p-5">
-      <h2 className="display text-2xl text-ink">Bitácora</h2>
-      <p className="mt-0.5 text-sm text-ink-soft">
-        {entries.length} historia{entries.length === 1 ? "" : "s"}
-      </p>
+      <h2 className="display text-2xl text-ink">{t("bitacora.title")}</h2>
+      <p className="mt-0.5 text-sm text-ink-soft">{countLabel}</p>
 
       <ol className="mt-4 space-y-2">
         {entries.map((e) => {
@@ -77,7 +80,9 @@ export function BitacoraPanel({ entries, onRemove }: Props) {
                     {e.name}
                   </p>
                   <p className="truncate text-xs text-ink-soft">
-                    {[e.winery, formatWhen(e.at)].filter(Boolean).join(" · ")}
+                    {[e.winery, formatWhen(e.at, locale)]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </p>
                   {preview && !isOpen ? (
                     <p className="mt-0.5 line-clamp-1 text-xs text-ink-soft">
@@ -103,13 +108,14 @@ export function BitacoraPanel({ entries, onRemove }: Props) {
                   </p>
                   {open.cavataleRating != null ? (
                     <p className="text-sm text-[var(--wine)]">
-                      Cavatale {formatCavataleRating(open.cavataleRating)}
+                      {t("wine.rating")}{" "}
+                      {formatCavataleRating(open.cavataleRating)}
                     </p>
                   ) : null}
                   {open.kimiTalkHook ? (
                     <div className="tale-hook px-2.5 py-2.5">
                       <p className="tale-hook-label text-[11px] uppercase tracking-[0.14em]">
-                        Para contar
+                        {t("wine.talkHook")}
                       </p>
                       <p className="display mt-1.5 text-[1.15rem] leading-snug">
                         {open.kimiTalkHook}
@@ -119,7 +125,7 @@ export function BitacoraPanel({ entries, onRemove }: Props) {
                   {open.kimiSummary ? (
                     <div>
                       <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                        Historia
+                        {t("wine.story")}
                       </p>
                       <p className="mt-1.5 text-sm leading-relaxed text-ink">
                         {open.kimiSummary}
@@ -129,7 +135,7 @@ export function BitacoraPanel({ entries, onRemove }: Props) {
                   {open.kimiCuriosity ? (
                     <div>
                       <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                        Dato curioso
+                        {t("wine.curiosity")}
                       </p>
                       <p className="mt-1.5 text-sm leading-relaxed text-ink">
                         {open.kimiCuriosity}
@@ -141,17 +147,13 @@ export function BitacoraPanel({ entries, onRemove }: Props) {
                       type="button"
                       className="text-xs text-ink-soft underline-offset-2 hover:text-[var(--wine)] hover:underline"
                       onClick={() => {
-                        if (
-                          confirm(
-                            "¿Quitar esta historia de tu bitácora? Se pierde."
-                          )
-                        ) {
+                        if (confirm(t("bitacora.removeConfirm"))) {
                           onRemove(open.id);
                           setOpenId(null);
                         }
                       }}
                     >
-                      Quitar de la bitácora
+                      {t("bitacora.removeFromBitacora")}
                     </button>
                   ) : null}
                 </div>

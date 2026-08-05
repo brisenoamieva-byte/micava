@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { CellarUnit, Wine } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 import { getEmptySlots } from "@/lib/wines";
 
 type Props = {
@@ -19,6 +20,7 @@ export function MoveWineSheet({
   onClose,
   onConfirm,
 }: Props) {
+  const t = useT();
   const initialCellar =
     wine.cellarId && cellars.some((c) => c.id === wine.cellarId)
       ? wine.cellarId
@@ -45,10 +47,10 @@ export function MoveWineSheet({
 
   const currentLabel =
     wine.slot === "abajo" || !wine.slot
-      ? "Abajo / fuera"
+      ? t("wine.belowOut")
       : wine.cellarId
-        ? `${cellars.find((c) => c.id === wine.cellarId)?.name ?? "Mueble"} · ${wine.slot}`
-        : `Slot ${wine.slot}`;
+        ? `${cellars.find((c) => c.id === wine.cellarId)?.name ?? t("wine.furniture")} · ${wine.slot}`
+        : t("wine.slotLabel", { slot: wine.slot ?? "" });
 
   function submit() {
     if (!slot) return;
@@ -73,16 +75,18 @@ export function MoveWineSheet({
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id="move-wine-title" className="display text-2xl text-ink">
-          Mover botella
+          {t("move.title")}
         </h2>
         <p className="mt-1 text-sm text-ink-soft">
           <span className="font-medium text-ink">{wine.name}</span>
-          <span className="mt-0.5 block text-xs">Ahora: {currentLabel}</span>
+          <span className="mt-0.5 block text-xs">
+            {t("move.now", { location: currentLabel })}
+          </span>
         </p>
 
         {cellars.length > 0 ? (
           <label className="mt-4 block text-sm text-ink-soft">
-            Mueble
+            {t("wine.furniture")}
             <select
               className="mt-1 w-full min-h-[44px] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.9)] px-3 py-2 text-ink"
               value={cellarId ?? ""}
@@ -102,26 +106,24 @@ export function MoveWineSheet({
         ) : null}
 
         <label className="mt-3 block text-sm text-ink-soft">
-          Ubicación
+          {t("wine.location")}
           <select
             className="mt-1 w-full min-h-[44px] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.9)] px-3 py-2 text-ink"
             value={slot}
             onChange={(e) => setSlot(e.target.value)}
           >
-            <option value="">Elige un hueco…</option>
-            <option value="abajo">Abajo / fuera</option>
+            <option value="">{t("move.pickSlot")}</option>
+            <option value="abajo">{t("wine.belowOut")}</option>
             {emptySlots.map((s) => (
               <option key={s} value={s}>
-                Slot {s}
+                {t("wine.slotLabel", { slot: s })}
               </option>
             ))}
           </select>
         </label>
 
         {unit && emptySlots.length === 0 && slot !== "abajo" ? (
-          <p className="mt-2 text-xs text-ink-soft">
-            Este mueble no tiene huecos libres. Elige otro o “Abajo / fuera”.
-          </p>
+          <p className="mt-2 text-xs text-ink-soft">{t("move.noFreeSlots")}</p>
         ) : null}
 
         <div className="mt-5 flex flex-col gap-2 sm:flex-row-reverse">
@@ -131,14 +133,14 @@ export function MoveWineSheet({
             disabled={!slot || (slot !== "abajo" && !cellarId)}
             onClick={submit}
           >
-            Mover aquí
+            {t("move.moveHere")}
           </button>
           <button
             type="button"
             className="btn btn-ghost min-h-[44px] flex-1"
             onClick={onClose}
           >
-            Cancelar
+            {t("common.cancel")}
           </button>
         </div>
       </div>

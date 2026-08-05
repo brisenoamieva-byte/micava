@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { CellarUnit, Wine } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 import { DEFAULT_CELLAR_COLS, DEFAULT_CELLAR_ROWS } from "@/lib/supabase/map";
 
 type Props = {
@@ -36,6 +37,7 @@ export function CellarUnitsBar({
   onUpdate,
   onDelete,
 }: Props) {
+  const t = useT();
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -59,7 +61,7 @@ export function CellarUnitsBar({
   function openCreate() {
     setCreating(true);
     setEditingId(null);
-    setName(`Mueble ${cellars.length + 1}`);
+    setName(t("units.defaultName", { n: cellars.length + 1 }));
     setCols(DEFAULT_CELLAR_COLS);
     setRowCount(DEFAULT_CELLAR_ROWS.length);
   }
@@ -88,15 +90,17 @@ export function CellarUnitsBar({
     }
   }
 
+  const gridRows = rowsFromCount(rowCount).join("");
+
   return (
     <section className="panel-quiet p-2.5 sm:p-3">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-            Tus muebles
+            {t("units.yourUnits")}
           </p>
           <p className="mt-0.5 text-sm text-ink-soft">
-            Elige un mueble para ver su rejilla · {fuera} fuera / sin slot
+            {t("units.unitsHint", { count: fuera })}
           </p>
         </div>
         <button
@@ -104,7 +108,7 @@ export function CellarUnitsBar({
           className="btn btn-ghost min-h-[36px] px-3 text-sm"
           onClick={openCreate}
         >
-          + Nuevo mueble
+          {t("units.newUnit")}
         </button>
       </div>
 
@@ -131,7 +135,7 @@ export function CellarUnitsBar({
               </button>
               <button
                 type="button"
-                title="Editar mueble"
+                title={t("units.editUnitAria")}
                 className={[
                   "min-h-[40px] rounded-r-[10px] border border-l-0 px-2 text-xs text-ink-soft transition hover:text-ink",
                   active
@@ -140,7 +144,7 @@ export function CellarUnitsBar({
                 ].join(" ")}
                 onClick={() => openEdit(c)}
               >
-                Editar
+                {t("common.edit")}
               </button>
             </div>
           );
@@ -150,23 +154,23 @@ export function CellarUnitsBar({
       {(creating || editingId) && (
         <div className="mt-4 space-y-3 rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.55)] p-3">
           <p className="text-sm font-medium text-ink">
-            {creating ? "Nuevo mueble" : "Editar mueble"}
+            {creating ? t("units.newUnitTitle") : t("units.editUnitTitle")}
           </p>
           <label className="block">
             <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-              Nombre
+              {t("wine.name")}
             </span>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full min-h-[40px] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.9)] px-3 py-2"
-              placeholder="Principal, Nevera…"
+              placeholder={t("units.namePlaceholder")}
             />
           </label>
           <div className="grid grid-cols-2 gap-2">
             <label className="block">
               <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                Columnas (1–24)
+                {t("units.columns")}
               </span>
               <input
                 type="number"
@@ -179,7 +183,7 @@ export function CellarUnitsBar({
             </label>
             <label className="block">
               <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                Filas (A…)
+                {t("units.rows")}
               </span>
               <input
                 type="number"
@@ -192,7 +196,7 @@ export function CellarUnitsBar({
             </label>
           </div>
           <p className="text-xs text-ink-soft">
-            Rejilla: {cols} × {rowsFromCount(rowCount).join("")}
+            {t("units.gridPreview", { cols, rows: gridRows })}
           </p>
           <div className="flex flex-wrap gap-2">
             <button
@@ -201,7 +205,7 @@ export function CellarUnitsBar({
               disabled={busy}
               onClick={() => void save()}
             >
-              Guardar
+              {t("common.save")}
             </button>
             <button
               type="button"
@@ -211,7 +215,7 @@ export function CellarUnitsBar({
                 setEditingId(null);
               }}
             >
-              Cancelar
+              {t("common.cancel")}
             </button>
             {editingId && cellars.length > 1 ? (
               <button
@@ -219,16 +223,12 @@ export function CellarUnitsBar({
                 className="btn min-h-[40px] px-3 text-sm text-[var(--wine-deep)]"
                 disabled={busy}
                 onClick={() => {
-                  if (
-                    confirm(
-                      "¿Eliminar este mueble?\nSus botellas quedarán sin ubicación hasta que las acomodes en otro."
-                    )
-                  ) {
+                  if (confirm(t("units.deleteConfirm"))) {
                     void onDelete(editingId).then(() => setEditingId(null));
                   }
                 }}
               >
-                Eliminar
+                {t("common.delete")}
               </button>
             ) : null}
           </div>

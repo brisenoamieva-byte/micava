@@ -10,6 +10,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import type { Wine } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 import { CountryFlag } from "@/components/CountryFlag";
 import {
   formatCavataleRating,
@@ -330,6 +331,7 @@ export function CellarMap({
   onCancelMove,
   onPlaceAt,
 }: Props) {
+  const t = useT();
   const touchUi = useTouchMoveUi();
   const abajo = wines.filter((w) => !w.slot || w.slot === "abajo");
   const [expanded, setExpanded] = useState(false);
@@ -527,7 +529,7 @@ export function CellarMap({
     !pickMode &&
     selectedWine.slot &&
     selectedWine.slot !== "abajo";
-  const mapTitle = title?.trim() || "Mapa del mueble";
+  const mapTitle = title?.trim() || t("map.defaultTitle");
   const gridNaturalW = LABEL_COL_PX + cols * BASE_CELL_PX + Math.max(0, cols) * 4;
   const gridNaturalH =
     24 + rows.length * BASE_CELL_PX + Math.max(0, rows.length) * 4;
@@ -641,12 +643,10 @@ export function CellarMap({
       {movingWine && pickMode ? (
         <div className="rounded-[10px] border border-[rgba(110,31,44,0.35)] bg-[rgba(250,249,245,0.96)] px-3 py-2">
           <p className="text-sm font-medium text-ink">
-            Moviendo · {movingWine.name}
+            {t("map.movingName", { name: movingWine.name })}
           </p>
           <p className="text-xs text-ink-soft">
-            {expanded
-              ? "Ahora toca el hueco donde quieres dejarla. Cierra el mapa para cambiar de mueble."
-              : "Ahora toca el hueco destino. Puedes cambiar de mueble arriba."}
+            {expanded ? t("map.movingHintExpanded") : t("map.movingHint")}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             {onPlaceAt ? (
@@ -656,26 +656,26 @@ export function CellarMap({
                 disabled={!firstEmptySlot}
                 title={
                   firstEmptySlot
-                    ? `Colocar en ${firstEmptySlot}`
-                    : "Este mueble no tiene huecos libres"
+                    ? t("map.placeInSlot", { slot: firstEmptySlot })
+                    : t("map.noFreeSlotsInUnit")
                 }
                 onClick={() => {
                   if (firstEmptySlot) onPlaceAt(firstEmptySlot);
                 }}
               >
                 {firstEmptySlot
-                  ? "Ocupar espacio disponible"
-                  : "Sin huecos libres"}
+                  ? t("map.occupySlot")
+                  : t("map.noFreeSlots")}
               </button>
             ) : null}
             {!expanded ? (
               <button
                 type="button"
                 className="btn btn-ghost min-h-[44px] px-3 text-xs"
-                aria-label="Ampliar mapa"
+                aria-label={t("map.expandAria")}
                 onClick={() => void openExpanded()}
               >
-                Ampliar
+                {t("map.expand")}
               </button>
             ) : null}
             {onCancelMove ? (
@@ -684,7 +684,7 @@ export function CellarMap({
                 className="text-xs font-medium text-[var(--wine)] underline-offset-2 hover:underline"
                 onClick={onCancelMove}
               >
-                Cancelar
+                {t("common.cancel")}
               </button>
             ) : null}
           </div>
@@ -692,27 +692,23 @@ export function CellarMap({
       ) : movingWine && dragId ? (
         <div className="sticky top-0 z-10 rounded-[10px] border border-[rgba(110,31,44,0.35)] bg-[rgba(250,249,245,0.96)] px-3 py-2 shadow-sm backdrop-blur-sm">
           <p className="text-sm font-medium text-ink">
-            Soltando · {movingWine.name}
+            {t("map.droppingName", { name: movingWine.name })}
           </p>
-          <p className="text-xs text-ink-soft">
-            Suelta sobre el hueco nuevo o en Abajo / fuera.
-          </p>
+          <p className="text-xs text-ink-soft">{t("map.droppingHint")}</p>
         </div>
       ) : (
         <div className="space-y-2">
           {showMoveHint && onPickForMove ? (
             <div className="flex items-start justify-between gap-3 rounded-[10px] border border-[rgba(110,31,44,0.22)] bg-[rgba(122,36,48,0.05)] px-3 py-2">
               <p className="text-xs leading-relaxed text-ink sm:text-[13px]">
-                {touchUi
-                  ? "Para mover: deja presionada la botella; luego toca el hueco nuevo. Toca = ver · + = agregar."
-                  : "Para mover: arrastra la botella al hueco nuevo (o a Abajo / fuera). Clic = ver · + = agregar."}
+                {touchUi ? t("map.moveHintTouch") : t("map.moveHintDesktop")}
               </p>
               <button
                 type="button"
                 className="shrink-0 text-[11px] font-medium text-ink-soft underline-offset-2 hover:text-ink hover:underline"
                 onClick={dismissMoveHint}
               >
-                Entendido
+                {t("common.dismiss")}
               </button>
             </div>
           ) : null}
@@ -721,10 +717,10 @@ export function CellarMap({
               <button
                 type="button"
                 className="btn btn-ghost min-h-[44px] px-3 text-xs"
-                aria-label="Ampliar mapa"
+                aria-label={t("map.expandAria")}
                 onClick={() => void openExpanded()}
               >
-                Ampliar
+                {t("map.expand")}
               </button>
             ) : null}
             {canSendAbajo && selectedWine ? (
@@ -733,7 +729,7 @@ export function CellarMap({
                 className="btn btn-ghost min-h-[44px] px-3 text-xs"
                 onClick={() => onMoveWine?.(selectedWine.id, "abajo")}
               >
-                Enviar abajo / fuera
+                {t("map.sendBelowOut")}
               </button>
             ) : null}
             {!pickMode && selectedWine && onPickForMove ? (
@@ -742,7 +738,7 @@ export function CellarMap({
                 className="btn btn-ghost min-h-[44px] px-3 text-xs"
                 onClick={() => onPickForMove(selectedWine)}
               >
-                Mover…
+                {t("map.move")}
               </button>
             ) : null}
           </div>
@@ -754,14 +750,13 @@ export function CellarMap({
       <div className="border-t border-[var(--line)] pt-3">
         <div className="mb-2 flex items-center justify-between gap-2">
           <p className="text-[11px] uppercase tracking-[0.16em] text-ink-soft sm:text-xs">
-            Abajo / fuera
+            {t("map.belowOut")}
           </p>
-          <p className="text-xs text-ink-soft">{abajo.length} botellas</p>
+          <p className="text-xs text-ink-soft">
+            {t("map.bottleCount", { count: abajo.length })}
+          </p>
         </div>
-        <p className="mb-2 text-xs text-ink-soft">
-          Zona temporal compartida. Desde aquí puedes llevar una botella a
-          cualquier mueble.
-        </p>
+        <p className="mb-2 text-xs text-ink-soft">{t("map.belowZoneHint")}</p>
 
         <div
           data-slot="abajo"
@@ -794,10 +789,10 @@ export function CellarMap({
             {abajo.length === 0 ? (
               <p className="px-1 py-2 text-sm text-ink-soft">
                 {pickMode
-                  ? "Toca para soltar abajo / fuera"
+                  ? t("map.tapToDropBelow")
                   : overTarget === "abajo"
-                    ? "Suelta para mandar abajo / fuera"
-                    : "Sin botellas fuera de la rejilla."}
+                    ? t("map.dropToSendBelow")
+                    : t("map.noBottlesOffGrid")}
               </p>
             ) : (
               abajo.map((wine) => {
@@ -926,13 +921,13 @@ export function CellarMap({
     return (
       <>
         <div className="space-y-3">
-          <p className="text-xs text-ink-soft">Mapa ampliado a pantalla completa.</p>
+          <p className="text-xs text-ink-soft">{t("map.expandedNotice")}</p>
           <button
             type="button"
             className="btn btn-ghost min-h-[44px] px-3 text-xs"
             onClick={closeExpanded}
           >
-            Cerrar
+            {t("common.close")}
           </button>
         </div>
         {createPortal(
@@ -969,12 +964,12 @@ export function CellarMap({
                   <div
                     className="inline-flex items-center rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.7)] p-0.5"
                     role="group"
-                    aria-label="Zoom del mapa"
+                    aria-label={t("map.zoomAria")}
                   >
                     <button
                       type="button"
                       className="btn btn-ghost min-h-[36px] min-w-[36px] px-2 text-base"
-                      aria-label="Alejar"
+                      aria-label={t("map.zoomOutAria")}
                       onClick={zoomOut}
                     >
                       −
@@ -982,8 +977,8 @@ export function CellarMap({
                     <button
                       type="button"
                       className="min-h-[36px] min-w-[2.75rem] px-1 text-xs font-medium text-ink-soft"
-                      aria-label="Restablecer zoom"
-                      title="Restablecer"
+                      aria-label={t("map.zoomResetAria")}
+                      title={t("map.zoomResetTitle")}
                       onClick={zoomReset}
                     >
                       {zoomPct}%
@@ -991,7 +986,7 @@ export function CellarMap({
                     <button
                       type="button"
                       className="btn btn-ghost min-h-[36px] min-w-[36px] px-2 text-base"
-                      aria-label="Acercar"
+                      aria-label={t("map.zoomInAria")}
                       onClick={zoomIn}
                     >
                       +
@@ -1000,7 +995,7 @@ export function CellarMap({
                   <button
                     type="button"
                     className="btn btn-ghost flex min-h-[36px] min-w-[36px] shrink-0 items-center justify-center px-2 text-sm"
-                    aria-label="Cerrar mapa ampliado"
+                    aria-label={t("map.closeExpandedAria")}
                     onClick={closeExpanded}
                   >
                     <span aria-hidden className="text-lg leading-none">
@@ -1014,7 +1009,7 @@ export function CellarMap({
                 {movingWine && pickMode ? (
                   <div className="shrink-0 rounded-[10px] border border-[rgba(110,31,44,0.35)] bg-[rgba(250,249,245,0.96)] px-3 py-1.5">
                     <p className="text-sm font-medium text-ink">
-                      Moviendo · {movingWine.name}
+                      {t("map.movingName", { name: movingWine.name })}
                     </p>
                     <div className="mt-1 flex flex-wrap items-center gap-2">
                       {onPlaceAt ? (
@@ -1027,8 +1022,8 @@ export function CellarMap({
                           }}
                         >
                           {firstEmptySlot
-                            ? "Ocupar espacio disponible"
-                            : "Sin huecos libres"}
+                            ? t("map.occupySlot")
+                            : t("map.noFreeSlots")}
                         </button>
                       ) : null}
                       {onCancelMove ? (
@@ -1037,7 +1032,7 @@ export function CellarMap({
                           className="text-xs font-medium text-[var(--wine)] underline-offset-2 hover:underline"
                           onClick={onCancelMove}
                         >
-                          Cancelar
+                          {t("common.cancel")}
                         </button>
                       ) : null}
                     </div>
@@ -1067,7 +1062,7 @@ export function CellarMap({
                 <div className="map-expanded-abajo shrink-0 overflow-x-auto overflow-y-hidden overscroll-contain border-t border-[var(--line)] pt-1">
                   <div className="mb-0.5 flex items-center justify-between gap-2">
                     <p className="text-[10px] uppercase tracking-[0.14em] text-ink-soft">
-                      Abajo / fuera · {abajo.length}
+                      {t("map.belowOutCount", { count: abajo.length })}
                     </p>
                   </div>
                   <div
@@ -1101,8 +1096,8 @@ export function CellarMap({
                       {abajo.length === 0 ? (
                         <p className="px-1 py-1 text-xs text-ink-soft">
                           {pickMode
-                            ? "Toca para soltar abajo / fuera"
-                            : "Sin botellas fuera."}
+                            ? t("map.tapToDropBelow")
+                            : t("map.noBottlesOff")}
                         </p>
                       ) : (
                         abajo.map((wine) => {
@@ -1205,6 +1200,7 @@ function Row({
   updatePress: (e: ReactPointerEvent<HTMLElement>) => void;
   endPress: (e: ReactPointerEvent<HTMLElement>) => void;
 }) {
+  const t = useT();
   return (
     <>
       <div className="flex items-center text-[10px] font-medium text-ink-soft sm:text-[11px]">
@@ -1248,13 +1244,13 @@ function Row({
               data-slot={slot}
               aria-label={
                 pickMode || activeMoveId
-                  ? `Soltar en ${slot}`
-                  : `Agregar vino en ${slot}`
+                  ? t("map.dropInSlot", { slot })
+                  : t("map.addWineInSlot", { slot })
               }
               title={
                 pickMode || activeMoveId
-                  ? `Soltar aquí (${slot})`
-                  : `${slot} vacío — tocar para agregar`
+                  ? t("map.dropHere", { slot })
+                  : t("map.emptyTapToAdd", { slot })
               }
               {...dropHandlers}
               onPointerDown={(e) => {
@@ -1298,7 +1294,7 @@ function Row({
                     {slot}
                   </span>
                   <span className="text-[9px] leading-none opacity-80">
-                    libre
+                    {t("map.free")}
                   </span>
                 </>
               ) : isOver ? (

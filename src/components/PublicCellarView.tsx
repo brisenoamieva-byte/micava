@@ -11,6 +11,7 @@ import {
   formatVivino,
   typeAccent,
 } from "@/lib/wines";
+import { useLocale, useT, wineTypeLabel } from "@/lib/i18n";
 
 type BrowseMode = "pais" | "tipo" | "destacados";
 
@@ -60,6 +61,8 @@ export function PublicCellarView({
   backLabel = "← Cavatale",
   showSignupCta = false,
 }: Props) {
+  const t = useT();
+  const { dict } = useLocale();
   const [mode, setMode] = useState<BrowseMode>("pais");
   const [query, setQuery] = useState("");
 
@@ -87,14 +90,14 @@ export function PublicCellarView({
     const topTypes = [...typeCounts.entries()]
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "es"))
       .slice(0, 3)
-      .map(([t, n]) => `${t} (${n})`);
+      .map(([typeKey, n]) => `${wineTypeLabel(dict, typeKey)} (${n})`);
     return {
       bottles: filtered.length,
       countries: countries.size,
       avgCavatale,
       topTypes,
     };
-  }, [filtered]);
+  }, [filtered, dict]);
 
   const byCountry = useMemo(() => {
     const map = new Map<string, PublicWine[]>();
@@ -133,7 +136,7 @@ export function PublicCellarView({
       .slice(0, 12);
   }, [filtered]);
 
-  const displayName = profile.display_name?.trim() || "Coleccionista";
+  const displayName = profile.display_name?.trim() || t("public.collector");
   const handle = profile.public_handle?.trim();
 
   return (
@@ -145,7 +148,7 @@ export function PublicCellarView({
             className="text-sm text-[var(--wine)] underline-offset-2 hover:underline"
             onClick={onBack}
           >
-            ← Volver
+            {t("public.back")}
           </button>
         ) : (
           <Link
@@ -171,43 +174,44 @@ export function PublicCellarView({
         {showSignupCta ? (
           <div className="rounded-[12px] border border-[rgba(110,31,44,0.22)] bg-[rgba(110,31,44,0.06)] px-4 py-3">
             <p className="text-sm font-medium text-ink">
-              ¿Te gusta esta cava?
+              {t("public.likeCellar")}
             </p>
             <p className="mt-1 text-xs text-ink-soft">
-              Crea la tuya gratis: foto de etiqueta, mapa y historias para la
-              mesa.
+              {t("public.signupHint")}
             </p>
             <Link
               href="/registro"
               className="btn btn-primary mt-3 inline-flex min-h-[44px] items-center px-4 text-sm"
             >
-              Crear mi cava
+              {t("public.createMyCellar")}
             </Link>
           </div>
         ) : null}
 
         {loading ? (
           <div className="space-y-3 py-2">
-            <ThinkingIndicator label="Cargando cava…" size="sm" />
+            <ThinkingIndicator label={t("public.loadingCellar")} size="sm" />
             <div className="h-24 animate-pulse rounded-[12px] bg-[rgba(110,31,44,0.05)]" />
           </div>
         ) : (
           <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-[var(--line)] pt-3 text-xs text-ink-soft">
             <span>
-              <strong className="text-ink">{summary.bottles}</strong> botellas
+              <strong className="text-ink">{summary.bottles}</strong>{" "}
+              {t("common.bottles")}
             </span>
             <span>
-              <strong className="text-ink">{summary.countries}</strong> países
+              <strong className="text-ink">{summary.countries}</strong>{" "}
+              {t("public.countries")}
             </span>
             <span>
-              Media Cavatale{" "}
+              {t("public.avgCavatale")}{" "}
               <strong className="text-ink">
                 {formatCavataleRating(summary.avgCavatale)}
               </strong>
             </span>
             {summary.topTypes.length > 0 ? (
               <span className="w-full sm:w-auto">
-                Tipos: {summary.topTypes.join(" · ")}
+                {t("public.typesLabel")} {summary.topTypes.join(" · ")}
               </span>
             ) : null}
           </div>
@@ -217,25 +221,25 @@ export function PublicCellarView({
       {!loading ? (
         <div className="panel-quiet space-y-4 p-5">
           <label className="block text-sm text-ink-soft">
-            Buscar en esta cava
+            {t("public.searchInCellar")}
             <input
               className="mt-1 w-full min-h-[44px] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.9)] px-3 py-2 text-ink"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Nombre, bodega o uva"
+              placeholder={t("public.searchPlaceholder")}
             />
           </label>
 
           <div
             className="flex flex-wrap gap-2"
             role="tablist"
-            aria-label="Clasificación"
+            aria-label={t("public.browseBy")}
           >
             {(
               [
-                ["pais", "Por país"],
-                ["tipo", "Por tipo"],
-                ["destacados", "Destacados"],
+                ["pais", t("public.byCountry")],
+                ["tipo", t("public.byType")],
+                ["destacados", t("public.featured")],
               ] as const
             ).map(([id, label]) => (
               <button
@@ -257,13 +261,13 @@ export function PublicCellarView({
           {filtered.length === 0 ? (
             <p className="py-6 text-sm text-ink-soft">
               {wines.length === 0
-                ? "Esta cava pública aún no tiene botellas."
-                : "Ningún vino coincide con la búsqueda."}
+                ? t("public.empty")
+                : t("public.noSearchMatches")}
             </p>
           ) : mode === "destacados" ? (
             destacados.length === 0 ? (
               <p className="py-6 text-sm text-ink-soft">
-                Aún no hay calificaciones para destacar.
+                {t("public.noFeatured")}
               </p>
             ) : (
               <WineGroupList wines={destacados} />
@@ -278,7 +282,7 @@ export function PublicCellarView({
                       style={{ background: typeAccent(type) }}
                       aria-hidden
                     />
-                    {type}
+                    {wineTypeLabel(dict, type)}
                     <span className="font-normal text-ink-soft">
                       ({list.length})
                     </span>
@@ -295,7 +299,7 @@ export function PublicCellarView({
                     {country !== "Sin país" ? (
                       <CountryFlag country={country} size="sm" />
                     ) : null}
-                    {country}
+                    {country === "Sin país" ? t("public.noCountry") : country}
                     <span className="font-normal text-ink-soft">
                       ({list.length})
                     </span>
@@ -308,23 +312,21 @@ export function PublicCellarView({
         </div>
       ) : null}
 
-      <p className="px-1 text-xs text-ink-soft">
-        Solo vinos y calificaciones (no precios).
-      </p>
+      <p className="px-1 text-xs text-ink-soft">{t("public.pricesHidden")}</p>
 
       {showSignupCta ? (
         <div className="sticky bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-10 rounded-[14px] border border-[var(--line)] bg-[rgba(255,252,247,0.96)] p-4 shadow-sm backdrop-blur-sm">
           <p className="text-sm font-medium text-ink">
-            Así se ve una cava compartida
+            {t("public.sharedPreview")}
           </p>
           <p className="mt-1 text-xs text-ink-soft">
-            Guarda botellas, pide la historia y comparte la tuya con un link.
+            {t("public.sharedPreviewHint")}
           </p>
           <Link
             href="/registro"
             className="btn btn-primary mt-3 flex min-h-[44px] w-full items-center justify-center text-sm"
           >
-            Crear mi cava — es gratis
+            {t("public.createFree")}
           </Link>
         </div>
       ) : null}
@@ -333,6 +335,8 @@ export function PublicCellarView({
 }
 
 function WineGroupList({ wines }: { wines: PublicWine[] }) {
+  const t = useT();
+  const { dict } = useLocale();
   return (
     <ul className="divide-y divide-[var(--line)]">
       {wines.map((w) => (
@@ -343,12 +347,12 @@ function WineGroupList({ wines }: { wines: PublicWine[] }) {
               <span
                 className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
                 style={{ background: typeAccent(w.type) }}
-                title={w.type}
+                title={wineTypeLabel(dict, w.type)}
               />
               <span className="truncate">{w.name}</span>
             </p>
             <p className="mt-0.5 text-xs text-ink-soft">
-              {[w.winery, w.vintage ?? "s/a", w.country, w.type, w.grape]
+              {[w.winery, w.vintage ?? t("wine.naVintage"), w.country, wineTypeLabel(dict, w.type), w.grape]
                 .filter(Boolean)
                 .join(" · ")}
             </p>
@@ -356,12 +360,12 @@ function WineGroupList({ wines }: { wines: PublicWine[] }) {
           <div className="shrink-0 text-right text-xs text-ink-soft">
             {w.cavatale_rating != null ? (
               <p className="font-medium text-ink">
-                Cavatale {formatCavataleRating(w.cavatale_rating)}
+                {t("wine.rating")} {formatCavataleRating(w.cavatale_rating)}
               </p>
             ) : null}
             {w.vivino != null ? (
               <p className={w.cavatale_rating != null ? "" : "font-medium text-ink"}>
-                Vivino {formatVivino(w.vivino)}
+                {t("wine.vivino")} {formatVivino(w.vivino)}
               </p>
             ) : w.cavatale_rating == null ? (
               <p>—</p>

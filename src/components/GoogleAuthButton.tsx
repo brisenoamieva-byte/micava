@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useT } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
 
 type Props = {
@@ -8,12 +9,22 @@ type Props = {
   label?: string;
 };
 
-export function GoogleAuthButton({
-  next = "/cava",
-  label = "Continuar con Google",
-}: Props) {
+export function GoogleAuthButton({ next = "/cava", label }: Props) {
+  const t = useT();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const displayLabel = label ?? t("auth.continueGoogle");
+
+  function friendlyOAuthError(message: string): string {
+    const lower = message.toLowerCase();
+    if (
+      lower.includes("provider is not enabled") ||
+      lower.includes("unsupported provider")
+    ) {
+      return t("auth.googleUnavailable");
+    }
+    return message;
+  }
 
   async function signInWithGoogle() {
     setError(null);
@@ -40,7 +51,7 @@ export function GoogleAuthButton({
       setError(
         err instanceof Error
           ? friendlyOAuthError(err.message)
-          : "No se pudo abrir Google"
+          : t("auth.googleFailed")
       );
       setLoading(false);
     }
@@ -55,22 +66,11 @@ export function GoogleAuthButton({
         className="btn btn-ghost flex min-h-[48px] w-full items-center justify-center gap-2.5 border border-[var(--line)] text-sm"
       >
         <GoogleMark />
-        {loading ? "Abriendo Google…" : label}
+        {loading ? t("auth.openingGoogle") : displayLabel}
       </button>
       {error ? <p className="text-sm text-[var(--wine-deep)]">{error}</p> : null}
     </div>
   );
-}
-
-function friendlyOAuthError(message: string): string {
-  const lower = message.toLowerCase();
-  if (
-    lower.includes("provider is not enabled") ||
-    lower.includes("unsupported provider")
-  ) {
-    return "Google no está disponible. Usa email y contraseña.";
-  }
-  return message;
 }
 
 function GoogleMark() {
@@ -97,11 +97,12 @@ function GoogleMark() {
 }
 
 export function AuthDivider() {
+  const t = useT();
   return (
     <div className="flex items-center gap-3 py-1">
       <div className="h-px flex-1 bg-[var(--line)]" />
       <span className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-        o
+        {t("common.or")}
       </span>
       <div className="h-px flex-1 bg-[var(--line)]" />
     </div>

@@ -4,6 +4,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PasswordInput } from "@/components/PasswordInput";
+import { useT } from "@/lib/i18n";
 import { PENDING_PASSWORD_COOKIE } from "@/lib/pending-password";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
@@ -16,6 +17,7 @@ function setPendingPasswordCookie() {
 }
 
 export function NewPasswordForm() {
+  const t = useT();
   const router = useRouter();
   const search = useSearchParams();
   const [password, setPassword] = useState("");
@@ -84,25 +86,24 @@ export function NewPasswordForm() {
   }, [search]);
 
   if (!isSupabaseConfigured()) {
-    return <p className="text-sm text-ink-soft">Falta configurar Supabase.</p>;
+    return <p className="text-sm text-ink-soft">{t("auth.missingSupabase")}</p>;
   }
 
   if (!ready) {
-    return <p className="text-sm text-ink-soft">Cargando…</p>;
+    return <p className="text-sm text-ink-soft">{t("common.loading")}</p>;
   }
 
   if (!hasSession) {
     return (
       <div className="space-y-4">
         <p className="text-sm leading-relaxed text-ink-soft">
-          Este enlace expiró o aún no pediste recuperación. Solicita uno nuevo
-          desde tu email.
+          {t("auth.linkExpired")}
         </p>
         {error ? (
           <p className="text-sm text-[var(--wine-deep)]">{error}</p>
         ) : null}
         <Link href="/recuperar" className="btn btn-primary min-h-[48px] w-full">
-          Pedir enlace
+          {t("auth.requestLink")}
         </Link>
       </div>
     );
@@ -112,11 +113,11 @@ export function NewPasswordForm() {
     e.preventDefault();
     setError(null);
     if (password.length < 6) {
-      setError("La contraseña debe tener al menos 6 caracteres.");
+      setError(t("auth.passwordMin"));
       return;
     }
     if (password !== confirm) {
-      setError("Las contraseñas no coinciden.");
+      setError(t("auth.passwordMismatch"));
       return;
     }
     setLoading(true);
@@ -132,7 +133,7 @@ export function NewPasswordForm() {
       router.refresh();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "No se pudo guardar la contraseña"
+        err instanceof Error ? err.message : t("auth.passwordFailed")
       );
     } finally {
       setLoading(false);
@@ -141,13 +142,9 @@ export function NewPasswordForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <p className="text-sm leading-relaxed text-ink">
-        El enlace del correo solo confirmó que eres tú.{" "}
-        <strong>Aquí eliges la contraseña nueva</strong> — sin este paso no
-        podrás entrar después con email y clave.
-      </p>
+      <p className="text-sm leading-relaxed text-ink">{t("auth.newPasswordLead")}</p>
       <PasswordInput
-        label="Nueva contraseña"
+        label={t("auth.newPassword")}
         name="new-password"
         required
         autoComplete="new-password"
@@ -156,7 +153,7 @@ export function NewPasswordForm() {
         onChange={(e) => setPassword(e.target.value)}
       />
       <PasswordInput
-        label="Confirmar"
+        label={t("auth.confirmPassword")}
         name="confirm-password"
         required
         autoComplete="new-password"
@@ -170,7 +167,7 @@ export function NewPasswordForm() {
         disabled={loading}
         className="btn btn-primary min-h-[48px] w-full"
       >
-        {loading ? "Guardando…" : "Guardar y entrar a mi cava"}
+        {loading ? t("auth.saving") : t("auth.saveAndEnter")}
       </button>
     </form>
   );

@@ -21,6 +21,7 @@ import {
   type ScanLabelFields,
 } from "@/lib/scan-label";
 import { ThinkingIndicator } from "@/components/ThinkingIndicator";
+import { useLocale, useT, wineTypeLabel } from "@/lib/i18n";
 
 type Props = {
   open: boolean;
@@ -105,6 +106,8 @@ export function WineFormModal({
   onClose,
   onSubmit,
 }: Props) {
+  const t = useT();
+  const { dict } = useLocale();
   const [draft, setDraft] = useState<WineDraft>(
     emptyDraft(initialSlot, activeCellarId)
   );
@@ -420,11 +423,11 @@ export function WineFormModal({
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!draft.name.trim()) {
-      setError("El nombre del vino es obligatorio.");
+      setError(t("wine.nameRequired"));
       return;
     }
     if (!draft.country.trim()) {
-      setError("Indica el país.");
+      setError(t("wine.countryRequired"));
       return;
     }
 
@@ -433,7 +436,7 @@ export function WineFormModal({
       const cellarId = draft.cellarId ?? activeCellarId;
       const taken = getWineBySlot(wines, loc.slot, cellarId);
       if (taken && taken.id !== editing?.id) {
-        setError(`El slot ${loc.slot} ya está ocupado por ${taken.name}.`);
+        setError(t("wine.slotTaken", { slot: loc.slot, name: taken.name }));
         return;
       }
     }
@@ -481,33 +484,33 @@ export function WineFormModal({
           <div>
             <h2 id="wine-form-title" className="display text-2xl text-ink">
               {editing
-                ? "Editar vino"
+                ? t("wine.editWine")
                 : showingPick
                   ? catalog.length === 0
-                    ? "Tu primera botella"
-                    : "¿Qué botella sumas?"
+                    ? t("wine.firstBottle")
+                    : t("wine.whichBottle")
                   : fromExisting
                     ? prefillDraft
-                      ? "Sumar a la cava"
-                      : "Otra botella"
-                    : "Vino nuevo"}
+                      ? t("wine.addToCellarTitle")
+                      : t("wine.anotherBottle")
+                    : t("wine.newWine")}
             </h2>
             <p className="mt-1 text-sm text-ink-soft">
               {editing
-                ? "Actualiza datos o ubicación de la botella."
+                ? t("wine.editSubtitle")
                 : showingPick
                   ? catalog.length === 0
                     ? initialSlot
-                      ? `Casilla ${initialSlot} · foto de la etiqueta o escribe el nombre.`
-                      : "Foto de la etiqueta (recomendado) o escribe el nombre a mano."
+                      ? t("wine.firstBottleSlotHint", { slot: initialSlot })
+                      : t("wine.firstBottleHint")
                     : initialSlot
-                      ? `Casilla ${initialSlot} · elige un vino de tu cava o uno nuevo.`
-                      : "Elige uno que ya tengas, o agrega uno distinto."
+                      ? t("wine.pickSlotHint", { slot: initialSlot })
+                      : t("wine.pickOrNew")
                   : fromExisting
                     ? prefillDraft
-                      ? "Datos del escaneo · elige mueble y casilla para sumarlo."
-                      : "Datos copiados · elige mueble y ubicación."
-                    : "Completa los datos de un vino que aún no está en tu cava."}
+                      ? t("wine.scanPrefillHint")
+                      : t("wine.copiedDataHint")
+                    : t("wine.completeNewWine")}
             </p>
           </div>
           <button
@@ -515,7 +518,7 @@ export function WineFormModal({
             className="btn btn-ghost min-h-[40px] px-3 text-sm"
             onClick={onClose}
           >
-            Cerrar
+            {t("common.close")}
           </button>
         </div>
 
@@ -525,27 +528,26 @@ export function WineFormModal({
               <>
                 <label className="block">
                   <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                    Buscar en tu cava
+                    {t("wine.searchInCellar")}
                   </span>
                   <input
                     className={fieldClass}
                     value={catalogQuery}
                     onChange={(e) => setCatalogQuery(e.target.value)}
-                    placeholder="Nombre, bodega, uva…"
+                    placeholder={t("filters.searchShortPlaceholder")}
                     enterKeyHint="search"
                   />
                 </label>
 
                 <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                  Ya en tu cava ({filteredCatalog.length})
-                  {initialSlot ? ` · va a ${initialSlot}` : ""}
+                  {t("wine.alreadyInCellar", { count: filteredCatalog.length })}
+                  {initialSlot ? t("wine.goesToSlot", { slot: initialSlot }) : ""}
                 </p>
 
                 <ul className="max-h-[min(50dvh,22rem)] space-y-1.5 overflow-y-auto overscroll-contain pr-0.5">
                   {filteredCatalog.length === 0 ? (
                     <li className="rounded-[10px] border border-dashed border-[var(--line)] px-3 py-4 text-sm text-ink-soft">
-                      No hay coincidencias. Prueba otra búsqueda o agrega uno
-                      nuevo.
+                      {t("wine.noCatalogMatches")}
                     </li>
                   ) : (
                     filteredCatalog.map((w) => {
@@ -576,7 +578,9 @@ export function WineFormModal({
                               </span>
                             </span>
                             <span className="shrink-0 text-xs text-ink-soft">
-                              {copies > 1 ? `${copies} bot.` : "1 bot."}
+                              {copies > 1
+                                ? t("wine.bottlesShort", { count: copies })
+                                : t("wine.bottlesShort", { count: 1 })}
                             </span>
                           </button>
                         </li>
@@ -599,10 +603,10 @@ export function WineFormModal({
                   <ThinkingIndicator
                     tone="cream"
                     size="sm"
-                    label="Identificando etiqueta…"
+                    label={t("wine.identifyingLabel")}
                   />
                 ) : (
-                  "Escanear etiqueta"
+                  t("wine.scanLabel")
                 )}
               </button>
               <button
@@ -611,7 +615,7 @@ export function WineFormModal({
                 disabled={scanning}
                 onClick={startBlank}
               >
-                Escribir a mano
+                {t("wine.writeByHand")}
               </button>
             </div>
             {error && showingPick ? (
@@ -625,7 +629,7 @@ export function WineFormModal({
                   disabled={scanning}
                   onClick={() => retryLastScan()}
                 >
-                  Reintentar escaneo
+                  {t("wine.retryScan")}
                 </button>
               </div>
             ) : null}
@@ -643,8 +647,8 @@ export function WineFormModal({
                 }}
               >
                 {catalog.length === 0
-                  ? "← Escanear o escribir"
-                  : "← Elegir de mi cava"}
+                  ? t("wine.scanOrWrite")
+                  : t("wine.chooseFromCellar")}
               </button>
             ) : null}
 
@@ -660,22 +664,22 @@ export function WineFormModal({
                   <ThinkingIndicator
                     tone="wine"
                     size="sm"
-                    label="Identificando etiqueta…"
+                    label={t("wine.identifyingLabel")}
                   />
                 ) : editing ? (
-                  "Rellenar desde foto"
+                  t("wine.fillFromPhoto")
                 ) : (
-                  "Escanear etiqueta"
+                  t("wine.scanLabel")
                 )}
               </button>
               {scanHint ? (
                 <p className="text-xs text-ink-soft">
-                  {enriching && !scanHint.includes("Buscando")
-                    ? `${scanHint} · Buscando Vivino y precio…`
+                  {enriching && !scanHint.includes(t("scan.enriching").slice(0, 8))
+                    ? `${scanHint} · ${t("scan.enriching")}`
                     : scanHint}
                 </p>
               ) : enriching ? (
-                <p className="text-xs text-ink-soft">Buscando Vivino y precio…</p>
+                <p className="text-xs text-ink-soft">{t("scan.enriching")}</p>
               ) : null}
               {error ? (
                 <button
@@ -684,7 +688,7 @@ export function WineFormModal({
                   disabled={scanning}
                   onClick={() => retryLastScan()}
                 >
-                  Reintentar escaneo
+                  {t("wine.retryScan")}
                 </button>
               ) : null}
               {labelImageDataUrl ? (
@@ -692,11 +696,11 @@ export function WineFormModal({
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={labelImageDataUrl}
-                    alt="Etiqueta escaneada"
+                    alt={t("wine.scannedLabelAlt")}
                     className="h-16 w-12 rounded-[8px] object-cover"
                   />
                   <p className="text-xs text-ink-soft">
-                    Esta foto se guardará con el vino.
+                    {t("wine.labelWillSave")}
                   </p>
                 </div>
               ) : null}
@@ -705,13 +709,13 @@ export function WineFormModal({
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="sm:col-span-2">
                 <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                  Nombre *
+                  {t("wine.name")} *
                 </span>
                 <input
                   className={fieldClass}
                   value={draft.name}
                   onChange={(e) => patch("name", e.target.value)}
-                  placeholder="Ej. Viña Alberdi"
+                  placeholder={t("wine.namePlaceholder")}
                   required
                   autoFocus={!fromExisting}
                 />
@@ -719,7 +723,7 @@ export function WineFormModal({
 
               <label>
                 <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                  Bodega
+                  {t("wine.winery")}
                 </span>
                 <input
                   className={fieldClass}
@@ -730,23 +734,26 @@ export function WineFormModal({
 
               <label>
                 <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                  Tipo
+                  {t("wine.type")}
                 </span>
                 <select
                   className={fieldClass}
                   value={draft.type}
                   onChange={(e) => patch("type", e.target.value)}
                 >
-                  <option>Tinto</option>
-                  <option>Blanco</option>
-                  <option>Rosado</option>
-                  <option>Espumoso</option>
+                  {(["Tinto", "Blanco", "Rosado", "Espumoso"] as const).map(
+                    (typeValue) => (
+                      <option key={typeValue} value={typeValue}>
+                        {wineTypeLabel(dict, typeValue)}
+                      </option>
+                    )
+                  )}
                 </select>
               </label>
 
               <label>
                 <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                  País *
+                  {t("wine.country")} *
                 </span>
                 <select
                   className={fieldClass}
@@ -764,7 +771,7 @@ export function WineFormModal({
 
               <label>
                 <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                  Región
+                  {t("wine.region")}
                 </span>
                 <input
                   className={fieldClass}
@@ -775,31 +782,31 @@ export function WineFormModal({
 
               <label className="sm:col-span-2">
                 <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                  Uva
+                  {t("wine.grape")}
                 </span>
                 <input
                   className={fieldClass}
                   value={draft.grape}
                   onChange={(e) => patch("grape", e.target.value)}
-                  placeholder="Tempranillo, Malbec…"
+                  placeholder={t("wine.grapePlaceholder")}
                 />
               </label>
 
               <label>
                 <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                  Añejamiento
+                  {t("wine.aging")}
                 </span>
                 <input
                   className={fieldClass}
                   value={draft.aging}
                   onChange={(e) => patch("aging", e.target.value)}
-                  placeholder="Reserva, 12 meses…"
+                  placeholder={t("wine.agingPlaceholder")}
                 />
               </label>
 
               <label>
                 <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                  Año
+                  {t("wine.year")}
                 </span>
                 <input
                   className={fieldClass}
@@ -814,7 +821,7 @@ export function WineFormModal({
 
               <label>
                 <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                  Calificación Vivino
+                  {t("wine.vivino")}
                 </span>
                 <input
                   className={fieldClass}
@@ -829,7 +836,7 @@ export function WineFormModal({
 
               <label>
                 <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                  Precio (MXN)
+                  {t("wine.priceMxn")}
                 </span>
                 <input
                   className={fieldClass}
@@ -838,13 +845,13 @@ export function WineFormModal({
                   onChange={(e) =>
                     patch("price", parseOptionalNumber(e.target.value))
                   }
-                  placeholder="Propuesto por Kimi si hay dato"
+                  placeholder={t("wine.pricePlaceholder")}
                 />
               </label>
 
               <label className="sm:col-span-2">
                 <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                  Mueble
+                  {t("wine.furniture")}
                 </span>
                 <select
                   className={fieldClass}
@@ -885,18 +892,18 @@ export function WineFormModal({
 
               <label className="sm:col-span-2">
                 <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                  Ubicación
+                  {t("wine.location")}
                 </span>
                 <select
                   className={fieldClass}
                   value={draft.location}
                   onChange={(e) => patch("location", e.target.value)}
                 >
-                  <option value="">Sin ubicación</option>
-                  <option value="abajo">Abajo / fuera</option>
+                  <option value="">{t("wine.noSlot")}</option>
+                  <option value="abajo">{t("wine.belowOut")}</option>
                   {emptySlots.map((slot) => (
                     <option key={slot} value={slot}>
-                      Slot {slot}
+                      {t("wine.slotLabel", { slot })}
                     </option>
                   ))}
                 </select>
@@ -916,14 +923,14 @@ export function WineFormModal({
                 onClick={onClose}
                 disabled={scanning}
               >
-                Cancelar
+                {t("common.cancel")}
               </button>
               <button
                 type="submit"
                 className="btn btn-primary min-h-[44px]"
                 disabled={scanning}
               >
-                {editing ? "Guardar cambios" : "Agregar a la cava"}
+                {editing ? t("wine.saveChanges") : t("wine.addToCellar")}
               </button>
             </div>
           </form>

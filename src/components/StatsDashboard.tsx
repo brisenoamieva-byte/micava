@@ -4,6 +4,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import type { CellarLogEntry, CellarUnit, Wine } from "@/lib/types";
 import { CountryFlag } from "@/components/CountryFlag";
 import { buildInsights, qualityScore, type ReplenishItem } from "@/lib/analytics";
+import { useLocale, useT, wineTypeLabel } from "@/lib/i18n";
 import { formatCavataleRating, formatPrice, formatVivino } from "@/lib/wines";
 
 type Props = {
@@ -19,6 +20,7 @@ export function StatsDashboard({
   history = [],
   onSelectWine,
 }: Props) {
+  const t = useT();
   const insights = useMemo(
     () => buildInsights(wines, cellars, history),
     [wines, cellars, history]
@@ -66,10 +68,9 @@ export function StatsDashboard({
     <div className="space-y-5">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="display text-3xl text-ink md:text-4xl">Pulso de la cava</h2>
+          <h2 className="display text-3xl text-ink md:text-4xl">{t("stats.pulseTitle")}</h2>
           <p className="mt-1 max-w-xl text-sm text-ink-soft md:text-base">
-            Una lectura rápida de origen, calidad, valor y huecos — para decidir
-            qué abrir, qué regalar y qué reponer.
+            {t("stats.pulseLead")}
           </p>
         </div>
       </div>
@@ -82,7 +83,7 @@ export function StatsDashboard({
             className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-[var(--wine)]"
           />
           <p className="micro-label text-[var(--wine)]">
-            Calificación Cavatale media
+            {t("stats.avgCavatale")}
           </p>
           <div className="mt-2 flex flex-wrap items-end gap-x-4 gap-y-1">
             <p className="display text-5xl leading-none text-ink sm:text-6xl">
@@ -90,24 +91,24 @@ export function StatsDashboard({
             </p>
             <p className="mb-1 max-w-sm text-sm text-ink-soft">
               {insights.avgCavatale != null
-                ? "Score oficial de la cava · solo botellas con historia contada"
-                : "Cuenta la historia de un vino para ver la media de tu cava"}
+                ? t("stats.avgCavataleHint")
+                : t("stats.avgCavataleEmpty")}
             </p>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
           <KpiQuiet
-            label="Botellas"
+            label={t("stats.bottles")}
             value={String(insights.bottles)}
-            hint={`${insights.countries} países`}
+            hint={t("stats.countriesCount", { count: insights.countries })}
           />
           <KpiQuiet
-            label="Valor ref."
+            label={t("stats.refValue")}
             value={formatPrice(insights.value)}
             hint={
               insights.avgPrice != null
-                ? `prom. ${formatPrice(insights.avgPrice)}`
+                ? t("stats.avgShort", { value: formatPrice(insights.avgPrice) })
                 : "—"
             }
           />
@@ -115,14 +116,16 @@ export function StatsDashboard({
             <OccupancyRing value={insights.occupancy} size="sm" />
             <div className="min-w-0">
               <p className="text-[10px] uppercase tracking-[0.14em] text-ink-soft">
-                Ocupación
+                {t("stats.occupancy")}
               </p>
               <p className="display mt-0.5 text-xl leading-none text-ink">
                 {Math.round(insights.occupancy * 100)}%
               </p>
               <p className="mt-1 text-[11px] leading-snug text-ink-soft">
-                {insights.totalSlots - insights.emptySlots} de{" "}
-                {insights.totalSlots}
+                {t("stats.occupancyOf", {
+                  used: insights.totalSlots - insights.emptySlots,
+                  total: insights.totalSlots,
+                })}
                 {" · "}
                 {insights.occupancyLabel}
               </p>
@@ -139,8 +142,8 @@ export function StatsDashboard({
         {/* País */}
         <section className="panel-quiet p-4 sm:p-5">
           <Header
-            title="Por país"
-            subtitle="Cantidad y peso en el inventario · toca un país"
+            title={t("stats.byCountry")}
+            subtitle={t("stats.byCountryHint")}
           />
           <div className="mt-4 space-y-1.5">
             {insights.byCountry.map((c, i) => {
@@ -198,7 +201,7 @@ export function StatsDashboard({
             <DrilldownList
               title={
                 <>
-                  País <strong>{selectedCountry}</strong>
+                  {t("stats.countryLabel")} <strong>{selectedCountry}</strong>
                 </>
               }
               wines={countryWines}
@@ -213,17 +216,17 @@ export function StatsDashboard({
 
         {/* Tipo donut + bands */}
         <section className="panel-quiet p-4 sm:p-5">
-          <Header title="Perfil" subtitle="Tipo, calificación Cavatale y rangos de precio" />
+          <Header title={t("stats.profile")} subtitle={t("stats.profileHint")} />
           <div className="mt-5 flex flex-col items-center gap-6 sm:flex-row sm:items-start">
             <TypeDonut items={insights.byType} total={insights.bottles} />
             <div className="w-full flex-1 space-y-5">
               <BandBlock
-                title="Calificación Cavatale"
-                emptyHint="Cuenta la historia de un vino para ver bandas"
+                title={t("wine.rating")}
+                emptyHint={t("stats.cavataleBandsEmpty")}
                 bands={insights.cavataleBands}
                 color="var(--wine)"
               />
-              <BandBlock title="Precio" bands={insights.priceBands} color="var(--oak)" />
+              <BandBlock title={t("wine.price")} bands={insights.priceBands} color="var(--oak)" />
             </div>
           </div>
         </section>
@@ -231,9 +234,9 @@ export function StatsDashboard({
 
       {/* Vintages */}
       <section className="panel-quiet p-4 sm:p-5">
-        <Header title="Añadas en cava" subtitle="Cuántas botellas por año de cosecha · toca una barra" />
+        <Header title={t("stats.vintagesTitle")} subtitle={t("stats.vintagesHint")} />
         {insights.vintages.length === 0 ? (
-          <p className="mt-4 text-sm text-ink-soft">Sin años registrados.</p>
+          <p className="mt-4 text-sm text-ink-soft">{t("stats.noVintages")}</p>
         ) : (
           <>
             <div className="mt-5 flex items-end gap-1.5 overflow-x-auto pb-1 sm:gap-2">
@@ -253,7 +256,10 @@ export function StatsDashboard({
                         : "hover:bg-[rgba(26,23,20,0.04)]",
                     ].join(" ")}
                     aria-pressed={active}
-                    aria-label={`Añada ${v.year}, ${v.count} botellas`}
+                    aria-label={t("stats.vintageAria", {
+                      year: v.year,
+                      count: v.count,
+                    })}
                   >
                     <span className="text-[10px] font-medium text-ink">{v.count}</span>
                     <div
@@ -282,7 +288,7 @@ export function StatsDashboard({
               <DrilldownList
                 title={
                   <>
-                    Añada <strong>{selectedYear}</strong>
+                    {t("stats.vintageLabel")} <strong>{selectedYear}</strong>
                   </>
                 }
                 wines={vintageWines}
@@ -299,19 +305,19 @@ export function StatsDashboard({
 
       <div className="grid gap-5 lg:grid-cols-2">
         <RankList
-          title="Mejor calificados"
-          subtitle="Calificación Cavatale primero; si falta, calificación Vivino"
+          title={t("stats.topRated")}
+          subtitle={t("stats.topRatedHint")}
           wines={insights.topByCavatale}
           metric={(w) =>
             w.cavataleRating != null
-              ? `Cavatale ${formatCavataleRating(w.cavataleRating)}`
-              : `Vivino ${formatVivino(w.vivino)}`
+              ? `${t("wine.rating")} ${formatCavataleRating(w.cavataleRating)}`
+              : `${t("wine.vivino")} ${formatVivino(w.vivino)}`
           }
           onSelect={onSelectWine}
         />
         <RankList
-          title="Mayor valor"
-          subtitle="Precio de referencia en MXN"
+          title={t("stats.topValue")}
+          subtitle={t("stats.topValueHint")}
           wines={insights.topByPrice}
           metric={(w) => formatPrice(w.price)}
           onSelect={onSelectWine}
@@ -321,8 +327,8 @@ export function StatsDashboard({
       {/* Regiones */}
       <section className="panel-quiet p-4 sm:p-5">
         <Header
-          title="Regiones con más botellas"
-          subtitle="Dónde se concentra tu cava · toca una región"
+          title={t("stats.regionsTitle")}
+          subtitle={t("stats.regionsHint")}
         />
         <div className="mt-4 flex flex-wrap gap-2">
           {insights.byRegion.map((r) => {
@@ -342,7 +348,7 @@ export function StatsDashboard({
                     : "text-ink hover:bg-[rgba(20,18,16,0.05)]",
                 ].join(" ")}
               >
-                <span className="font-medium">{r.name || "Sin región"}</span>
+                <span className="font-medium">{r.name || t("stats.noRegion")}</span>
                 <span className="text-xs tabular-nums text-ink-soft">
                   {r.count}
                 </span>
@@ -354,7 +360,8 @@ export function StatsDashboard({
           <DrilldownList
             title={
               <>
-                Región <strong>{selectedRegion || "Sin región"}</strong>
+                {t("stats.regionLabel")}{" "}
+                <strong>{selectedRegion || t("stats.noRegion")}</strong>
               </>
             }
             wines={regionWines}
@@ -384,11 +391,12 @@ function stars(n: number): string {
 }
 
 function ReplenishBlock({ items }: { items: ReplenishItem[] }) {
+  const t = useT();
   return (
     <section className="panel-quiet p-4 sm:p-5">
       <Header
-        title="Para reponer"
-        subtitle="Los que te gustaron (4–5★) y ya no tienes — o solo queda una"
+        title={t("stats.replenish")}
+        subtitle={t("stats.replenishHint")}
       />
       <ul className="mt-4 space-y-2">
         {items.map((item) => (
@@ -400,7 +408,7 @@ function ReplenishBlock({ items }: { items: ReplenishItem[] }) {
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-ink">{item.name}</p>
               <p className="truncate text-xs text-ink-soft">
-                {item.winery || "Sin bodega"}
+                {item.winery || t("stats.noWinery")}
                 <span className="ml-2 text-[var(--wine)]">{stars(item.myRating)}</span>
               </p>
               {item.note ? (
@@ -408,7 +416,7 @@ function ReplenishBlock({ items }: { items: ReplenishItem[] }) {
               ) : null}
             </div>
             <span className="shrink-0 text-right text-xs text-ink-soft">
-              {item.inStock === 0 ? "Agotado" : "Última"}
+              {item.inStock === 0 ? t("stats.empty") : t("stats.lastOne")}
             </span>
           </li>
         ))}
@@ -430,6 +438,7 @@ function DrilldownList({
   onSelectWine?: (wine: Wine) => void;
   subtitle: (w: Wine) => string;
 }) {
+  const t = useT();
   return (
     <div className="mt-5 border-t border-[var(--line)] pt-4">
       <div className="mb-3 flex items-baseline justify-between gap-3">
@@ -442,7 +451,7 @@ function DrilldownList({
           className="text-xs text-ink-soft underline-offset-2 hover:text-ink hover:underline"
           onClick={onClose}
         >
-          Cerrar
+          {t("common.close")}
         </button>
       </div>
       <ul className="space-y-1">
@@ -464,8 +473,8 @@ function DrilldownList({
               </span>
               <span className="shrink-0 text-right text-xs font-medium text-ink">
                 {w.cavataleRating != null
-                  ? `Cavatale ${formatCavataleRating(w.cavataleRating)}`
-                  : `Vivino ${formatVivino(w.vivino)}`}
+                  ? `${t("wine.rating")} ${formatCavataleRating(w.cavataleRating)}`
+                  : `${t("wine.vivino")} ${formatVivino(w.vivino)}`}
                 <span className="mt-0.5 block font-normal text-ink-soft">
                   {formatPrice(w.price)}
                 </span>
@@ -554,6 +563,8 @@ function TypeDonut({
   items: { name: string; count: number; share: number }[];
   total: number;
 }) {
+  const t = useT();
+  const { dict } = useLocale();
   const size = 152;
   const mid = size / 2;
   const stroke = 11;
@@ -566,7 +577,7 @@ function TypeDonut({
         className="relative mx-auto"
         style={{ width: size, height: size }}
         role="img"
-        aria-label={`${total} botellas en total`}
+        aria-label={t("stats.bottlesTotalAria", { count: total })}
       >
         <svg
           width={size}
@@ -612,7 +623,7 @@ function TypeDonut({
             {total}
           </p>
           <p className="mt-2 text-[0.625rem] font-medium uppercase leading-none tracking-[0.2em] text-ink-soft">
-            Total
+            {t("stats.total")}
           </p>
         </div>
       </div>
@@ -623,7 +634,7 @@ function TypeDonut({
               className="h-2 w-2 rounded-full"
               style={{ background: donutAccent(item.name) }}
             />
-            {item.name} · {item.count}
+            {wineTypeLabel(dict, item.name)} · {item.count}
           </li>
         ))}
       </ul>
@@ -683,12 +694,13 @@ function RankList({
   metric: (w: Wine) => string;
   onSelect?: (wine: Wine) => void;
 }) {
+  const t = useT();
   return (
     <section className="panel-quiet p-4 sm:p-5">
       <Header title={title} subtitle={subtitle} />
       <ol className="mt-4 space-y-2">
         {wines.length === 0 ? (
-          <li className="text-sm text-ink-soft">Sin coincidencias aún.</li>
+          <li className="text-sm text-ink-soft">{t("stats.noMatches")}</li>
         ) : (
           wines.map((w, i) => (
             <li key={w.id}>
@@ -702,7 +714,7 @@ function RankList({
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-medium text-ink">{w.name}</span>
                   <span className="block truncate text-xs text-ink-soft">
-                    {w.region} · {w.vintage ?? "s/a"}
+                    {w.region} · {w.vintage ?? t("wine.naVintage")}
                   </span>
                 </span>
                 <span className="shrink-0 text-right text-xs font-medium text-ink">

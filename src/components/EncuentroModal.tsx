@@ -17,6 +17,7 @@ import {
   scanFieldsToDraftPatch,
 } from "@/lib/scan-label";
 import type { Encounter, EncounterDraft, WineDraft } from "@/lib/types";
+import { useLocale, useT } from "@/lib/i18n";
 import { formatCavataleRating } from "@/lib/wines";
 
 type Step = "identify" | "story";
@@ -73,6 +74,8 @@ export function EncuentroModal({
   onSave,
   onAlsoAddToCava,
 }: Props) {
+  const t = useT();
+  const { locale } = useLocale();
   const [step, setStep] = useState<Step>("identify");
   const [identity, setIdentity] = useState<EncounterDraft>(emptyIdentity);
   const [research, setResearch] = useState<KimiResearch>(emptyKimiResearch);
@@ -148,17 +151,16 @@ export function EncuentroModal({
         });
         setScanHint(
           status === 422
-            ? "Baja confianza — revisa el nombre y la bodega"
+            ? t("scan.lowConfidenceReview")
             : payload.fields.confidence === "high"
               ? payload.needsEnrich
-                ? "Alta confianza — confirmando datos de mercado…"
-                : "Alta confianza — revisa y continúa"
-              : "Revisa los datos antes de contar la historia"
+                ? t("scan.highConfidenceEnrich")
+                : t("scan.highConfidenceContinue")
+              : t("scan.reviewBeforeStory")
         );
         if (status === 422) {
           setError(
-            payload.error ||
-              "No identifiqué el vino con certeza. Completa o corrige a mano."
+            payload.error || t("scan.couldNotIdentify")
           );
         }
 
@@ -198,8 +200,8 @@ export function EncuentroModal({
               });
               setScanHint(
                 enriched.confidence === "high"
-                  ? "Alta confianza — revisa y continúa"
-                  : "Revisa los datos antes de contar la historia"
+                  ? t("scan.highConfidenceContinue")
+                  : t("scan.reviewBeforeStory")
               );
             } catch {
               /* keep vision identity */
@@ -216,15 +218,15 @@ export function EncuentroModal({
       }
 
       if (status !== 200 || !payload.fields) {
-        throw new Error(payload.error || "No se pudo leer la etiqueta.");
+        throw new Error(payload.error || t("scan.failed"));
       }
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") {
-        setError("El escaneo se canceló o tardó demasiado.");
+        setError(t("scan.scanAborted"));
       } else if (e instanceof TypeError) {
-        setError("Sin conexión al escanear. Revisa internet y reintenta.");
+        setError(t("scan.scanNoConnection"));
       } else {
-        setError(e instanceof Error ? e.message : "Error al escanear.");
+        setError(e instanceof Error ? e.message : t("scan.scanError"));
       }
     } finally {
       window.clearTimeout(timeoutId);
@@ -237,7 +239,7 @@ export function EncuentroModal({
   function goToStory(e?: FormEvent) {
     e?.preventDefault();
     if (!identity.name.trim()) {
-      setError("El nombre del vino es obligatorio.");
+      setError(t("wine.nameRequired"));
       return;
     }
     setError("");
@@ -273,6 +275,7 @@ export function EncuentroModal({
           aging: identity.aging.trim(),
           vintage: identity.vintage,
           cavataleRating: research.cavataleRating,
+          locale,
         }),
         signal: abort.signal,
       });
@@ -285,13 +288,13 @@ export function EncuentroModal({
       try {
         payload = JSON.parse(raw) as typeof payload;
       } catch {
-        throw new Error("La IA respondió en un formato inesperado. Reintenta.");
+        throw new Error(t("scan.unexpectedFormat"));
       }
       if (!res.ok || !payload.research) {
         if (res.status === 429) {
-          throw new Error("Demasiadas consultas. Espera un momento y reintenta.");
+          throw new Error(t("scan.tooManyRequests"));
         }
-        throw new Error(payload.error || "No se pudo contar la historia.");
+        throw new Error(payload.error || t("scan.couldNotTellStory"));
       }
       setResearch({
         ...payload.research,
@@ -304,11 +307,11 @@ export function EncuentroModal({
       setThinHint(Boolean(payload.thinStory) || quality.thin);
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") {
-        setError("La consulta se canceló o tardó demasiado.");
+        setError(t("scan.researchAborted"));
       } else if (e instanceof TypeError) {
-        setError("Sin conexión. Revisa internet y reintenta.");
+        setError(t("scan.researchNoConnection"));
       } else {
-        setError(e instanceof Error ? e.message : "Error al investigar.");
+        setError(e instanceof Error ? e.message : t("scan.researchError"));
       }
     } finally {
       window.clearTimeout(timeoutId);
@@ -324,7 +327,7 @@ export function EncuentroModal({
   function handleSave(alsoAdd: boolean) {
     if (saved) return;
     if (!hasStory) {
-      setError("Cuenta la historia primero para guardar o sumarla a tu cava.");
+      setError(t("scan.tellStoryFirst"));
       return;
     }
     onSave({
@@ -381,17 +384,17 @@ export function EncuentroModal({
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--wine)]">
-              Escanear botella
+              {t("cava.scanBottle")}
             </p>
             <h2 id="encuentro-title" className="display mt-1 text-2xl text-ink">
               {step === "identify"
-                ? "¿Qué botella es?"
-                : "La historia"}
+                ? t("scan.whatBottle")
+                : t("scan.theStory")}
             </h2>
             <p className="mt-1 text-sm text-ink-soft">
               {step === "identify"
-                ? "Escanea o escribe el nombre · puedes guardar la historia sin sumarla a tu cava"
-                : "Historia, dato curioso y algo para contar sobre esta botella."}
+                ? t("scan.identifySubtitle")
+                : t("scan.storySubtitle")}
             </p>
           </div>
           <button
@@ -399,7 +402,7 @@ export function EncuentroModal({
             className="btn btn-ghost min-h-[40px] px-3 text-sm"
             onClick={onClose}
           >
-            Cerrar
+            {t("common.close")}
           </button>
         </div>
 
@@ -422,27 +425,27 @@ export function EncuentroModal({
                 <ThinkingIndicator
                   tone="cream"
                   size="sm"
-                  label="Leyendo la etiqueta…"
+                  label={t("scan.scanning")}
                 />
               ) : (
-                "Escanear etiqueta"
+                t("wine.scanLabel")
               )}
             </button>
             {scanHint ? (
               <p className="text-xs text-ink-soft">
-                {enriching && !scanHint.includes("confirmando")
-                  ? `${scanHint} · Confirmando datos…`
+                {enriching && !scanHint.includes(t("scan.confirmingShort").slice(0, 8))
+                  ? `${scanHint} · ${t("scan.confirmingShort")}`
                   : scanHint}
               </p>
             ) : enriching ? (
-              <p className="text-xs text-ink-soft">Confirmando datos de mercado…</p>
+              <p className="text-xs text-ink-soft">{t("scan.confirmingMarket")}</p>
             ) : null}
 
-            <p className="text-center text-xs text-ink-soft">o escribe el nombre</p>
+            <p className="text-center text-xs text-ink-soft">{t("scan.orWriteName")}</p>
 
             <label className="block">
               <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                Nombre *
+                {t("wine.name")} *
               </span>
               <input
                 className={fieldClass}
@@ -450,14 +453,14 @@ export function EncuentroModal({
                 onChange={(e) =>
                   setIdentity((prev) => ({ ...prev, name: e.target.value }))
                 }
-                placeholder="Ej. Catena Malbec"
+                placeholder={t("scan.namePlaceholder")}
                 required
                 autoComplete="off"
               />
             </label>
             <label className="block">
               <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                Bodega
+                {t("wine.winery")}
               </span>
               <input
                 className={fieldClass}
@@ -465,14 +468,14 @@ export function EncuentroModal({
                 onChange={(e) =>
                   setIdentity((prev) => ({ ...prev, winery: e.target.value }))
                 }
-                placeholder="Opcional"
+                placeholder={t("common.optional")}
                 autoComplete="off"
               />
             </label>
             <div className="grid grid-cols-2 gap-2">
               <label className="block">
                 <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                  País
+                  {t("wine.country")}
                 </span>
                 <input
                   className={fieldClass}
@@ -487,7 +490,7 @@ export function EncuentroModal({
               </label>
               <label className="block">
                 <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                  Año
+                  {t("wine.year")}
                 </span>
                 <input
                   className={fieldClass}
@@ -506,7 +509,7 @@ export function EncuentroModal({
             <div className="grid grid-cols-2 gap-2">
               <label className="block">
                 <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                  Tipo
+                  {t("wine.type")}
                 </span>
                 <input
                   className={fieldClass}
@@ -518,7 +521,7 @@ export function EncuentroModal({
               </label>
               <label className="block">
                 <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                  Región
+                  {t("wine.region")}
                 </span>
                 <input
                   className={fieldClass}
@@ -531,7 +534,7 @@ export function EncuentroModal({
             </div>
             <label className="block">
               <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                Uva
+                {t("wine.grape")}
               </span>
               <input
                 className={fieldClass}
@@ -539,7 +542,7 @@ export function EncuentroModal({
                 onChange={(e) =>
                   setIdentity((prev) => ({ ...prev, grape: e.target.value }))
                 }
-                placeholder="Opcional"
+                placeholder={t("common.optional")}
               />
             </label>
 
@@ -548,7 +551,7 @@ export function EncuentroModal({
               className="btn btn-primary min-h-[48px] w-full text-base disabled:opacity-60"
               disabled={kimiLoading}
             >
-              Contar historia
+              {t("wine.tellStory")}
             </button>
           </form>
         ) : null}
@@ -567,7 +570,7 @@ export function EncuentroModal({
                 className="mt-1 text-xs text-ink-soft underline-offset-2 hover:underline"
                 onClick={() => setStep("identify")}
               >
-                Corregir identidad
+                {t("scan.fixIdentity")}
               </button>
             </div>
 
@@ -575,11 +578,10 @@ export function EncuentroModal({
               {!hasStory && !kimiLoading ? (
                 <div>
                   <h3 className="display text-[1.65rem] leading-tight text-ink">
-                    ¿Qué cuenta esta botella?
+                    {t("wine.whatStory")}
                   </h3>
                   <p className="mt-2 max-w-md text-sm leading-relaxed text-ink-soft">
-                    Un gancho para contar y, detrás, la historia completa — sin
-                    necesidad de cena ni mesa.
+                    {t("scan.storyHookLead")}
                   </p>
                   <button
                     type="button"
@@ -587,7 +589,7 @@ export function EncuentroModal({
                     disabled={kimiLoading}
                     onClick={() => void handleResearch()}
                   >
-                    Contar la historia
+                    {t("wine.tellWineStory")}
                   </button>
                 </div>
               ) : null}
@@ -598,7 +600,7 @@ export function EncuentroModal({
                 <div className="mt-2 space-y-4">
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--wine)]">
-                      Esta botella
+                      {t("scan.thisBottle")}
                     </p>
                     <button
                       type="button"
@@ -610,17 +612,17 @@ export function EncuentroModal({
                         <ThinkingIndicator
                           tone="wine"
                           size="sm"
-                          label="Contando…"
+                          label={t("wine.telling")}
                         />
                       ) : (
-                        "Actualizar"
+                        t("common.refresh")
                       )}
                     </button>
                   </div>
                   {research.kimiTalkHook ? (
                     <div className="tale-hook">
                       <p className="tale-hook-label text-[11px] uppercase tracking-[0.16em]">
-                        Para contar
+                        {t("wine.talkHook")}
                       </p>
                       <p className="display mt-2 text-[1.4rem] leading-snug sm:text-[1.55rem]">
                         {research.kimiTalkHook}
@@ -630,7 +632,7 @@ export function EncuentroModal({
                   {research.kimiSummary ? (
                     <div>
                       <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                        Historia
+                        {t("wine.story")}
                       </p>
                       <p className="mt-1.5 text-[15px] leading-relaxed text-ink">
                         {research.kimiSummary}
@@ -640,7 +642,7 @@ export function EncuentroModal({
                   {research.kimiCuriosity ? (
                     <div>
                       <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                        Dato curioso
+                        {t("wine.curiosity")}
                       </p>
                       <p className="mt-1.5 text-sm leading-relaxed text-ink">
                         {research.kimiCuriosity}
@@ -649,21 +651,19 @@ export function EncuentroModal({
                   ) : null}
                   {thinHint ? (
                     <p className="text-xs text-ink-soft">
-                      Si suena a ficha de tienda, Actualizar suele dar otra
-                      versión.
+                      {t("scan.thinStoryHint")}
                     </p>
                   ) : null}
                   {research.cavataleRating != null ? (
                     <div className="rounded-[10px] border border-[rgba(110,31,44,0.28)] bg-[rgba(110,31,44,0.08)] px-3 py-3">
                       <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--wine)]">
-                        Calificación Cavatale
+                        {t("wine.rating")}
                       </p>
                       <p className="display mt-1 text-3xl leading-none text-ink">
                         {formatCavataleRating(research.cavataleRating)}
                       </p>
                       <p className="mt-1.5 text-xs text-ink-soft">
-                        Oficial Cavatale · rúbrica fija (sabor/historia/mesa/
-                        originalidad); no cambia si solo actualizas el relato.
+                        {t("scan.cavataleRubric")}
                       </p>
                     </div>
                   ) : null}
@@ -673,7 +673,7 @@ export function EncuentroModal({
                     disabled={saved}
                     onClick={() => handleSave(false)}
                   >
-                    Guardar en mi bitácora
+                    {t("scan.saveToBitacora")}
                   </button>
                   {onAlsoAddToCava ? (
                     <button
@@ -682,7 +682,7 @@ export function EncuentroModal({
                       disabled={saved}
                       onClick={() => handleSave(true)}
                     >
-                      Guardar y sumar a mi cava
+                      {t("scan.saveAndAdd")}
                     </button>
                   ) : null}
                 </div>

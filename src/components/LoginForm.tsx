@@ -5,9 +5,12 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PasswordInput } from "@/components/PasswordInput";
 import { AuthDivider, GoogleAuthButton } from "@/components/GoogleAuthButton";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { useT } from "@/lib/i18n";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 export function LoginForm() {
+  const t = useT();
   const router = useRouter();
   const search = useSearchParams();
   const nextParam = search.get("next") || "/cava";
@@ -22,11 +25,7 @@ export function LoginForm() {
 
   if (!isSupabaseConfigured()) {
     return (
-      <p className="text-sm text-ink-soft">
-        Falta configurar Supabase. Añade{" "}
-        <code className="text-ink">NEXT_PUBLIC_SUPABASE_URL</code> y{" "}
-        <code className="text-ink">NEXT_PUBLIC_SUPABASE_ANON_KEY</code>.
-      </p>
+      <p className="text-sm text-ink-soft">{t("auth.missingSupabase")}</p>
     );
   }
 
@@ -47,7 +46,7 @@ export function LoginForm() {
       router.replace(next);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo entrar");
+      setError(err instanceof Error ? err.message : t("auth.loginFailed"));
     } finally {
       setLoading(false);
     }
@@ -55,9 +54,14 @@ export function LoginForm() {
 
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">
+        <LanguageSwitcher compact />
+      </div>
       <form onSubmit={onSubmit} className="space-y-4">
         <label className="block">
-          <span className="micro-label mb-1 block text-ink-soft">Email</span>
+          <span className="micro-label mb-1 block text-ink-soft">
+            {t("auth.email")}
+          </span>
           <input
             type="email"
             required
@@ -70,12 +74,12 @@ export function LoginForm() {
         <PasswordInput
           label={
             <>
-              <span>Contraseña</span>
+              <span>{t("auth.password")}</span>
               <Link
                 href="/recuperar"
                 className="normal-case tracking-normal text-ink underline-offset-2 hover:underline"
               >
-                ¿Olvidaste?
+                {t("auth.forgot")}
               </Link>
             </>
           }
@@ -91,15 +95,15 @@ export function LoginForm() {
           disabled={loading}
           className="btn btn-primary min-h-[48px] w-full"
         >
-          {loading ? "Entrando…" : "Entrar"}
+          {loading ? t("auth.entering") : t("auth.enter")}
         </button>
       </form>
       <AuthDivider />
-      <GoogleAuthButton next={next} label="Continuar con Google" />
+      <GoogleAuthButton next={next} label={t("auth.continueGoogle")} />
       <p className="text-center text-sm text-ink-soft">
-        ¿Nuevo?{" "}
+        {t("auth.newUser")}{" "}
         <Link href="/registro" className="text-ink underline-offset-2 hover:underline">
-          Crear mi cava
+          {t("auth.createMyCellar")}
         </Link>
       </p>
     </div>

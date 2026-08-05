@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ThinkingIndicator } from "@/components/ThinkingIndicator";
+import { useT } from "@/lib/i18n";
 
-const STAGES = [
-  "Buscando personas detrás…",
-  "Afinando el gancho…",
-  "Preparando maridaje…",
+const STAGE_KEYS = [
+  "ai.searchingPeople",
+  "ai.refiningHook",
+  "ai.preparingPairing",
 ] as const;
 
 const INTERVAL_MS = 3200;
@@ -16,8 +17,13 @@ type Props = {
   className?: string;
 };
 
-/** Staged Spanish status lines while Kimi research runs. */
+/** Staged status lines while Kimi research runs. */
 export function AiTheaterStatus({ active, className = "" }: Props) {
+  const t = useT();
+  const stages = useMemo(
+    () => STAGE_KEYS.map((key) => t(key)),
+    [t]
+  );
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
@@ -27,10 +33,10 @@ export function AiTheaterStatus({ active, className = "" }: Props) {
     }
     setIndex(0);
     const id = window.setInterval(() => {
-      setIndex((i) => (i + 1) % STAGES.length);
+      setIndex((i) => (i + 1) % stages.length);
     }, INTERVAL_MS);
     return () => window.clearInterval(id);
-  }, [active]);
+  }, [active, stages.length]);
 
   if (!active) return null;
 
@@ -39,7 +45,7 @@ export function AiTheaterStatus({ active, className = "" }: Props) {
       className={className}
       tone="wine"
       size="md"
-      label={STAGES[index]}
+      label={stages[index]}
     />
   );
 }

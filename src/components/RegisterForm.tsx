@@ -5,9 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PasswordInput } from "@/components/PasswordInput";
 import { AuthDivider, GoogleAuthButton } from "@/components/GoogleAuthButton";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { useT } from "@/lib/i18n";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 export function RegisterForm() {
+  const t = useT();
   const router = useRouter();
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
@@ -19,9 +22,7 @@ export function RegisterForm() {
 
   if (!isSupabaseConfigured()) {
     return (
-      <p className="text-sm text-ink-soft">
-        Falta configurar Supabase. Añade las variables de entorno del proyecto.
-      </p>
+      <p className="text-sm text-ink-soft">{t("auth.missingSupabase")}</p>
     );
   }
 
@@ -65,11 +66,9 @@ export function RegisterForm() {
         router.refresh();
         return;
       }
-      setInfo(
-        "Revisa tu correo para confirmar la cuenta. Después podrás entrar."
-      );
+      setInfo(t("auth.confirmEmail"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo registrar");
+      setError(err instanceof Error ? err.message : t("auth.registerFailed"));
     } finally {
       setLoading(false);
     }
@@ -77,21 +76,26 @@ export function RegisterForm() {
 
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">
+        <LanguageSwitcher compact />
+      </div>
       <form onSubmit={onSubmit} className="space-y-4">
         <label className="block">
           <span className="micro-label mb-1 block text-ink-soft">
-            Cómo te llamamos
+            {t("auth.displayName")}
           </span>
           <input
             type="text"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
-            placeholder="Tu nombre"
+            placeholder={t("auth.displayNamePlaceholder")}
             className="w-full min-h-[44px] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.9)] px-3 py-2 outline-none focus:border-[rgba(122,36,48,0.45)]"
           />
         </label>
         <label className="block">
-          <span className="micro-label mb-1 block text-ink-soft">Email</span>
+          <span className="micro-label mb-1 block text-ink-soft">
+            {t("auth.email")}
+          </span>
           <input
             type="email"
             required
@@ -102,7 +106,7 @@ export function RegisterForm() {
           />
         </label>
         <PasswordInput
-          label="Contraseña"
+          label={t("auth.password")}
           required
           autoComplete="new-password"
           minLength={6}
@@ -117,7 +121,7 @@ export function RegisterForm() {
             checked={bottlePledge}
             onChange={(e) => setBottlePledge(e.target.checked)}
           />
-          <span>Si un día te gusta, me regalas una botella.</span>
+          <span>{t("auth.bottlePledgeAlt")}</span>
         </label>
 
         {error ? <p className="text-sm text-[var(--wine-deep)]">{error}</p> : null}
@@ -128,15 +132,15 @@ export function RegisterForm() {
           disabled={loading}
           className="btn btn-primary min-h-[48px] w-full"
         >
-          {loading ? "Creando…" : "Crear mi cava"}
+          {loading ? t("auth.creating") : t("auth.createMyCellar")}
         </button>
       </form>
       <AuthDivider />
-      <GoogleAuthButton next="/cava" label="Continuar con Google" />
+      <GoogleAuthButton next="/cava" />
       <p className="text-center text-sm text-ink-soft">
-        ¿Ya tienes cuenta?{" "}
+        {t("auth.haveAccount")}{" "}
         <Link href="/login" className="text-ink underline-offset-2 hover:underline">
-          Entrar
+          {t("auth.enter")}
         </Link>
       </p>
     </div>

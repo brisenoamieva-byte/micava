@@ -58,7 +58,11 @@ Anclas (sé disciplinado; no regales 4.5+):
 cavataleRating: puedes incluirlo, pero el servidor lo RECALCULA así:
   0.30*taste + 0.30*story + 0.25*table + 0.15*originality (un decimal).
 Identidad dudosa o sin señales serias → ratingParts null y cavataleRating null.
-Si la ficha ya trae "Rating Cavatale guardado": úsalo solo como referencia. SIEMPRE recalcula ratingParts con la evidencia actual; el score puede subir o bajar.
+Si la ficha ya trae "Rating Cavatale guardado": úsalo como ANCLA de confianza.
+- Empieza asumiendo que ese score es correcto.
+- Solo mueve ejes de ratingParts (idealmente ±0.5 por eje) cuando haya evidencia NUEVA y concreta que lo justifique.
+- Si la evidencia es similar a lo ya conocido, mantén ejes casi iguales — no re-tires notas desde cero en cada petición.
+- El servidor además limita el cambio del score final por actualización (estabilidad > ruido LLM).
 NUNCA menciones Vivino ni el score comunitario dentro de summary/curiosity/talkHook/pairingNote. Vivino vive solo en el campo vivino.
 
 ## Estimaciones de referencia (secundarias)
@@ -165,7 +169,8 @@ type Body = {
    */
   mode?: ResearchMode | string | null;
   /**
-   * @deprecated Scores always revise on research. Kept for older clients.
+   * When true, skip per-update rating dampening (full proposed score).
+   * Default: revise gradually so LLM noise can't swing trust overnight.
    */
   recalculateRating?: boolean;
   /** UI locale: "en" | "es" (default es). Narratives follow this language. */
@@ -218,8 +223,8 @@ function buildUserPrompt(identity: string, mode: ResearchMode): string {
   return `${opener}
 
 Dame JSON con:
-1) ratingParts {taste, story, table, originality} en MEDIOS PUNTOS (1–5). Sé estricto con las anclas; no regales notas altas. Si hay Rating Cavatale guardado, es solo referencia: recalcula con evidencia actual (puede subir o bajar).
-2) cavataleRating (el servidor lo recalcula con 30/30/25/15; puedes poner tu estimado).
+1) ratingParts {taste, story, table, originality} en MEDIOS PUNTOS (1–5). Sé estricto con las anclas; no regales notas altas. Si hay Rating Cavatale guardado, úsalo como ANCLA: no re-tires desde cero; solo ajusta ejes (±0.5) si hay evidencia NUEVA concreta.
+2) cavataleRating (el servidor lo recalcula con 30/30/25/15 y amortigua cambios bruscos vs el score guardado; puedes poner tu estimado).
 3) summary (historia íntima; NUNCA abrir con denominación/región genérica), curiosity, ${talkHookHint}, pairings + pairingNote.
 4) vivino solo si lo conoces bien; price siempre null (precio lo busca el servidor con web search).
 No metas Vivino en los textos narrativos.
@@ -458,9 +463,10 @@ export async function POST(request: Request) {
     );
   }
 
-  // Official score from weighted axes each research pass (may rise or fall).
+  // Code-computed from axes, then ±0.2 clamp vs prior (unless force full redo).
   const officialRating = resolveOfficialCavataleRating({
     existing: existingRating,
+    forceRecalculate: body.recalculateRating === true,
     parts: finalized.ratingParts,
     modelRating: finalized.research.cavataleRating,
   });

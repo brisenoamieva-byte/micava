@@ -239,7 +239,7 @@ export const es = {
     cavataleRubric:
       "Oficial Cavatale · 30% sabor · 30% historia · 25% mesa · 15% originalidad. Se revisa al actualizar la historia.",
     cavataleFooter:
-      "La calificación Cavatale es el score oficial (sabor, historia, mesa, originalidad). Al actualizar la historia se vuelve a calcular con la evidencia actual — puede subir o bajar. El precio es referencia de mercado.",
+      "La calificación Cavatale es el score oficial (sabor, historia, mesa, originalidad). Al actualizar la historia puede revisarse con evidencia nueva, en pasos pequeños para no saltar por ruido. El precio es referencia de mercado.",
     talkHook: "Para contar",
     curiosity: "Dato curioso",
     pairings: "Maridajes",
@@ -342,6 +342,7 @@ export const es = {
     correctionAria: "Qué dato está mal",
     storyReady: "Historia lista",
     storyApplied: "Historia aplicada a {count} botellas iguales",
+    ratingUpdated: "{from} → {to}",
   },
   scan: {
     title: "Escanear botella",

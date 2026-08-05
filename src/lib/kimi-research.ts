@@ -31,25 +31,52 @@ export const emptyKimiResearch: KimiResearch = {
 };
 
 /**
+ * Max |Δ| on one Contar historia / Actualizar when a prior score exists.
+ * Lets solid evidence move the rating over repeated runs without locking forever,
+ * while stopping LLM axis re-rolls from swinging trust (e.g. 3.8→3.3) in one pass.
+ */
+export const CAVATALE_RATING_MAX_STEP = 0.2;
+
+function roundCavataleOneDecimal(n: number): number {
+  return Math.round(n * 10) / 10;
+}
+
+function inCavataleRange(n: number): boolean {
+  return n >= 1 && n <= 5;
+}
+
+/**
  * Prefer a fresh research score when present; keep the stored one only as
  * fallback so a thin/failed pass never wipes an existing rating with null.
- * Ratings may rise or fall when evidence supports it (not locked after first set).
+ *
+ * When both exist, clamp |Δ| to {@link CAVATALE_RATING_MAX_STEP} so successive
+ * Actualizar runs can't swing from subjective axis noise. Not a forever lock —
+ * repeated updates (or forceRecalculate) can still revise with better evidence.
  */
 export function stabilizeCavataleRating(
   existing: number | null | undefined,
   incoming: number | null | undefined,
-  /** @deprecated No longer locks; kept for call-site compatibility. */
-  _opts?: { forceRecalculate?: boolean }
+  opts?: { forceRecalculate?: boolean; maxStep?: number }
 ): number | null {
+  let next: number | null = null;
   if (incoming != null && Number.isFinite(incoming)) {
-    const next = Math.round(incoming * 10) / 10;
-    if (next >= 1 && next <= 5) return next;
+    const proposed = roundCavataleOneDecimal(incoming);
+    if (inCavataleRange(proposed)) next = proposed;
   }
+
+  let prev: number | null = null;
   if (existing != null && Number.isFinite(existing)) {
-    const kept = Math.round(existing * 10) / 10;
-    if (kept >= 1 && kept <= 5) return kept;
+    const kept = roundCavataleOneDecimal(existing);
+    if (inCavataleRange(kept)) prev = kept;
   }
-  return null;
+
+  if (next == null) return prev;
+  if (prev == null || opts?.forceRecalculate) return next;
+
+  const maxStep = opts?.maxStep ?? CAVATALE_RATING_MAX_STEP;
+  const delta = Math.max(-maxStep, Math.min(maxStep, next - prev));
+  const damped = roundCavataleOneDecimal(prev + delta);
+  return inCavataleRange(damped) ? damped : next;
 }
 
 /** Four judged axes; final score is a fixed weighted formula (not a free LLM decimal). */
@@ -118,20 +145,26 @@ export function parseCavataleRatingParts(
 }
 
 /**
- * Prefer weighted parts from research; else model decimal; else keep existing.
+ * Official score is always code-computed from weighted parts when present
+ * (never a free-form LLM float). Then dampened vs the prior score unless
+ * forceRecalculate — see stabilizeCavataleRating.
  */
 export function resolveOfficialCavataleRating(options: {
   existing?: number | null;
-  /** @deprecated Ignored — research always may revise the score. */
+  /** Skip per-update clamp (explicit full redo). */
   forceRecalculate?: boolean;
   parts?: CavataleRatingParts | null;
   modelRating?: number | null;
+  maxStep?: number;
 }): number | null {
   const fromParts = options.parts
     ? computeCavataleRatingFromParts(options.parts)
     : null;
   const incoming = fromParts ?? options.modelRating ?? null;
-  return stabilizeCavataleRating(options.existing, incoming);
+  return stabilizeCavataleRating(options.existing, incoming, {
+    forceRecalculate: options.forceRecalculate,
+    maxStep: options.maxStep,
+  });
 }
 
 export function withKimiDefaults<T extends Partial<Wine>>(
@@ -401,7 +434,7 @@ export function wineIdentityForResearch(wine: Pick<
     `Añejamiento: ${wine.aging || "—"}`,
     `Año: ${wine.vintage ?? "—"}`,
     `Vivino (comunidad) guardado: ${wine.vivino ?? "sin dato"}`,
-    `Rating Cavatale guardado: ${wine.cavataleRating ?? "sin dato"}`,
+    `Rating Cavatale guardado (ancla; no re-roll desde cero): ${wine.cavataleRating ?? "sin dato"}`,
     `Precio guardado en Cavatale (MXN): ${wine.price ?? "sin dato"}`,
   ].join("\n");
 }

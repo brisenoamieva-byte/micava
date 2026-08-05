@@ -250,6 +250,7 @@ export function WineDetail({
         throw new Error(payload.error || "No se pudo investigar este vino.");
       }
       const research = payload.research;
+      const prevRating = wine.cavataleRating;
       const applied = onSaveKimiResearch(wine, research);
       if (correctionFromSubmit && onSaveKimiUserNote) {
         onSaveKimiUserNote(wine, correctionFromSubmit);
@@ -259,11 +260,22 @@ export function WineDetail({
       const thin =
         payload.thinStory === true || isThinKimiStory(research);
       setThinStoryHint(thin);
-      setShareHint(
+      let hint =
         n > 1
           ? t("wine.storyApplied", { count: n })
-          : t("wine.storyReady")
-      );
+          : t("wine.storyReady");
+      const nextRating = research.cavataleRating;
+      if (
+        prevRating != null &&
+        nextRating != null &&
+        Math.round(prevRating * 10) !== Math.round(nextRating * 10)
+      ) {
+        hint = `${hint} · ${t("wine.ratingUpdated", {
+          from: formatCavataleRating(prevRating),
+          to: formatCavataleRating(nextRating),
+        })}`;
+      }
+      setShareHint(hint);
       window.setTimeout(() => setShareHint(null), 3500);
       if (correctionFromSubmit) {
         setCorrectionOpen(false);

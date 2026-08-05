@@ -242,7 +242,7 @@ export const en = {
     cavataleRubric:
       "Official Cavatale · 30% taste · 30% story · 25% table · 15% originality. Revised when you refresh the story.",
     cavataleFooter:
-      "Cavatale is the official score (taste, story, table, originality). Refreshing the story recalculates it from current evidence — it can go up or down. Price is a market reference.",
+      "Cavatale is the official score (taste, story, table, originality). Refreshing the story can revise it from new evidence, in small steps so it stays stable. Price is a market reference.",
     talkHook: "To tell",
     curiosity: "Fun fact",
     pairings: "Pairings",
@@ -346,6 +346,7 @@ export const en = {
     correctionAria: "Which fact is wrong",
     storyReady: "Story ready",
     storyApplied: "Story applied to {count} matching bottles",
+    ratingUpdated: "{from} → {to}",
   },
   scan: {
     title: "Scan bottle",

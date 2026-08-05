@@ -384,6 +384,41 @@ export default function CavaPage() {
 
   return (
     <main className="grain relative min-h-screen min-h-[100dvh]">
+      {showHowTo ? (
+        <div
+          className="fixed inset-0 z-[80] flex items-end justify-center p-4 sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-label={t("cava.howItWorks")}
+        >
+          <button
+            type="button"
+            className="absolute inset-0 bg-[rgba(26,23,20,0.45)]"
+            aria-label={t("common.close")}
+            onClick={() => setShowHowTo(false)}
+          />
+          <div className="panel-focus relative z-10 max-h-[min(88dvh,720px)] w-full max-w-lg overflow-y-auto p-5 sm:p-6">
+            <FirstRunGuide
+              onScan={() => {
+                setShowHowTo(false);
+                openAdd();
+              }}
+              onManual={() => {
+                setShowHowTo(false);
+                openAdd("", { step: "form" });
+              }}
+              onDismiss={() => setShowHowTo(false)}
+            />
+            <button
+              type="button"
+              className="mt-4 w-full min-h-[44px] text-sm text-ink-soft underline-offset-2 hover:text-ink hover:underline"
+              onClick={() => setShowHowTo(false)}
+            >
+              {t("guide.closeGuide")}
+            </button>
+          </div>
+        </div>
+      ) : null}
       <div className="relative z-10 mx-auto max-w-[1400px] px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))] md:px-8 xl:pb-10">
         {!isOnline ? (
           <div
@@ -523,7 +558,12 @@ export default function CavaPage() {
                   <button
                     type="button"
                     className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
-                    onClick={() => setShowHowTo(true)}
+                    onClick={() => {
+                      setShowHowTo(true);
+                      // Close the “Más” details menu if open
+                      const details = document.activeElement?.closest("details");
+                      if (details) details.removeAttribute("open");
+                    }}
                   >
                     {t("cava.howItWorks")}
                   </button>
@@ -638,33 +678,10 @@ export default function CavaPage() {
           </div>
         ) : wines.length === 0 ? (
           <div className="space-y-6">
-            {showHowTo ? (
-              <div className="mt-5">
-                <FirstRunGuide
-                  onScan={() => {
-                    setShowHowTo(false);
-                    openAdd();
-                  }}
-                  onManual={() => {
-                    setShowHowTo(false);
-                    openAdd("", { step: "form" });
-                  }}
-                  onDismiss={dismissGuide}
-                />
-                <button
-                  type="button"
-                  className="mt-2 text-xs text-ink-soft underline-offset-2 hover:underline"
-                  onClick={() => setShowHowTo(false)}
-                >
-                  {t("guide.closeGuide")}
-                </button>
-              </div>
-            ) : (
-              <FirstRunGuide
-                onScan={() => openAdd()}
-                onManual={() => openAdd("", { step: "form" })}
-              />
-            )}
+            <FirstRunGuide
+              onScan={() => openAdd()}
+              onManual={() => openAdd("", { step: "form" })}
+            />
 
             <div className="space-y-4">
               <CellarUnitsBar
@@ -707,28 +724,7 @@ export default function CavaPage() {
           </div>
         ) : (
           <>
-        {showHowTo ? (
-          <div className="mt-5">
-            <FirstRunGuide
-              onScan={() => {
-                setShowHowTo(false);
-                openAdd();
-              }}
-              onManual={() => {
-                setShowHowTo(false);
-                openAdd("", { step: "form" });
-              }}
-              onDismiss={dismissGuide}
-            />
-            <button
-              type="button"
-              className="mt-2 text-xs text-ink-soft underline-offset-2 hover:underline"
-              onClick={dismissGuide}
-            >
-              {t("guide.closeGuide")}
-            </button>
-          </div>
-        ) : showStoryNext &&
+        {showStoryNext &&
           !(mode === "cava" && mobilePanel === "detalle") ? (
           <FirstRunGuide
             variant="story-next"

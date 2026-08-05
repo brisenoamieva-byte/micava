@@ -369,7 +369,6 @@ export default function CavaPage() {
     onEdit: openEdit,
     onRemove: (w: Wine) => handleDepart(w, "removed"),
     onOpened: (w: Wine) => openDepart(w, "opened"),
-    onGifted: (w: Wine) => openDepart(w, "gifted"),
     onVerifyRating: handleVerifyRating,
     onSaveKimiResearch: (w: Wine, research: Parameters<typeof saveKimiResearch>[1]) =>
       saveKimiResearch(w.id, research),

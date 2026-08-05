@@ -32,7 +32,6 @@ type Props = {
   onEdit?: (wine: Wine) => void;
   onRemove?: (wine: Wine) => void;
   onOpened?: (wine: Wine) => void;
-  onGifted?: (wine: Wine) => void;
   onVerifyRating?: (
     wine: Wine,
     data: {
@@ -60,7 +59,6 @@ export function WineDetail({
   onEdit,
   onRemove,
   onOpened,
-  onGifted,
   onVerifyRating,
   onSaveKimiResearch,
   onSaveKimiUserNote,
@@ -858,30 +856,17 @@ export function WineDetail({
         </div>
       ) : null}
 
-      {(onOpened || onGifted || onEdit || onRemove || onMove) && (
+      {(onOpened || onEdit || onRemove || onMove) && (
         <div className="mt-6 min-w-0 space-y-2 border-t border-[var(--line)] pt-4">
-          {(onOpened || onGifted) && (
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {onOpened ? (
-                <button
-                  type="button"
-                  className="btn btn-primary min-h-[44px] min-w-0 w-full px-3"
-                  onClick={() => onOpened(wine)}
-                >
-                  {t("wine.opened")}
-                </button>
-              ) : null}
-              {onGifted ? (
-                <button
-                  type="button"
-                  className="btn btn-ghost min-h-[44px] min-w-0 w-full px-3"
-                  onClick={() => onGifted(wine)}
-                >
-                  {t("wine.gifted")}
-                </button>
-              ) : null}
-            </div>
-          )}
+          {onOpened ? (
+            <button
+              type="button"
+              className="btn btn-primary min-h-[44px] min-w-0 w-full px-3"
+              onClick={() => onOpened(wine)}
+            >
+              {t("wine.opened")}
+            </button>
+          ) : null}
           {(onEdit || onRemove || onMove) && (
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {onMove ? (

@@ -6,7 +6,6 @@ import { ThinkingIndicator } from "@/components/ThinkingIndicator";
 import {
   assessKimiStoryQuality,
   emptyKimiResearch,
-  stabilizeCavataleRating,
   type KimiResearch,
 } from "@/lib/kimi-research";
 import {
@@ -299,13 +298,7 @@ export function EncuentroModal({
         }
         throw new Error(payload.error || t("scan.couldNotTellStory"));
       }
-      setResearch({
-        ...payload.research,
-        cavataleRating: stabilizeCavataleRating(
-          research.cavataleRating,
-          payload.research.cavataleRating
-        ),
-      });
+      setResearch(payload.research);
       const quality = assessKimiStoryQuality(payload.research);
       setThinHint(Boolean(payload.thinStory) || quality.thin);
     } catch (e) {

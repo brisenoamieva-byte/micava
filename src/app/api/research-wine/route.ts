@@ -58,7 +58,7 @@ Anclas (sé disciplinado; no regales 4.5+):
 cavataleRating: puedes incluirlo, pero el servidor lo RECALCULA así:
   0.30*taste + 0.30*story + 0.25*table + 0.15*originality (un decimal).
 Identidad dudosa o sin señales serias → ratingParts null y cavataleRating null.
-Si la ficha ya trae "Rating Cavatale guardado": NO recalcules. Devuelve ese mismo número en cavataleRating y ratingParts puede ir null.
+Si la ficha ya trae "Rating Cavatale guardado": úsalo solo como referencia. SIEMPRE recalcula ratingParts con la evidencia actual; el score puede subir o bajar.
 NUNCA menciones Vivino ni el score comunitario dentro de summary/curiosity/talkHook/pairingNote. Vivino vive solo en el campo vivino.
 
 ## Estimaciones de referencia (secundarias)
@@ -164,7 +164,9 @@ type Body = {
    * Default / omit = cellar Contar historia.
    */
   mode?: ResearchMode | string | null;
-  /** Force a new official score even if one is already stored. */
+  /**
+   * @deprecated Scores always revise on research. Kept for older clients.
+   */
   recalculateRating?: boolean;
   /** UI locale: "en" | "es" (default es). Narratives follow this language. */
   locale?: string | null;
@@ -202,11 +204,7 @@ type KimiChatResponse = {
   };
 };
 
-function buildUserPrompt(
-  identity: string,
-  mode: ResearchMode,
-  opts: { ratingLocked: boolean }
-): string {
+function buildUserPrompt(identity: string, mode: ResearchMode): string {
   const talkHookHint =
     mode === "encounter"
       ? "talkHook (1 frase oral para decir YA en esta mesa, con la copa en la mano — provocación humana, no cata)"
@@ -217,23 +215,10 @@ function buildUserPrompt(
       ? "Esta botella está en la mesa AHORA (restaurante / cena). Prioriza a las personas detrás del vino (fundadores, dueños, familia, enólogo/a) si las conoces; si no, sé honesto y cuenta lo más íntimo y concreto que sí sepas — sin inventar."
       : "Esta botella está a punto de abrirse (o regalarse). Prioriza a las personas detrás del vino (fundadores, dueños, familia, enólogo/a) si las conoces; si no, sé honesto y cuenta lo más íntimo y concreto que sí sepas — sin inventar.";
 
-  if (opts.ratingLocked) {
-    return `${opener}
-
-MODO SOLO HISTORIA: esta botella YA tiene Rating Cavatale oficial guardado.
-- Reescribe summary, curiosity, ${talkHookHint}, pairings y pairingNote.
-- cavataleRating: copia EXACTAMENTE el "Rating Cavatale guardado" de la ficha.
-- ratingParts: null (no recalcules ejes).
-- vivino solo si estás seguro; si no, null. price: siempre null (el servidor lo busca aparte).
-No metas Vivino en los textos narrativos.
-${mode === "encounter" ? ENCOUNTER_TALKHOOK_BIAS : ""}
-Ficha:\n\n${identity}`;
-  }
-
   return `${opener}
 
 Dame JSON con:
-1) ratingParts {taste, story, table, originality} en MEDIOS PUNTOS (1–5). Sé estricto con las anclas; no regales notas altas.
+1) ratingParts {taste, story, table, originality} en MEDIOS PUNTOS (1–5). Sé estricto con las anclas; no regales notas altas. Si hay Rating Cavatale guardado, es solo referencia: recalcula con evidencia actual (puede subir o bajar).
 2) cavataleRating (el servidor lo recalcula con 30/30/25/15; puedes poner tu estimado).
 3) summary (historia íntima; NUNCA abrir con denominación/región genérica), curiosity, ${talkHookHint}, pairings + pairingNote.
 4) vivino solo si lo conoces bien; price siempre null (precio lo busca el servidor con web search).
@@ -396,17 +381,14 @@ export async function POST(request: Request) {
     request,
     body.countryCode ?? body.marketCountry ?? null
   );
-  const forceRecalculate = Boolean(body.recalculateRating);
   const existingRating =
     body.cavataleRating != null && Number.isFinite(body.cavataleRating)
       ? body.cavataleRating
       : null;
-  const ratingLocked = existingRating != null && !forceRecalculate;
   const correctionBlock = correctionNote
     ? buildUserCorrectionPromptBlock(correctionNote)
     : "";
-  const userPrompt =
-    buildUserPrompt(identity, mode, { ratingLocked }) + correctionBlock;
+  const userPrompt = buildUserPrompt(identity, mode) + correctionBlock;
 
   const wineForPrice = {
     name,
@@ -476,10 +458,9 @@ export async function POST(request: Request) {
     );
   }
 
-  // Official score: weighted axes on first pass; sticky afterward (unless recalculate).
+  // Official score from weighted axes each research pass (may rise or fall).
   const officialRating = resolveOfficialCavataleRating({
     existing: existingRating,
-    forceRecalculate,
     parts: finalized.ratingParts,
     modelRating: finalized.research.cavataleRating,
   });
@@ -504,7 +485,7 @@ export async function POST(request: Request) {
   return NextResponse.json({
     research,
     thinStory: finalized.thinStory,
-    ratingLocked: ratingLocked && !forceRecalculate,
+    ratingLocked: false,
     market: {
       countryCode: market.countryCode,
       marketLabel: market.marketLabel,

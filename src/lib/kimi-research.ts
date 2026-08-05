@@ -31,21 +31,23 @@ export const emptyKimiResearch: KimiResearch = {
 };
 
 /**
- * Official Cavatale score is set once and kept stable across story refreshes.
- * Only fill when the bottle has no rating yet (null), unless forceRecalculate.
+ * Prefer a fresh research score when present; keep the stored one only as
+ * fallback so a thin/failed pass never wipes an existing rating with null.
+ * Ratings may rise or fall when evidence supports it (not locked after first set).
  */
 export function stabilizeCavataleRating(
   existing: number | null | undefined,
   incoming: number | null | undefined,
-  opts?: { forceRecalculate?: boolean }
+  /** @deprecated No longer locks; kept for call-site compatibility. */
+  _opts?: { forceRecalculate?: boolean }
 ): number | null {
-  if (!opts?.forceRecalculate && existing != null && Number.isFinite(existing)) {
-    const locked = Math.round(existing * 10) / 10;
-    if (locked >= 1 && locked <= 5) return locked;
-  }
   if (incoming != null && Number.isFinite(incoming)) {
     const next = Math.round(incoming * 10) / 10;
     if (next >= 1 && next <= 5) return next;
+  }
+  if (existing != null && Number.isFinite(existing)) {
+    const kept = Math.round(existing * 10) / 10;
+    if (kept >= 1 && kept <= 5) return kept;
   }
   return null;
 }
@@ -116,10 +118,11 @@ export function parseCavataleRatingParts(
 }
 
 /**
- * Prefer locked existing score; else weighted parts; else model decimal.
+ * Prefer weighted parts from research; else model decimal; else keep existing.
  */
 export function resolveOfficialCavataleRating(options: {
   existing?: number | null;
+  /** @deprecated Ignored — research always may revise the score. */
   forceRecalculate?: boolean;
   parts?: CavataleRatingParts | null;
   modelRating?: number | null;
@@ -128,9 +131,7 @@ export function resolveOfficialCavataleRating(options: {
     ? computeCavataleRatingFromParts(options.parts)
     : null;
   const incoming = fromParts ?? options.modelRating ?? null;
-  return stabilizeCavataleRating(options.existing, incoming, {
-    forceRecalculate: options.forceRecalculate,
-  });
+  return stabilizeCavataleRating(options.existing, incoming);
 }
 
 export function withKimiDefaults<T extends Partial<Wine>>(

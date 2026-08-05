@@ -239,7 +239,10 @@ export const en = {
     story: "Story",
     tellStory: "Tell story",
     retellStory: "Refresh story",
-    recalculateRating: "Recalculate rating",
+    cavataleRubric:
+      "Official Cavatale · 30% taste · 30% story · 25% table · 15% originality. Revised when you refresh the story.",
+    cavataleFooter:
+      "Cavatale is the official score (taste, story, table, originality). Refreshing the story recalculates it from current evidence — it can go up or down. Price is a market reference.",
     talkHook: "To tell",
     curiosity: "Fun fact",
     pairings: "Pairings",
@@ -371,7 +374,7 @@ export const en = {
       "A hook to tell and, behind it, the full story — no dinner or table required.",
     thinStoryHint: "If it sounds like a shop listing, Refresh often gives another version.",
     cavataleRubric:
-      "Official Cavatale · fixed rubric (taste/story/table/originality); unchanged if you only refresh the tale.",
+      "Official Cavatale · fixed rubric (taste/story/table/originality); revised when you refresh the story.",
     confirmingMarket: "Confirming market data…",
     confirmingShort: "Confirming data…",
     lowConfidenceReview: "Low confidence — check name and winery",

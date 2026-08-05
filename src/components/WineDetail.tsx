@@ -182,10 +182,7 @@ export function WineDetail({
     }
   }
 
-  async function handleKimiResearch(opts?: {
-    userCorrection?: string;
-    recalculateRating?: boolean;
-  }) {
+  async function handleKimiResearch(opts?: { userCorrection?: string }) {
     if (!wine || !onSaveKimiResearch || kimiLoading) return;
     researchAbortRef.current?.abort();
     const abort = new AbortController();
@@ -198,7 +195,6 @@ export function WineDetail({
     // Re-research may reuse last dispute note as contested claim (never truth).
     const storedNote = wine.kimiUserNote?.trim() || null;
     const userCorrection = correctionFromSubmit || storedNote || undefined;
-    const recalculateRating = Boolean(opts?.recalculateRating);
     const countryCode = clientCountryCodeHint();
 
     setKimiLoading(true);
@@ -221,7 +217,6 @@ export function WineDetail({
           cavataleRating: wine.cavataleRating,
           price: wine.price,
           ...(userCorrection ? { userCorrection } : {}),
-          ...(recalculateRating ? { recalculateRating: true } : {}),
           locale,
           ...(countryCode ? { countryCode } : {}),
         }),
@@ -587,26 +582,8 @@ export function WineDetail({
                 {formatCavataleRating(wine.cavataleRating)}
               </p>
               <p className="mt-1.5 text-xs text-ink-soft">
-                Oficial Cavatale · se calcula una vez (30% sabor · 30% historia ·
-                25% mesa · 15% originalidad) y no cambia al actualizar el
-                relato.
+                {t("wine.cavataleRubric")}
               </p>
-              <button
-                type="button"
-                className="mt-2 text-xs text-ink-soft underline-offset-2 hover:text-ink hover:underline disabled:opacity-60"
-                disabled={kimiLoading}
-                onClick={() => {
-                  if (
-                    confirm(
-                      "¿Recalcular la calificación Cavatale con la rúbrica oficial? La historia también se actualizará."
-                    )
-                  ) {
-                    void handleKimiResearch({ recalculateRating: true });
-                  }
-                }}
-              >
-                {t("wine.recalculateRating")}
-              </button>
             </div>
           ) : null}
 
@@ -777,10 +754,7 @@ export function WineDetail({
       )}
 
       <p className="mt-6 text-xs leading-relaxed text-ink-soft sm:mt-8">
-        La calificación Cavatale es el score oficial: se calcula con una rúbrica
-        fija (sabor, historia, mesa, originalidad) y no cambia al actualizar el
-        relato. Si hace falta, puedes recalcularla a mano. El precio es
-        referencia de mercado.
+        {t("wine.cavataleFooter")}
       </p>
     </div>
   );

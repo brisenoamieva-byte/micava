@@ -236,7 +236,10 @@ export const es = {
     story: "Historia",
     tellStory: "Contar historia",
     retellStory: "Actualizar historia",
-    recalculateRating: "Recalcular calificación",
+    cavataleRubric:
+      "Oficial Cavatale · 30% sabor · 30% historia · 25% mesa · 15% originalidad. Se revisa al actualizar la historia.",
+    cavataleFooter:
+      "La calificación Cavatale es el score oficial (sabor, historia, mesa, originalidad). Al actualizar la historia se vuelve a calcular con la evidencia actual — puede subir o bajar. El precio es referencia de mercado.",
     talkHook: "Para contar",
     curiosity: "Dato curioso",
     pairings: "Maridajes",
@@ -367,7 +370,7 @@ export const es = {
       "Un gancho para contar y, detrás, la historia completa — sin necesidad de cena ni mesa.",
     thinStoryHint: "Si suena a ficha de tienda, Actualizar suele dar otra versión.",
     cavataleRubric:
-      "Oficial Cavatale · rúbrica fija (sabor/historia/mesa/originalidad); no cambia si solo actualizas el relato.",
+      "Oficial Cavatale · rúbrica fija (sabor/historia/mesa/originalidad); se revisa al actualizar la historia.",
     confirmingMarket: "Confirmando datos de mercado…",
     confirmingShort: "Confirmando datos…",
     lowConfidenceReview: "Baja confianza — revisa el nombre y la bodega",

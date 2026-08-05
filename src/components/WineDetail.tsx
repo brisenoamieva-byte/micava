@@ -117,7 +117,7 @@ export function WineDetail({
   }
 
   const classified = parseGrapes(wine.grape);
-  const pairing = resolvePairingsForWine(wine);
+  const pairing = resolvePairingsForWine(wine, clientCountryCodeHint());
 
   const facts: { label: string; value: ReactNode }[] = [
     {

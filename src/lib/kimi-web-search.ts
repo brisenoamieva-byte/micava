@@ -73,15 +73,28 @@ async function kimiRequest(
   return payload;
 }
 
+function messageText(message: KimiMessage | undefined): string | null {
+  if (!message) return null;
+  const content =
+    typeof message.content === "string" ? message.content.trim() : "";
+  return content || null;
+}
+
 export type KimiWebSearchResult = {
   content: string | null;
   usage: KimiTokenUsage | null;
+  /** Set when the loop failed or exhausted without final text. */
+  error?: string | null;
 };
 
 /**
  * Runs a short chat with `$web_search` until the model returns final text.
  * Returns null content if search is unavailable or the loop fails.
  * Usage is summed across all rounds (including tool-call turns).
+ *
+ * Important: tool_calls consume a round. After tool results we may need another
+ * round for the final answer — callers should set maxRounds >= searches + 1.
+ * If the loop still ends on tool_calls, we force one final request without tools.
  */
 export async function kimiChatWithWebSearch(options: {
   apiKey: string;
@@ -96,7 +109,7 @@ export async function kimiChatWithWebSearch(options: {
     model,
     system,
     user,
-    maxRounds = 2,
+    maxRounds = 3,
     maxTokens = 2048,
   } = options;
 
@@ -106,6 +119,7 @@ export async function kimiChatWithWebSearch(options: {
   ];
 
   let usage: KimiTokenUsage | null = null;
+  let lastFinish: string | null = null;
 
   try {
     for (let round = 0; round < maxRounds; round++) {
@@ -120,9 +134,16 @@ export async function kimiChatWithWebSearch(options: {
 
       const choice = payload.choices?.[0];
       const message = choice?.message;
-      if (!message) return { content: null, usage };
+      if (!message) {
+        return {
+          content: null,
+          usage,
+          error: "Kimi no devolvió mensaje en búsqueda web.",
+        };
+      }
 
       const finish = choice.finish_reason ?? "";
+      lastFinish = finish;
       if (finish === "tool_calls" && message.tool_calls?.length) {
         messages.push(message);
         for (const call of message.tool_calls) {
@@ -138,19 +159,54 @@ export async function kimiChatWithWebSearch(options: {
             role: "tool",
             tool_call_id: call.id,
             name,
-            content: JSON.stringify(name === "$web_search" ? args : { error: "unknown tool" }),
+            content: JSON.stringify(
+              name === "$web_search" ? args : { error: "unknown tool" }
+            ),
           });
         }
         continue;
       }
 
-      const content =
-        typeof message.content === "string" ? message.content.trim() : "";
-      return { content: content || null, usage };
+      const content = messageText(message);
+      if (content) return { content, usage, error: null };
+      return {
+        content: null,
+        usage,
+        error: "Kimi cerró la búsqueda sin texto final.",
+      };
     }
-  } catch {
-    return { content: null, usage };
+
+    // Exhausted tool rounds while still mid-search — force a final JSON answer.
+    const lastRole = messages[messages.length - 1]?.role;
+    if (lastRole === "tool" || lastFinish === "tool_calls") {
+      messages.push({
+        role: "user",
+        content:
+          "Ya tienes los resultados de búsqueda. Responde AHORA solo con el JSON final pedido (sin más búsquedas ni markdown).",
+      });
+      const payload = await kimiRequest(apiKey, model, {
+        model,
+        thinking: { type: "disabled" },
+        max_tokens: maxTokens,
+        messages,
+      });
+      usage = addKimiUsage(usage, parseKimiUsage(payload));
+      const content = messageText(payload.choices?.[0]?.message);
+      if (content) return { content, usage, error: null };
+      return {
+        content: null,
+        usage,
+        error: "Kimi no devolvió JSON tras forzar respuesta final.",
+      };
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Error en búsqueda web Kimi.";
+    return { content: null, usage, error: msg };
   }
 
-  return { content: null, usage };
+  return {
+    content: null,
+    usage,
+    error: `Búsqueda web agotó ${maxRounds} rondas sin respuesta final.`,
+  };
 }

@@ -6,7 +6,7 @@ export type WinePairing = {
   note: string;
 };
 
-/** Classic pairings by grape (MX / ES friendly wording). */
+/** Classic pairings by grape (international-leaning; MX dishes filtered by market). */
 const BY_GRAPE: Record<CanonicalGrape, string[]> = {
   Tempranillo: [
     "Cordero asado",
@@ -152,6 +152,29 @@ const BY_TYPE: Record<string, string[]> = {
   ],
 };
 
+/** Market-local dish seeds prepended when resolving static pairings. */
+const BY_MARKET: Record<string, string[]> = {
+  MX: ["Asados a la parrilla", "Mole suave", "Quesos mexicanos"],
+  US: ["Grilled steak", "BBQ ribs", "Roast chicken"],
+  CA: ["Grilled steak", "Roast dinner", "Cheese board"],
+  GB: ["Sunday roast", "Shepherd's pie", "Cheddar board"],
+  ES: ["Jamón ibérico", "Cordero asado", "Tapas variadas"],
+  FR: ["Fromages affinés", "Agneau rôti", "Charcuterie"],
+  IT: ["Pasta al ragù", "Risotto", "Antipasti"],
+  DE: ["Schnitzel", "Bratwurst", "Käseplatte"],
+  AR: ["Asado", "Empanadas de carne", "Provoleta"],
+  CL: ["Asado", "Empanadas", "Mariscos"],
+  CO: ["Carne a la parrilla", "Ajiaco suave", "Quesos"],
+  BR: ["Churrasco", "Queijos", "Massas"],
+  AU: ["Barbecue", "Roast lamb", "Cheese platter"],
+  NZ: ["Lamb roast", "Seafood", "Cheese board"],
+  JP: ["Yakitori", "Grilled fish", "Cheese & nuts"],
+};
+
+/** Mexico-specific dishes — drop outside MX unless wine origin is Mexico. */
+const MX_ONLY_DISH =
+  /\b(birria|mole|carnitas|tacos|arrachera|chile colorado|comida mexicana|quesos mexicanos|guadalajara|oaxaqueñ|michoacan)/i;
+
 function typeKey(type: string): string {
   const t = type.toLowerCase();
   if (t.includes("blanc")) return "blanco";
@@ -188,16 +211,28 @@ function regionHint(region: string, country: string): string[] {
   if (blob.includes("bordeaux") || blob.includes("burdeos")) {
     return ["Cordero", "Entrecot"];
   }
-  if (blob.includes("champagne") || blob.includes("cava") || blob.includes("prosecco")) {
+  if (
+    blob.includes("champagne") ||
+    blob.includes("cava") ||
+    blob.includes("prosecco")
+  ) {
     return ["Ostras", "Aperitivos"];
   }
-  if (blob.includes("guadalupe") || blob.includes("méxico") || blob.includes("mexico")) {
+  if (
+    blob.includes("guadalupe") ||
+    blob.includes("méxico") ||
+    blob.includes("mexico")
+  ) {
     return ["Carnes a la parrilla", "Mole suave", "Quesos mexicanos"];
   }
   if (blob.includes("napa") || blob.includes("california")) {
     return ["Steak", "BBQ"];
   }
-  if (blob.includes("piemonte") || blob.includes("barolo") || blob.includes("barbaresco")) {
+  if (
+    blob.includes("piemonte") ||
+    blob.includes("barolo") ||
+    blob.includes("barbaresco")
+  ) {
     return ["Risotto", "Trufa", "Brasato"];
   }
   return [];
@@ -216,21 +251,49 @@ function uniq(items: string[], max: number): string[] {
   return out;
 }
 
-/** Suggest food pairings from grapes, type, aging, and region. */
+function normalizeMarketCountry(raw: string | null | undefined): string {
+  const code = (raw ?? "MX").trim().toUpperCase();
+  if (code === "UK") return "GB";
+  return /^[A-Z]{2}$/.test(code) ? code : "MX";
+}
+
+function filterDishesForMarket(
+  dishes: string[],
+  marketCountry: string,
+  wineCountry: string
+): string[] {
+  if (marketCountry === "MX") return dishes;
+  const wineIsMx = /m[eé]xico|mexico/i.test(wineCountry);
+  if (wineIsMx) return dishes;
+  return dishes.filter((d) => !MX_ONLY_DISH.test(d));
+}
+
+/** Suggest food pairings from grapes, type, aging, region, and user market. */
 export function pairingsForWine(
-  wine: Pick<Wine, "grape" | "type" | "aging" | "region" | "country">
+  wine: Pick<Wine, "grape" | "type" | "aging" | "region" | "country">,
+  marketCountry?: string | null
 ): WinePairing {
+  const market = normalizeMarketCountry(marketCountry);
   const grapes = parseGrapes(wine.grape);
   const tk = typeKey(wine.type);
 
+  const fromMarket =
+    BY_MARKET[market] ?? ["Grilled meats", "Cheese board", "Pasta"];
   const fromGrapes = grapes.flatMap((g) => BY_GRAPE[g] ?? []);
   const fromType = BY_TYPE[tk] ?? BY_TYPE.tinto;
   const fromAging = agingBoost(wine.aging);
-  const fromRegion = regionHint(wine.region, wine.country);
+  const rawRegion = regionHint(wine.region, wine.country);
+  const fromRegion =
+    market === "MX" || /m[eé]xico|mexico/i.test(wine.country)
+      ? rawRegion
+      : rawRegion.filter((d) => !MX_ONLY_DISH.test(d));
 
-  // Prefer grape-specific dishes; fill with type/region/aging
   const dishes = uniq(
-    [...fromGrapes, ...fromRegion, ...fromAging, ...fromType],
+    filterDishesForMarket(
+      [...fromMarket, ...fromGrapes, ...fromRegion, ...fromAging, ...fromType],
+      market,
+      wine.country
+    ),
     6
   );
 
@@ -266,9 +329,11 @@ export function resolvePairingsForWine(
     | "country"
     | "kimiPairings"
     | "kimiPairingNote"
-  >
+  >,
+  marketCountry?: string | null
 ): WinePairing & { source: "ia" | "reglas" } {
   if (wine.kimiPairings && wine.kimiPairings.length > 0) {
+    // IA pairings were generated for the market at research time — keep as stored.
     return {
       dishes: wine.kimiPairings.slice(0, 8),
       note:
@@ -277,5 +342,8 @@ export function resolvePairingsForWine(
       source: "ia",
     };
   }
-  return { ...pairingsForWine(wine), source: "reglas" };
+  return {
+    ...pairingsForWine(wine, marketCountry),
+    source: "reglas",
+  };
 }

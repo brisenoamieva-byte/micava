@@ -82,7 +82,7 @@ Los cuatro campos hablan del MISMO vino concreto. Misma bodega, misma gente, mis
 
 - talkHook (string): EL GANCHO DE MESA — 1 frase (máx. 2). Provocación sobre gente/historia humana. Evita preguntas de cata ("¿notas fruta o madera?"). Distinto de summary y curiosity.
 
-- pairings (string[]): 4–6 platillos o momentos CONCRETOS para ESTA botella (México/LatAm cuando encaje). No listas genéricas de uva.
+- pairings (string[]): 4–6 platillos o momentos CONCRETOS para ESTA botella, anclados al MERCADO del usuario (ver bloque de mercado más abajo). No listas genéricas de uva. No sugieras cocina solo-mexicana regional si el usuario NO está en México.
 
 - pairingNote (string): 1 frase con el hilo del maridaje. Sin mencionar Vivino ni Cavatale.
 
@@ -103,7 +103,27 @@ NO empieces con variantes de:
 3. Si la ficha es incompleta o la identidad es dudosa: confidence "low" o "medium", cavataleRating null si hace falta, summary corto y honesto — no rellenes con catálogo.
 4. summary, curiosity, talkHook y pairings NO repiten la misma idea.
 5. No digas que consultaste Vivino/internet en vivo.
-6. Idioma natural (México/LatAm por defecto). Sin emojis. Sin markdown dentro de los strings.`;
+6. Idioma natural (México/LatAm por defecto en es; inglés natural en en). Sin emojis. Sin markdown dentro de los strings.`;
+
+function buildMarketPairingsBlock(market: {
+  marketLabel: string;
+  countryCode: string;
+  isMexico: boolean;
+  pairingCuisineHint: string;
+}): string {
+  return `
+
+## Mercado del usuario (precio + maridaje) — OBLIGATORIO
+
+País/mercado detectado: ${market.marketLabel} (${market.countryCode}).
+Cocina para pairings: ${market.pairingCuisineHint}
+${
+  market.isMexico
+    ? `- pairings: platillos mexicanos/regionales concretos están bien (birria, mole, asados MX, etc.).`
+    : `- pairings: cocina LOCAL o cercana a ${market.marketLabel}. PROHIBIDO sugerir platillos solo-mexicanos regionales (ej. "birria estilo Guadalajara", mole oaxaqueño, carnitas michoacanas) salvo que el vino mismo sea mexicano y encaje de forma natural.
+- Prefiere platos que alguien pediría en ${market.marketLabel} con esta botella.`
+}`;
+}
 
 const LANG_ES = `
 
@@ -113,7 +133,7 @@ Escribe summary, curiosity, talkHook, pairingNote y cada ítem de pairings en es
 const LANG_EN = `
 
 OUTPUT LANGUAGE (required):
-Write summary, curiosity, talkHook, pairingNote, and every pairings item in natural English (US/international wine table tone). Keep dish names concrete; Mexican/LatAm dishes are fine when they fit. Do not write Spanish in those fields.`;
+Write summary, curiosity, talkHook, pairingNote, and every pairings item in natural English (US/international wine table tone). Keep dish names concrete and appropriate to the user's market (see market block). Do not default to Mexico-only regional dishes unless the market is Mexico. Do not write Spanish in those fields.`;
 
 function resolveLocale(raw: Body["locale"]): "es" | "en" {
   const m = typeof raw === "string" ? raw.trim().toLowerCase() : "";
@@ -242,7 +262,8 @@ function finalizeResearch(content: string): {
 async function callKimi(
   apiKey: string,
   userContent: string,
-  locale: "es" | "en"
+  locale: "es" | "en",
+  marketBlock: string
 ): Promise<
   | { ok: true; content: string; usage: KimiTokenUsage | null }
   | { ok: false; status: number; error: string; detail?: string; usage: KimiTokenUsage | null }
@@ -264,7 +285,10 @@ async function callKimi(
         messages: [
           {
             role: "system",
-            content: SYSTEM + (locale === "en" ? LANG_EN : LANG_ES),
+            content:
+              SYSTEM +
+              marketBlock +
+              (locale === "en" ? LANG_EN : LANG_ES),
           },
           { role: "user", content: userContent },
         ],
@@ -394,8 +418,9 @@ export async function POST(request: Request) {
     vintage: body.vintage ?? null,
   };
 
+  const marketBlock = buildMarketPairingsBlock(market);
   const [first, priceLookup] = await Promise.all([
-    callKimi(apiKey, userPrompt, locale),
+    callKimi(apiKey, userPrompt, locale, marketBlock),
     researchWineRetailPrice({
       apiKey,
       wine: wineForPrice,
@@ -406,6 +431,15 @@ export async function POST(request: Request) {
     first.usage,
     priceLookup.usage
   );
+
+  if (priceLookup.priceMxn == null) {
+    console.warn("[research-wine] price lookup empty", {
+      wine: name,
+      market: market.countryCode,
+      error: priceLookup.error,
+      notes: priceLookup.notes,
+    });
+  }
 
   if (!first.ok) {
     await recordKimiUsage({
@@ -471,5 +505,12 @@ export async function POST(request: Request) {
     research,
     thinStory: finalized.thinStory,
     ratingLocked: ratingLocked && !forceRecalculate,
+    market: {
+      countryCode: market.countryCode,
+      marketLabel: market.marketLabel,
+    },
+    ...(priceLookup.priceMxn == null && priceLookup.error
+      ? { priceLookupError: priceLookup.error }
+      : {}),
   });
 }

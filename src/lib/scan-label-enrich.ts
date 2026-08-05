@@ -15,8 +15,8 @@ import { wineCountriesForPrompt } from "@/lib/wine-countries";
 import { buildWinePriceSearchQuery } from "@/lib/wine-price-research";
 
 const MODEL = process.env.KIMI_MODEL?.trim() || "kimi-k2.6";
-/** Cap tool rounds — each round is a full LLM + search trip. */
-export const ENRICH_MAX_ROUNDS = 2;
+/** Cap tool rounds — need searches + 1 for final JSON (see kimi-web-search). */
+export const ENRICH_MAX_ROUNDS = 4;
 
 const COUNTRY_PROMPT = wineCountriesForPrompt();
 const MX_MARKET = resolveMarketGeo({ countryCode: "MX" });

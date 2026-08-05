@@ -245,7 +245,7 @@ export {
 
 export function typeAccent(type: string): string {
   const t = type.toLowerCase();
-  if (t.includes("blanc")) return "#12c4b5"; /* spark — electric teal */
+  if (t.includes("blanc")) return "#b8814a"; /* spark — candlelit copper */
   if (t.includes("ros")) return "#a04d56"; /* wine-soft */
   if (
     t.includes("espum") ||

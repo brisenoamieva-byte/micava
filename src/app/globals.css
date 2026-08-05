@@ -15,10 +15,10 @@
   --wine-soft: #a04d56;
   --leaf: #2f4234;
   --oak: #8a6a45;
-  /* Electric teal — modern clash against wine; use sparingly (~2% of UI) */
-  --spark: #12c4b5;
-  --spark-deep: #0a8f85;
-  --spark-soft: rgba(18, 196, 181, 0.24);
+  /* Candlelit copper — story highlight against wine; use sparingly (~2% of UI) */
+  --spark: #b8814a;
+  --spark-deep: #8f5f32;
+  --spark-soft: rgba(184, 129, 74, 0.2);
   --glow: rgba(106, 26, 40, 0.22);
   --shadow: 0 20px 56px rgba(28, 20, 16, 0.16);
   --radius: 14px;
@@ -132,7 +132,7 @@ body {
   background:
     radial-gradient(1100px 640px at 8% -8%, rgba(106, 26, 40, 0.2), transparent 56%),
     radial-gradient(820px 540px at 96% 4%, rgba(47, 66, 52, 0.15), transparent 52%),
-    radial-gradient(640px 420px at 70% 0%, rgba(18, 196, 181, 0.11), transparent 50%),
+    radial-gradient(640px 420px at 70% 0%, rgba(184, 129, 74, 0.09), transparent 50%),
     radial-gradient(720px 480px at 48% 108%, rgba(138, 106, 69, 0.12), transparent 55%),
     linear-gradient(165deg, #ebe4d6 0%, var(--bg) 42%, #c9c0b0 100%);
   font-family: var(--font-outfit), system-ui, sans-serif;
@@ -245,8 +245,8 @@ select {
   background: linear-gradient(165deg, var(--wine) 0%, var(--wine-deep) 100%);
   box-shadow:
     0 12px 30px var(--glow),
-    0 0 0 1px rgba(18, 196, 181, 0.5),
-    0 0 24px var(--spark-soft);
+    0 0 0 1px rgba(184, 129, 74, 0.35),
+    0 0 20px var(--spark-soft);
 }
 
 .btn-ghost {
@@ -361,7 +361,7 @@ select {
 .thinking-indicator[data-tone="cream"] .thinking-spark,
 .btn-primary .thinking-spark {
   background: var(--spark);
-  box-shadow: 0 0 6px var(--spark-soft);
+  box-shadow: 0 0 5px var(--spark-soft);
 }
 
 .thinking-dot:nth-child(1) {
@@ -414,18 +414,18 @@ select {
 .tale-hook {
   position: relative;
   border-radius: 12px;
-  border: 1px solid rgba(106, 26, 40, 0.28);
+  border: 1px solid rgba(106, 26, 40, 0.18);
   padding: 1rem 1.1rem 1.1rem 1.2rem;
   background:
     linear-gradient(
       145deg,
-      rgba(18, 196, 181, 0.14) 0%,
-      rgba(106, 26, 40, 0.08) 38%,
-      rgba(248, 245, 238, 0.94) 72%
+      rgba(184, 129, 74, 0.08) 0%,
+      rgba(106, 26, 40, 0.05) 42%,
+      rgba(248, 245, 238, 0.96) 78%
     );
   box-shadow:
-    0 10px 28px rgba(106, 26, 40, 0.08),
-    inset 0 1px 0 rgba(255, 252, 247, 0.7);
+    0 8px 22px rgba(28, 20, 16, 0.05),
+    inset 0 1px 0 rgba(255, 252, 247, 0.75);
   animation: revealIn 0.75s var(--ease) 0.08s both;
 }
 
@@ -433,12 +433,16 @@ select {
   content: "";
   position: absolute;
   left: 0;
-  top: 12%;
-  bottom: 12%;
-  width: 3px;
-  border-radius: 0 3px 3px 0;
-  background: linear-gradient(180deg, var(--spark), var(--spark-deep));
-  box-shadow: 0 0 12px var(--spark-soft);
+  top: 14%;
+  bottom: 14%;
+  width: 2px;
+  border-radius: 0 2px 2px 0;
+  background: linear-gradient(
+    180deg,
+    var(--spark) 0%,
+    var(--spark-deep) 55%,
+    rgba(106, 26, 40, 0.55) 100%
+  );
 }
 
 .tale-hook .display {

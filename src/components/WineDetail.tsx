@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import type { MatchConfidence, RatingSource, Wine } from "@/lib/types";
+import type { Wine } from "@/lib/types";
 import { CountryFlag } from "@/components/CountryFlag";
 import { parseGrapes } from "@/lib/grapes";
 import {
@@ -11,12 +11,7 @@ import {
 } from "@/lib/kimi-research";
 import { resolveLabelImageUrl } from "@/lib/label-image";
 import { resolvePairingsForWine } from "@/lib/pairings";
-import {
-  confidenceLabel,
-  formatCheckedAt,
-  sourceLabel,
-  wineSearcherUrl,
-} from "@/lib/rating-verify";
+import { confidenceLabel, formatCheckedAt } from "@/lib/rating-verify";
 import { formatCavataleRating, formatPrice, typeAccent } from "@/lib/wines";
 import { buildWineShareText, shareOrCopyText } from "@/lib/share-wine";
 import { useLocale, useT, wineTypeLabel } from "@/lib/i18n";
@@ -32,15 +27,6 @@ type Props = {
   onEdit?: (wine: Wine) => void;
   onRemove?: (wine: Wine) => void;
   onOpened?: (wine: Wine) => void;
-  onVerifyRating?: (
-    wine: Wine,
-    data: {
-      externalRating: number;
-      ratingSource: RatingSource;
-      matchConfidence: MatchConfidence;
-      syncVivino: boolean;
-    }
-  ) => void;
   onSaveKimiResearch?: (wine: Wine, research: KimiResearch) => number | void;
   /** Persist owner dispute note (feedback only, not truth). */
   onSaveKimiUserNote?: (wine: Wine, note: string | null) => number | void;
@@ -59,7 +45,6 @@ export function WineDetail({
   onEdit,
   onRemove,
   onOpened,
-  onVerifyRating,
   onSaveKimiResearch,
   onSaveKimiUserNote,
   onApplyKimiResearch,
@@ -67,10 +52,6 @@ export function WineDetail({
 }: Props) {
   const t = useT();
   const { dict, locale } = useLocale();
-  const [verifyOpen, setVerifyOpen] = useState(false);
-  const [ratingInput, setRatingInput] = useState("");
-  const [source, setSource] = useState<RatingSource>("manual");
-  const [confidence, setConfidence] = useState<MatchConfidence>("confirmed");
   const [shareHint, setShareHint] = useState<string | null>(null);
   const [kimiLoading, setKimiLoading] = useState(false);
   const [kimiError, setKimiError] = useState("");
@@ -84,12 +65,6 @@ export function WineDetail({
   const researchAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    setVerifyOpen(false);
-    setRatingInput(
-      wine?.externalRating != null ? String(wine.externalRating) : ""
-    );
-    setSource(wine?.ratingSource === "vivino" ? "manual" : wine?.ratingSource ?? "manual");
-    setConfidence(wine?.matchConfidence ?? "confirmed");
     setShareHint(null);
     setKimiLoading(false);
     setKimiError("");
@@ -171,21 +146,6 @@ export function WineDetail({
             : t("wine.noLocation"),
     },
   ];
-
-  function saveVerification() {
-    const value = Number(ratingInput.replace(",", "."));
-    if (!Number.isFinite(value) || value < 1 || value > 5) {
-      alert(t("wine.ratingRangeAlert"));
-      return;
-    }
-    onVerifyRating?.(wine!, {
-      externalRating: Math.round(value * 10) / 10,
-      ratingSource: source,
-      matchConfidence: confidence,
-      syncVivino: false,
-    });
-    setVerifyOpen(false);
-  }
 
   function applyKimiToFicha(fields: { price?: boolean }) {
     if (!wine || !onApplyKimiResearch) return;
@@ -752,109 +712,6 @@ export function WineDetail({
           {pairing.dishes.join(" · ")}
         </p>
       </div>
-
-      {onVerifyRating ? (
-        <div className="mt-5 border-t border-[var(--line)] pt-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <p className="micro-label text-ink-soft">Calificación externa</p>
-              <p className="mt-0.5 text-xs text-ink-soft">
-                Última revisión: {formatCheckedAt(wine.lastCheckedAt)}
-                {wine.ratingSource
-                  ? ` · ${sourceLabel[wine.ratingSource]}`
-                  : ""}
-                {wine.matchConfidence
-                  ? ` · ${confidenceLabel[wine.matchConfidence]}`
-                  : ""}
-              </p>
-            </div>
-            <button
-              type="button"
-              className="btn btn-ghost min-h-[40px] px-3 text-sm"
-              onClick={() => setVerifyOpen((o) => !o)}
-              aria-expanded={verifyOpen}
-            >
-              {verifyOpen ? t("common.cancel") : t("wine.verify")}
-            </button>
-          </div>
-
-          {verifyOpen ? (
-            <div className="mt-3 space-y-3 rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.55)] p-3">
-              <p className="text-xs leading-relaxed text-ink-soft">
-                Busca la botella en Wine-Searcher u otra fuente y anota una
-                calificación externa aparte de Cavatale, si quieres llevarla.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <a
-                  href={wineSearcherUrl(wine)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn btn-ghost min-h-[40px] px-3 text-sm"
-                >
-                  Wine-Searcher ↗
-                </a>
-              </div>
-
-              <label className="block">
-                <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                  Score encontrado (1–5)
-                </span>
-                <input
-                  type="number"
-                  min={1}
-                  max={5}
-                  step={0.1}
-                  inputMode="decimal"
-                  value={ratingInput}
-                  onChange={(e) => setRatingInput(e.target.value)}
-                  className="w-full min-h-[44px] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.9)] px-3 py-2 outline-none focus:border-[rgba(122,36,48,0.45)]"
-                  placeholder="4.1"
-                />
-              </label>
-
-              <div className="grid grid-cols-2 gap-2">
-                <label className="block">
-                  <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                    Fuente
-                  </span>
-                  <select
-                    value={source}
-                    onChange={(e) => setSource(e.target.value as RatingSource)}
-                    className="w-full min-h-[44px] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.9)] px-3 py-2"
-                  >
-                    <option value="wine-searcher">Wine-Searcher</option>
-                    <option value="manual">Manual</option>
-                  </select>
-                </label>
-                <label className="block">
-                  <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                    Match
-                  </span>
-                  <select
-                    value={confidence}
-                    onChange={(e) =>
-                      setConfidence(e.target.value as MatchConfidence)
-                    }
-                    className="w-full min-h-[44px] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.9)] px-3 py-2"
-                  >
-                    <option value="confirmed">Confirmado</option>
-                    <option value="likely">Probable</option>
-                    <option value="uncertain">Inseguro</option>
-                  </select>
-                </label>
-              </div>
-
-              <button
-                type="button"
-                className="btn btn-primary min-h-[44px] w-full"
-                onClick={saveVerification}
-              >
-                {t("wine.saveVerification")}
-              </button>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
 
       {(onOpened || onEdit || onRemove || onMove) && (
         <div className="mt-6 min-w-0 space-y-2 border-t border-[var(--line)] pt-4">

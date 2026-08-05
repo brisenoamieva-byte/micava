@@ -295,9 +295,6 @@ export const en = {
     moveFurniture: "Move to another unit",
     confirmRemoveNamed:
       "Remove \"{name}\" from your cellar?\nIts slot will be freed if it had one.",
-    externalRating: "External rating",
-    verify: "Verify",
-    saveVerification: "Save verification",
     labelAlt: "Label for {name}",
     saveChanges: "Save changes",
     addToCellar: "Add to cellar",
@@ -344,7 +341,6 @@ export const en = {
     requestReview: "Request review",
     correctionPlaceholder: "Correct or clarify the specific fact…",
     correctionAria: "Which fact is wrong",
-    ratingRangeAlert: "Enter a rating between 1.0 and 5.0",
     storyReady: "Story ready",
     storyApplied: "Story applied to {count} matching bottles",
   },

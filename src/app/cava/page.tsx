@@ -33,8 +33,6 @@ import type {
   DepartAction,
   DepartExtras,
   Filters,
-  MatchConfidence,
-  RatingSource,
   Wine,
   WineDraft,
 } from "@/lib/types";
@@ -76,7 +74,6 @@ export default function CavaPage() {
     deleteCellarUnit,
     addWine,
     updateWine,
-    verifyWineRating,
     saveKimiResearch,
     saveKimiUserNote,
     setLabelImageUrl,
@@ -340,27 +337,6 @@ export default function CavaPage() {
     }
   }
 
-  function handleVerifyRating(
-    wine: Wine,
-    data: {
-      externalRating: number;
-      ratingSource: RatingSource;
-      matchConfidence: MatchConfidence;
-      syncVivino: boolean;
-    }
-  ) {
-    verifyWineRating(
-      wine.id,
-      {
-        externalRating: data.externalRating,
-        ratingSource: data.ratingSource,
-        lastCheckedAt: new Date().toISOString(),
-        matchConfidence: data.matchConfidence,
-      },
-      { syncVivino: data.syncVivino }
-    );
-  }
-
   const detailProps = {
     wine: selected,
     onBack: leaveDetail,
@@ -369,7 +345,6 @@ export default function CavaPage() {
     onEdit: openEdit,
     onRemove: (w: Wine) => handleDepart(w, "removed"),
     onOpened: (w: Wine) => openDepart(w, "opened"),
-    onVerifyRating: handleVerifyRating,
     onSaveKimiResearch: (w: Wine, research: Parameters<typeof saveKimiResearch>[1]) =>
       saveKimiResearch(w.id, research),
     onSaveKimiUserNote: (w: Wine, note: string | null) =>

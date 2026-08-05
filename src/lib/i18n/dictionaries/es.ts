@@ -291,9 +291,6 @@ export const es = {
     moveFurniture: "Mover de mueble",
     confirmRemoveNamed:
       "¿Quitar \"{name}\" de la cava?\nSe liberará su ubicación si tenía slot.",
-    externalRating: "Calificación externa",
-    verify: "Verificar",
-    saveVerification: "Guardar verificación",
     labelAlt: "Etiqueta de {name}",
     saveChanges: "Guardar cambios",
     addToCellar: "Agregar a la cava",
@@ -340,7 +337,6 @@ export const es = {
     requestReview: "Pedir revisión",
     correctionPlaceholder: "Corrige o aclara el dato concreto…",
     correctionAria: "Qué dato está mal",
-    ratingRangeAlert: "Ingresa una calificación entre 1.0 y 5.0",
     storyReady: "Historia lista",
     storyApplied: "Historia aplicada a {count} botellas iguales",
   },

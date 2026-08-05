@@ -18,7 +18,7 @@ import {
 } from "@/lib/scan-label";
 import type { Encounter, EncounterDraft, WineDraft } from "@/lib/types";
 import { useLocale, useT } from "@/lib/i18n";
-import { formatCavataleRating } from "@/lib/wines";
+import { countryDisplayName, formatCavataleRating } from "@/lib/wines";
 
 type Step = "identify" | "story";
 
@@ -561,7 +561,11 @@ export function EncuentroModal({
             <div className="rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.55)] px-3 py-2.5">
               <p className="font-medium text-ink">{identity.name}</p>
               <p className="text-xs text-ink-soft">
-                {[identity.winery, identity.vintage, identity.country]
+                {[
+                  identity.winery,
+                  identity.vintage,
+                  countryDisplayName(identity.country, locale),
+                ]
                   .filter(Boolean)
                   .join(" · ")}
               </p>

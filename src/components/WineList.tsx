@@ -2,7 +2,14 @@
 
 import type { Wine } from "@/lib/types";
 import { CountryFlag } from "@/components/CountryFlag";
-import { formatCavataleRating, formatPrice, formatVivino, typeAccent } from "@/lib/wines";
+import { useLocale, useT } from "@/lib/i18n";
+import {
+  countryDisplayName,
+  formatCavataleRating,
+  formatPrice,
+  formatVivino,
+  typeAccent,
+} from "@/lib/wines";
 
 type Props = {
   wines: Wine[];
@@ -20,12 +27,15 @@ export function WineList({
   compact = false,
   inventoryCount,
 }: Props) {
+  const t = useT();
+  const { locale } = useLocale();
+
   if (wines.length === 0) {
     return (
       <p className="py-10 text-center text-sm text-ink-soft">
         {inventoryCount === 0
-          ? "Tu cava está vacía. Agrega tu primera botella con una foto de la etiqueta."
-          : "Ningún vino coincide con los filtros."}
+          ? t("wine.emptyCellar")
+          : t("wine.noFilterMatches")}
       </p>
     );
   }
@@ -63,7 +73,8 @@ export function WineList({
                 <span className="truncate font-medium text-ink">{wine.name}</span>
               </span>
               <span className="mt-0.5 block truncate text-xs text-ink-soft">
-                {wine.country} · {wine.region} · {wine.vintage ?? "s/a"}
+                {countryDisplayName(wine.country, locale)} · {wine.region} ·{" "}
+                {wine.vintage ?? t("wine.naVintage")}
               </span>
             </span>
             <span className="shrink-0 text-right text-xs text-ink-soft">

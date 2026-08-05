@@ -1,11 +1,14 @@
 /**
  * Single source of truth for wine-producing countries used in:
  * add/edit forms, flags, label scan normalization, and AI prompts.
- * Display names are Spanish (app locale).
+ * Canonical `name` is Spanish (DB / filters); `nameEn` is for English UI.
  */
 
 export type WineCountry = {
+  /** Canonical Spanish name stored in the DB. */
   name: string;
+  /** English display name. */
+  nameEn: string;
   /** ISO 3166-1 alpha-2 (uppercase) for compact UI */
   code: string;
   /** ISO 3166-1 alpha-2 (lowercase) for flagcdn */
@@ -19,6 +22,7 @@ export type WineCountry = {
 export const WINE_COUNTRIES: readonly WineCountry[] = [
   {
     name: "Alemania",
+    nameEn: "Germany",
     code: "DE",
     iso: "de",
     emoji: "🇩🇪",
@@ -26,6 +30,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Argentina",
+    nameEn: "Argentina",
     code: "AR",
     iso: "ar",
     emoji: "🇦🇷",
@@ -33,6 +38,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Armenia",
+    nameEn: "Armenia",
     code: "AM",
     iso: "am",
     emoji: "🇦🇲",
@@ -40,6 +46,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Australia",
+    nameEn: "Australia",
     code: "AU",
     iso: "au",
     emoji: "🇦🇺",
@@ -47,6 +54,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Austria",
+    nameEn: "Austria",
     code: "AT",
     iso: "at",
     emoji: "🇦🇹",
@@ -54,6 +62,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Brasil",
+    nameEn: "Brazil",
     code: "BR",
     iso: "br",
     emoji: "🇧🇷",
@@ -61,6 +70,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Bulgaria",
+    nameEn: "Bulgaria",
     code: "BG",
     iso: "bg",
     emoji: "🇧🇬",
@@ -68,6 +78,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Canadá",
+    nameEn: "Canada",
     code: "CA",
     iso: "ca",
     emoji: "🇨🇦",
@@ -75,6 +86,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Chile",
+    nameEn: "Chile",
     code: "CL",
     iso: "cl",
     emoji: "🇨🇱",
@@ -82,6 +94,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "China",
+    nameEn: "China",
     code: "CN",
     iso: "cn",
     emoji: "🇨🇳",
@@ -89,6 +102,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Chipre",
+    nameEn: "Cyprus",
     code: "CY",
     iso: "cy",
     emoji: "🇨🇾",
@@ -96,6 +110,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Croacia",
+    nameEn: "Croatia",
     code: "HR",
     iso: "hr",
     emoji: "🇭🇷",
@@ -103,6 +118,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Eslovenia",
+    nameEn: "Slovenia",
     code: "SI",
     iso: "si",
     emoji: "🇸🇮",
@@ -110,6 +126,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "España",
+    nameEn: "Spain",
     code: "ES",
     iso: "es",
     emoji: "🇪🇸",
@@ -117,6 +134,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Francia",
+    nameEn: "France",
     code: "FR",
     iso: "fr",
     emoji: "🇫🇷",
@@ -124,6 +142,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Georgia",
+    nameEn: "Georgia",
     code: "GE",
     iso: "ge",
     emoji: "🇬🇪",
@@ -131,6 +150,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Grecia",
+    nameEn: "Greece",
     code: "GR",
     iso: "gr",
     emoji: "🇬🇷",
@@ -138,6 +158,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Hungría",
+    nameEn: "Hungary",
     code: "HU",
     iso: "hu",
     emoji: "🇭🇺",
@@ -145,6 +166,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "India",
+    nameEn: "India",
     code: "IN",
     iso: "in",
     emoji: "🇮🇳",
@@ -152,6 +174,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Israel",
+    nameEn: "Israel",
     code: "IL",
     iso: "il",
     emoji: "🇮🇱",
@@ -159,6 +182,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Italia",
+    nameEn: "Italy",
     code: "IT",
     iso: "it",
     emoji: "🇮🇹",
@@ -166,6 +190,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Japón",
+    nameEn: "Japan",
     code: "JP",
     iso: "jp",
     emoji: "🇯🇵",
@@ -173,6 +198,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Líbano",
+    nameEn: "Lebanon",
     code: "LB",
     iso: "lb",
     emoji: "🇱🇧",
@@ -180,6 +206,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Luxemburgo",
+    nameEn: "Luxembourg",
     code: "LU",
     iso: "lu",
     emoji: "🇱🇺",
@@ -187,6 +214,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Marruecos",
+    nameEn: "Morocco",
     code: "MA",
     iso: "ma",
     emoji: "🇲🇦",
@@ -194,6 +222,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "México",
+    nameEn: "Mexico",
     code: "MX",
     iso: "mx",
     emoji: "🇲🇽",
@@ -201,6 +230,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Moldavia",
+    nameEn: "Moldova",
     code: "MD",
     iso: "md",
     emoji: "🇲🇩",
@@ -208,6 +238,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Montenegro",
+    nameEn: "Montenegro",
     code: "ME",
     iso: "me",
     emoji: "🇲🇪",
@@ -215,6 +246,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Nueva Zelanda",
+    nameEn: "New Zealand",
     code: "NZ",
     iso: "nz",
     emoji: "🇳🇿",
@@ -222,6 +254,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Perú",
+    nameEn: "Peru",
     code: "PE",
     iso: "pe",
     emoji: "🇵🇪",
@@ -229,6 +262,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Portugal",
+    nameEn: "Portugal",
     code: "PT",
     iso: "pt",
     emoji: "🇵🇹",
@@ -236,6 +270,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Reino Unido",
+    nameEn: "United Kingdom",
     code: "GB",
     iso: "gb",
     emoji: "🇬🇧",
@@ -254,6 +289,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "República Checa",
+    nameEn: "Czechia",
     code: "CZ",
     iso: "cz",
     emoji: "🇨🇿",
@@ -261,6 +297,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Rumania",
+    nameEn: "Romania",
     code: "RO",
     iso: "ro",
     emoji: "🇷🇴",
@@ -268,6 +305,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Serbia",
+    nameEn: "Serbia",
     code: "RS",
     iso: "rs",
     emoji: "🇷🇸",
@@ -275,6 +313,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Sudáfrica",
+    nameEn: "South Africa",
     code: "ZA",
     iso: "za",
     emoji: "🇿🇦",
@@ -282,6 +321,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Suiza",
+    nameEn: "Switzerland",
     code: "CH",
     iso: "ch",
     emoji: "🇨🇭",
@@ -289,6 +329,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Turquía",
+    nameEn: "Turkey",
     code: "TR",
     iso: "tr",
     emoji: "🇹🇷",
@@ -297,6 +338,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   {
     /** Kept as "USA" to match existing cellar / seed data. */
     name: "USA",
+    nameEn: "USA",
     code: "US",
     iso: "us",
     emoji: "🇺🇸",
@@ -314,6 +356,7 @@ export const WINE_COUNTRIES: readonly WineCountry[] = [
   },
   {
     name: "Uruguay",
+    nameEn: "Uruguay",
     code: "UY",
     iso: "uy",
     emoji: "🇺🇾",
@@ -338,6 +381,28 @@ export const countryFlagEmoji: Record<string, string> = Object.fromEntries(
   WINE_COUNTRIES.map((c) => [c.name, c.emoji])
 );
 
+const COUNTRY_BY_NAME: Record<string, WineCountry> = Object.fromEntries(
+  WINE_COUNTRIES.map((c) => [c.name, c])
+);
+
+/**
+ * Display label for a canonical (usually Spanish) country name.
+ * Unknown values are returned as-is; "Otro" → "Other" in English.
+ */
+export function countryDisplayName(
+  canonical: string,
+  locale: string = "es"
+): string {
+  const trimmed = canonical.trim();
+  if (!trimmed) return trimmed;
+  if (trimmed === "Otro" || trimmed.toLowerCase() === "other") {
+    return locale === "en" ? "Other" : "Otro";
+  }
+  const entry = COUNTRY_BY_NAME[trimmed];
+  if (!entry) return trimmed;
+  return locale === "en" ? entry.nameEn : entry.name;
+}
+
 function foldKey(value: string): string {
   return value
     .trim()
@@ -351,6 +416,7 @@ const COUNTRY_ALIAS_MAP: Record<string, string> = (() => {
   const map: Record<string, string> = {};
   for (const c of WINE_COUNTRIES) {
     map[foldKey(c.name)] = c.name;
+    map[foldKey(c.nameEn)] = c.name;
     map[foldKey(c.code)] = c.name;
     map[foldKey(c.iso)] = c.name;
     for (const a of c.aliases ?? []) {

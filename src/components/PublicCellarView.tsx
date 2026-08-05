@@ -7,6 +7,7 @@ import { ThinkingIndicator } from "@/components/ThinkingIndicator";
 import type { NetworkProfile, PublicWine } from "@/lib/network";
 import { placeLabel } from "@/lib/network";
 import {
+  countryDisplayName,
   formatCavataleRating,
   formatVivino,
   typeAccent,
@@ -62,7 +63,7 @@ export function PublicCellarView({
   showSignupCta = false,
 }: Props) {
   const t = useT();
-  const { dict } = useLocale();
+  const { dict, locale } = useLocale();
   const [mode, setMode] = useState<BrowseMode>("pais");
   const [query, setQuery] = useState("");
 
@@ -299,7 +300,9 @@ export function PublicCellarView({
                     {country !== "Sin país" ? (
                       <CountryFlag country={country} size="sm" />
                     ) : null}
-                    {country === "Sin país" ? t("public.noCountry") : country}
+                    {country === "Sin país"
+                      ? t("public.noCountry")
+                      : countryDisplayName(country, locale)}
                     <span className="font-normal text-ink-soft">
                       ({list.length})
                     </span>
@@ -336,7 +339,7 @@ export function PublicCellarView({
 
 function WineGroupList({ wines }: { wines: PublicWine[] }) {
   const t = useT();
-  const { dict } = useLocale();
+  const { dict, locale } = useLocale();
   return (
     <ul className="divide-y divide-[var(--line)]">
       {wines.map((w) => (
@@ -352,7 +355,13 @@ function WineGroupList({ wines }: { wines: PublicWine[] }) {
               <span className="truncate">{w.name}</span>
             </p>
             <p className="mt-0.5 text-xs text-ink-soft">
-              {[w.winery, w.vintage ?? t("wine.naVintage"), w.country, wineTypeLabel(dict, w.type), w.grape]
+              {[
+                w.winery,
+                w.vintage ?? t("wine.naVintage"),
+                countryDisplayName(w.country, locale),
+                wineTypeLabel(dict, w.type),
+                w.grape,
+              ]
                 .filter(Boolean)
                 .join(" · ")}
             </p>

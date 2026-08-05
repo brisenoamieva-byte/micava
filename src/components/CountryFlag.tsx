@@ -1,4 +1,12 @@
-import { countryCode, countryFlagEmoji, countryIso } from "@/lib/wines";
+"use client";
+
+import { useLocale } from "@/lib/i18n";
+import {
+  countryCode,
+  countryDisplayName,
+  countryFlagEmoji,
+  countryIso,
+} from "@/lib/wines";
 
 type Props = {
   country: string;
@@ -21,6 +29,8 @@ export function CountryFlag({
   showLabel = false,
   className = "",
 }: Props) {
+  const { locale } = useLocale();
+  const label = countryDisplayName(country, locale);
   const iso = countryIso[country];
   const code = countryCode[country] ?? country.slice(0, 2).toUpperCase();
   const emoji = countryFlagEmoji[country];
@@ -29,7 +39,7 @@ export function CountryFlag({
   return (
     <span
       className={["inline-flex items-center gap-2", className].join(" ")}
-      title={country}
+      title={label}
     >
       <span
         className={[
@@ -58,7 +68,7 @@ export function CountryFlag({
       {showLabel ? (
         <span className="text-sm text-ink">
           <span className="font-medium">{code}</span>
-          <span className="text-ink-soft"> · {country}</span>
+          <span className="text-ink-soft"> · {label}</span>
         </span>
       ) : null}
     </span>

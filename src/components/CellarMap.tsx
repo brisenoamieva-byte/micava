@@ -10,15 +10,16 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import type { Wine } from "@/lib/types";
-import { useT } from "@/lib/i18n";
-import { CountryFlag } from "@/components/CountryFlag";
+import { useLocale, useT } from "@/lib/i18n";
 import {
+  countryDisplayName,
   formatCavataleRating,
   formatVivino,
   getEmptySlots,
   getWineBySlot,
   typeAccent,
 } from "@/lib/wines";
+import { CountryFlag } from "@/components/CountryFlag";
 
 type Props = {
   wines: Wine[];
@@ -332,6 +333,7 @@ export function CellarMap({
   onPlaceAt,
 }: Props) {
   const t = useT();
+  const { locale } = useLocale();
   const touchUi = useTouchMoveUi();
   const abajo = wines.filter((w) => !w.slot || w.slot === "abajo");
   const [expanded, setExpanded] = useState(false);
@@ -853,7 +855,7 @@ export function CellarMap({
                         {wine.name}
                       </span>
                       <span className="block text-xs text-ink-soft">
-                        {wine.country}
+                        {countryDisplayName(wine.country, locale)}
                       </span>
                     </span>
                   </div>
@@ -1201,6 +1203,7 @@ function Row({
   endPress: (e: ReactPointerEvent<HTMLElement>) => void;
 }) {
   const t = useT();
+  const { locale } = useLocale();
   return (
     <>
       <div className="flex items-center text-[10px] font-medium text-ink-soft sm:text-[11px]">
@@ -1317,7 +1320,7 @@ function Row({
             : wine.vivino != null
               ? `Vivino ${formatVivino(wine.vivino)}`
               : "",
-          wine.country,
+          countryDisplayName(wine.country, locale),
           wine.type,
           slot,
         ]

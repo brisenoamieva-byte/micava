@@ -280,6 +280,9 @@ export const en = {
     selectFromMap: "Select a wine from the map or list",
     noWinery: "Winery not listed",
     naVintage: "n/v",
+    emptyCellar:
+      "Your cellar is empty. Add your first bottle with a photo of the label.",
+    noFilterMatches: "No wines match the filters.",
     year: "Year",
     location: "Location",
     belowOut: "Below / out",

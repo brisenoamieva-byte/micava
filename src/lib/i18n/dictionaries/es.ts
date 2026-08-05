@@ -276,6 +276,9 @@ export const es = {
     selectFromMap: "Selecciona un vino desde el mapa o la lista",
     noWinery: "Bodega sin registrar",
     naVintage: "s/a",
+    emptyCellar:
+      "Tu cava está vacía. Agrega tu primera botella con una foto de la etiqueta.",
+    noFilterMatches: "Ningún vino coincide con los filtros.",
     year: "Año",
     location: "Ubicación",
     belowOut: "Abajo / fuera",

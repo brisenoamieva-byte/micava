@@ -234,6 +234,7 @@ export function winesForFacet(
 
 export {
   countryCode,
+  countryDisplayName,
   countryFlagEmoji,
   countryIso,
   normalizeCountry,

@@ -5,7 +5,12 @@ import type { CellarLogEntry, CellarUnit, Wine } from "@/lib/types";
 import { CountryFlag } from "@/components/CountryFlag";
 import { buildInsights, qualityScore, type ReplenishItem } from "@/lib/analytics";
 import { useLocale, useT, wineTypeLabel } from "@/lib/i18n";
-import { formatCavataleRating, formatPrice, formatVivino } from "@/lib/wines";
+import {
+  countryDisplayName,
+  formatCavataleRating,
+  formatPrice,
+  formatVivino,
+} from "@/lib/wines";
 
 type Props = {
   wines: Wine[];
@@ -21,6 +26,7 @@ export function StatsDashboard({
   onSelectWine,
 }: Props) {
   const t = useT();
+  const { locale } = useLocale();
   const insights = useMemo(
     () => buildInsights(wines, cellars, history),
     [wines, cellars, history]
@@ -169,7 +175,7 @@ export function StatsDashboard({
                   <div className="min-w-0">
                     <div className="mb-1 flex items-baseline justify-between gap-2">
                       <span className="truncate text-sm font-medium text-ink">
-                        {c.name}
+                        {countryDisplayName(c.name, locale)}
                       </span>
                       <span className="shrink-0 text-xs text-ink-soft">
                         {c.count} · {Math.round(c.share * 100)}%
@@ -201,7 +207,8 @@ export function StatsDashboard({
             <DrilldownList
               title={
                 <>
-                  {t("stats.countryLabel")} <strong>{selectedCountry}</strong>
+                  {t("stats.countryLabel")}{" "}
+                  <strong>{countryDisplayName(selectedCountry, locale)}</strong>
                 </>
               }
               wines={countryWines}

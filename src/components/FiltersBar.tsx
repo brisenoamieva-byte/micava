@@ -10,6 +10,7 @@ import type { Filters, SortOption, Wine } from "@/lib/types";
 import { grapesInCellar } from "@/lib/grapes";
 import { useLocale, useT, wineTypeLabel } from "@/lib/i18n";
 import {
+  countryDisplayName,
   countryFlagEmoji,
   formatPrice,
   uniqueSorted,
@@ -144,7 +145,7 @@ function ScoreRangeTitle({ name }: { name: string }) {
 
 export function FiltersBar({ filters, onChange, total, wines }: Props) {
   const t = useT();
-  const { dict } = useLocale();
+  const { dict, locale } = useLocale();
 
   const sortOptions = useMemo(
     (): { value: SortOption; label: string }[] => [
@@ -383,7 +384,9 @@ export function FiltersBar({ filters, onChange, total, wines }: Props) {
               <option value="">{t("filters.all")}</option>
               {countries.map((c) => (
                 <option key={c} value={c}>
-                  {countryFlagEmoji[c] ? `${countryFlagEmoji[c]} ${c}` : c}
+                  {countryFlagEmoji[c]
+                    ? `${countryFlagEmoji[c]} ${countryDisplayName(c, locale)}`
+                    : countryDisplayName(c, locale)}
                   {` (${countryCounts.get(c) ?? 0})`}
                 </option>
               ))}

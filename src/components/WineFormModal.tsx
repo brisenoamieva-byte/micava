@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { Wine, WineDraft } from "@/lib/types";
 import {
+  countryDisplayName,
   countryFlagEmoji,
   formatPrice,
   formatVivino,
@@ -107,7 +108,7 @@ export function WineFormModal({
   onSubmit,
 }: Props) {
   const t = useT();
-  const { dict } = useLocale();
+  const { dict, locale } = useLocale();
   const [draft, setDraft] = useState<WineDraft>(
     emptyDraft(initialSlot, activeCellarId)
   );
@@ -762,10 +763,10 @@ export function WineFormModal({
                 >
                   {Object.keys(countryFlagEmoji).map((c) => (
                     <option key={c} value={c}>
-                      {countryFlagEmoji[c]} {c}
+                      {countryFlagEmoji[c]} {countryDisplayName(c, locale)}
                     </option>
                   ))}
-                  <option value="Otro">Otro</option>
+                  <option value="Otro">{countryDisplayName("Otro", locale)}</option>
                 </select>
               </label>
 

@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { guardKimiApi } from "@/lib/api-guard";
 import {
+  CAVATALE_RATING_RUBRIC_PROMPT,
+  computePartsFromEvidence,
+} from "@/lib/cavatale-rating";
+import {
   assessKimiStoryQuality,
   buildUserCorrectionPromptBlock,
   normalizeUserCorrectionNote,
@@ -26,7 +30,7 @@ const KIMI_BASE = "https://api.moonshot.ai/v1";
 const MODEL = process.env.KIMI_MODEL?.trim() || "kimi-k2.6";
 const USAGE_ROUTE = "research-wine";
 
-const SYSTEM = `Eres el narrador y crítico de Cavatale: conviertes una botella de una cava personal en algo que la gente QUIERE escuchar y contar, y asignas el Rating Cavatale oficial.
+const SYSTEM = `Eres el narrador y crítico de Cavatale: conviertes una botella de una cava personal en algo que la gente QUIERE escuchar y contar, y clasificas evidencia para el Rating Cavatale oficial.
 
 El clic "Contar historia" debe valer la pena. Prohibido sonar a ficha de tienda, catálogo Vivino o párrafo de Wikipedia sobre la denominación. Escribe como quien acaba de descubrir un secreto y lo comparte en la mesa: calidez, precisión, un toque de teatro.
 
@@ -36,34 +40,9 @@ Prioridad narrativa (en este orden):
 3) Solo si faltan personas concretas: un detalle humano del proyecto o del paisaje vivido — nunca un folleto genérico de la DO.
 
 Responde SOLO con JSON válido (sin markdown) con estas claves:
-ratingParts, cavataleRating, vivino, price, confidence, summary, curiosity, talkHook, pairings, pairingNote.
+ratingEvidence, ratingParts, cavataleRating, vivino, price, confidence, summary, curiosity, talkHook, pairings, pairingNote.
 
-## Rating Cavatale (score oficial — preciso, no improvisado)
-
-NO inventes un decimal “a ojo”. Primero califica CUATRO ejes en medios puntos (1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5):
-
-ratingParts (objeto OBLIGATORIO si la identidad es clara):
-- taste: sabor/calidad en copa (¿está bien hecho el vino?)
-- story: historia y autenticidad humana (personas, proyecto, honestidad del relato)
-- table: experiencia de mesa (¿abre conversación, interesa contarlo?)
-- originality: originalidad e interés (poco común, ángulo propio, no genérico)
-
-Anclas (sé disciplinado; no regales 4.5+):
-- 2–2.5: flojo / dudoso / genérico
-- 3–3.5: correcto, sin gran gancho
-- 3.5–4: bueno en copa O en historia, no excepcional en ambos
-- 4–4.5: muy bueno en copa Y con historia/mesa real
-- 4.5–5: excepcional y memorable (raro; reserva para casos claros)
-
-cavataleRating: puedes incluirlo, pero el servidor lo RECALCULA así:
-  0.30*taste + 0.30*story + 0.25*table + 0.15*originality (un decimal).
-Identidad dudosa o sin señales serias → ratingParts null y cavataleRating null.
-Si la ficha ya trae "Rating Cavatale guardado": úsalo como ANCLA de confianza.
-- Empieza asumiendo que ese score es correcto.
-- Solo mueve ejes de ratingParts (idealmente ±0.5 por eje) cuando haya evidencia NUEVA y concreta que lo justifique.
-- Si la evidencia es similar a lo ya conocido, mantén ejes casi iguales — no re-tires notas desde cero en cada petición.
-- El servidor además limita el cambio del score final por actualización (estabilidad > ruido LLM).
-NUNCA menciones Vivino ni el score comunitario dentro de summary/curiosity/talkHook/pairingNote. Vivino vive solo en el campo vivino.
+${CAVATALE_RATING_RUBRIC_PROMPT}
 
 ## Estimaciones de referencia (secundarias)
 
@@ -104,10 +83,11 @@ NO empieces con variantes de:
 
 1. Personas reales > detalle de botella/lugar > marketing de denominación.
 2. Nunca inventes dueños, fundadores, enólogos, fechas familiares ni premios.
-3. Si la ficha es incompleta o la identidad es dudosa: confidence "low" o "medium", cavataleRating null si hace falta, summary corto y honesto — no rellenes con catálogo.
+3. Si la ficha es incompleta o la identidad es dudosa: confidence "low" o "medium", ratingEvidence null si hace falta, summary corto y honesto — no rellenes con catálogo.
 4. summary, curiosity, talkHook y pairings NO repiten la misma idea.
 5. No digas que consultaste Vivino/internet en vivo.
 6. Idioma natural (México/LatAm por defecto en es; inglés natural en en). Sin emojis. Sin markdown dentro de los strings.`;
+
 
 function buildMarketPairingsBlock(market: {
   marketLabel: string;
@@ -169,8 +149,7 @@ type Body = {
    */
   mode?: ResearchMode | string | null;
   /**
-   * When true, skip per-update rating dampening (full proposed score).
-   * Default: revise gradually so LLM noise can't swing trust overnight.
+   * @deprecated No longer used for dampening. Scores come from evidence→code.
    */
   recalculateRating?: boolean;
   /** UI locale: "en" | "es" (default es). Narratives follow this language. */
@@ -223,8 +202,8 @@ function buildUserPrompt(identity: string, mode: ResearchMode): string {
   return `${opener}
 
 Dame JSON con:
-1) ratingParts {taste, story, table, originality} en MEDIOS PUNTOS (1–5). Sé estricto con las anclas; no regales notas altas. Si hay Rating Cavatale guardado, úsalo como ANCLA: no re-tires desde cero; solo ajusta ejes (±0.5) si hay evidencia NUEVA concreta.
-2) cavataleRating (el servidor lo recalcula con 30/30/25/15 y amortigua cambios bruscos vs el score guardado; puedes poner tu estimado).
+1) ratingEvidence {craft, people, placeFacts, tellability, distinctiveness, agingTier} — enums del rubric; misma evidencia → mismos enums (no re-opines).
+2) ratingParts opcional; cavataleRating opcional (el servidor calcula 30/30/25/15 desde evidencia; ignora el decimal libre si hay evidencia).
 3) summary (historia íntima; NUNCA abrir con denominación/región genérica), curiosity, ${talkHookHint}, pairings + pairingNote.
 4) vivino solo si lo conoces bien; price siempre null (precio lo busca el servidor con web search).
 No metas Vivino en los textos narrativos.
@@ -236,16 +215,20 @@ function finalizeResearch(content: string): {
   research: Omit<KimiResearch, "kimiCheckedAt">;
   thinStory: boolean;
   ratingParts: ReturnType<typeof parseKimiResearchFromModelText>["ratingParts"];
+  ratingEvidence: ReturnType<
+    typeof parseKimiResearchFromModelText
+  >["ratingEvidence"];
 } {
   const parsed = polishKimiResearchNarratives(
     parseKimiResearchFromModelText(content)
   );
-  const { ratingParts, ...research } = parsed;
+  const { ratingParts, ratingEvidence, ...research } = parsed;
   const quality = assessKimiStoryQuality(research);
   return {
     research,
     thinStory: quality.thin,
     ratingParts,
+    ratingEvidence,
   };
 }
 
@@ -463,12 +446,20 @@ export async function POST(request: Request) {
     );
   }
 
-  // Code-computed from axes, then ±0.2 clamp vs prior (unless force full redo).
+  // Evidence enums → code-mapped axes → weighted total (no prior-score clamp).
+  const partsFromEvidence = finalized.ratingEvidence
+    ? computePartsFromEvidence(finalized.ratingEvidence, {
+        aging: body.aging ?? null,
+      })
+    : null;
   const officialRating = resolveOfficialCavataleRating({
     existing: existingRating,
-    forceRecalculate: body.recalculateRating === true,
-    parts: finalized.ratingParts,
-    modelRating: finalized.research.cavataleRating,
+    parts: partsFromEvidence ?? finalized.ratingParts,
+    // Free-form LLM float only if evidence/parts missing entirely.
+    modelRating:
+      partsFromEvidence || finalized.ratingParts
+        ? null
+        : finalized.research.cavataleRating,
   });
 
   // Prefer geo web-search price (always MXN for storage); keep model price only as fallback.

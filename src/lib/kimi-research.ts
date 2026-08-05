@@ -1,5 +1,28 @@
 import type { MatchConfidence, Wine } from "@/lib/types";
 import { extractJsonObject } from "@/lib/scan-label";
+import {
+  computeCavataleRatingFromParts,
+  computePartsFromEvidence,
+  parseCavataleRatingEvidence,
+  parseCavataleRatingParts,
+  type CavataleRatingEvidence,
+  type CavataleRatingParts,
+} from "@/lib/cavatale-rating";
+
+export type {
+  CavataleRatingEvidence,
+  CavataleRatingParts,
+} from "@/lib/cavatale-rating";
+export {
+  CAVATALE_RATING_WEIGHTS,
+  computeCavataleRatingFromParts,
+  computeOfficialFromEvidence,
+  computePartsFromEvidence,
+  parseCavataleRatingEvidence,
+  parseCavataleRatingParts,
+  snapHalfPoint,
+  CAVATALE_RATING_RUBRIC_PROMPT,
+} from "@/lib/cavatale-rating";
 
 export type KimiResearch = {
   /** Official Cavatale rating 1–5 (primary). */
@@ -31,127 +54,35 @@ export const emptyKimiResearch: KimiResearch = {
 };
 
 /**
- * Max |Δ| on one Contar historia / Actualizar when a prior score exists.
- * Lets solid evidence move the rating over repeated runs without locking forever,
- * while stopping LLM axis re-rolls from swinging trust (e.g. 3.8→3.3) in one pass.
- */
-export const CAVATALE_RATING_MAX_STEP = 0.2;
-
-function roundCavataleOneDecimal(n: number): number {
-  return Math.round(n * 10) / 10;
-}
-
-function inCavataleRange(n: number): boolean {
-  return n >= 1 && n <= 5;
-}
-
-/**
  * Prefer a fresh research score when present; keep the stored one only as
  * fallback so a thin/failed pass never wipes an existing rating with null.
- *
- * When both exist, clamp |Δ| to {@link CAVATALE_RATING_MAX_STEP} so successive
- * Actualizar runs can't swing from subjective axis noise. Not a forever lock —
- * repeated updates (or forceRecalculate) can still revise with better evidence.
+ * No dampening: the methodology should arrive at the correct score from
+ * evidence; protecting a wrong prior is intentional non-goal.
  */
 export function stabilizeCavataleRating(
   existing: number | null | undefined,
   incoming: number | null | undefined,
-  opts?: { forceRecalculate?: boolean; maxStep?: number }
+  /** @deprecated Ignored — kept for call-site compatibility. */
+  _opts?: { forceRecalculate?: boolean; maxStep?: number }
 ): number | null {
-  let next: number | null = null;
   if (incoming != null && Number.isFinite(incoming)) {
-    const proposed = roundCavataleOneDecimal(incoming);
-    if (inCavataleRange(proposed)) next = proposed;
+    const next = Math.round(incoming * 10) / 10;
+    if (next >= 1 && next <= 5) return next;
   }
-
-  let prev: number | null = null;
   if (existing != null && Number.isFinite(existing)) {
-    const kept = roundCavataleOneDecimal(existing);
-    if (inCavataleRange(kept)) prev = kept;
+    const kept = Math.round(existing * 10) / 10;
+    if (kept >= 1 && kept <= 5) return kept;
   }
-
-  if (next == null) return prev;
-  if (prev == null || opts?.forceRecalculate) return next;
-
-  const maxStep = opts?.maxStep ?? CAVATALE_RATING_MAX_STEP;
-  const delta = Math.max(-maxStep, Math.min(maxStep, next - prev));
-  const damped = roundCavataleOneDecimal(prev + delta);
-  return inCavataleRange(damped) ? damped : next;
-}
-
-/** Four judged axes; final score is a fixed weighted formula (not a free LLM decimal). */
-export type CavataleRatingParts = {
-  taste: number;
-  story: number;
-  table: number;
-  originality: number;
-};
-
-export const CAVATALE_RATING_WEIGHTS = {
-  taste: 0.3,
-  story: 0.3,
-  table: 0.25,
-  originality: 0.15,
-} as const;
-
-/** Snap to half-points 1.0–5.0 so component scores stay comparable across runs. */
-export function snapHalfPoint(value: number | null | undefined): number | null {
-  if (value == null || !Number.isFinite(value)) return null;
-  const snapped = Math.round(value * 2) / 2;
-  if (snapped < 1 || snapped > 5) return null;
-  return snapped;
-}
-
-/** Deterministic official score from the four axes. */
-export function computeCavataleRatingFromParts(
-  parts: CavataleRatingParts
-): number {
-  const raw =
-    parts.taste * CAVATALE_RATING_WEIGHTS.taste +
-    parts.story * CAVATALE_RATING_WEIGHTS.story +
-    parts.table * CAVATALE_RATING_WEIGHTS.table +
-    parts.originality * CAVATALE_RATING_WEIGHTS.originality;
-  return Math.round(raw * 10) / 10;
-}
-
-export function parseCavataleRatingParts(
-  raw: unknown
-): CavataleRatingParts | null {
-  if (!raw || typeof raw !== "object") return null;
-  const o = raw as Record<string, unknown>;
-  const taste = snapHalfPoint(
-    asOptionalNumber(o.taste ?? o.sabor ?? o.copa ?? o.flavor)
-  );
-  const story = snapHalfPoint(
-    asOptionalNumber(o.story ?? o.historia ?? o.authenticity ?? o.autenticidad)
-  );
-  const table = snapHalfPoint(
-    asOptionalNumber(o.table ?? o.mesa ?? o.experience ?? o.experiencia)
-  );
-  const originality = snapHalfPoint(
-    asOptionalNumber(
-      o.originality ?? o.interes ?? o.interest ?? o.originalidad
-    )
-  );
-  if (
-    taste == null ||
-    story == null ||
-    table == null ||
-    originality == null
-  ) {
-    return null;
-  }
-  return { taste, story, table, originality };
+  return null;
 }
 
 /**
- * Official score is always code-computed from weighted parts when present
- * (never a free-form LLM float). Then dampened vs the prior score unless
- * forceRecalculate — see stabilizeCavataleRating.
+ * Official score priority: evidence→parts (caller) > weighted parts >
+ * model decimal (last resort) > keep existing.
  */
 export function resolveOfficialCavataleRating(options: {
   existing?: number | null;
-  /** Skip per-update clamp (explicit full redo). */
+  /** @deprecated Ignored. */
   forceRecalculate?: boolean;
   parts?: CavataleRatingParts | null;
   modelRating?: number | null;
@@ -160,11 +91,9 @@ export function resolveOfficialCavataleRating(options: {
   const fromParts = options.parts
     ? computeCavataleRatingFromParts(options.parts)
     : null;
+  // Prefer code-computed parts; free-form LLM float only if no parts.
   const incoming = fromParts ?? options.modelRating ?? null;
-  return stabilizeCavataleRating(options.existing, incoming, {
-    forceRecalculate: options.forceRecalculate,
-    maxStep: options.maxStep,
-  });
+  return stabilizeCavataleRating(options.existing, incoming);
 }
 
 export function withKimiDefaults<T extends Partial<Wine>>(
@@ -341,15 +270,26 @@ export function parseKimiPairingsBlob(
 export function parseKimiResearchPayload(raw: unknown): Omit<
   KimiResearch,
   "kimiCheckedAt"
-> & { ratingParts: CavataleRatingParts | null } {
+> & {
+  ratingParts: CavataleRatingParts | null;
+  ratingEvidence: CavataleRatingEvidence | null;
+} {
   if (!raw || typeof raw !== "object") {
     throw new Error("Respuesta de investigación inválida.");
   }
   const o = raw as Record<string, unknown>;
 
-  const ratingParts = parseCavataleRatingParts(
+  const ratingEvidence = parseCavataleRatingEvidence(
+    o.ratingEvidence ?? o.evidence ?? o.cavataleEvidence
+  );
+  const legacyParts = parseCavataleRatingParts(
     o.ratingParts ?? o.cavataleParts ?? o.scores ?? o.rating_parts
   );
+  // Prefer code-mapped axes from structured evidence over free half-points.
+  const ratingParts =
+    (ratingEvidence
+      ? computePartsFromEvidence(ratingEvidence)
+      : null) ?? legacyParts;
   const fromParts = ratingParts
     ? computeCavataleRatingFromParts(ratingParts)
     : null;
@@ -358,6 +298,7 @@ export function parseKimiResearchPayload(raw: unknown): Omit<
       o.cavataleRating ?? o.cavatale_rating ?? o.ratingCavatale
     )
   );
+  // Never prefer free-form float when parts/evidence exist.
   const cavataleRating = fromParts ?? modelRating;
 
   let kimiVivino = clampScore(
@@ -383,6 +324,7 @@ export function parseKimiResearchPayload(raw: unknown): Omit<
   return {
     cavataleRating,
     ratingParts,
+    ratingEvidence,
     kimiVivino,
     kimiPrice,
     kimiSummary: asString(o.summary ?? o.notes ?? o.kimiSummary) || null,
@@ -406,7 +348,10 @@ export function parseKimiResearchPayload(raw: unknown): Omit<
 export function parseKimiResearchFromModelText(text: string): Omit<
   KimiResearch,
   "kimiCheckedAt"
-> & { ratingParts: CavataleRatingParts | null } {
+> & {
+  ratingParts: CavataleRatingParts | null;
+  ratingEvidence: CavataleRatingEvidence | null;
+} {
   return parseKimiResearchPayload(extractJsonObject(text));
 }
 
@@ -434,7 +379,7 @@ export function wineIdentityForResearch(wine: Pick<
     `Añejamiento: ${wine.aging || "—"}`,
     `Año: ${wine.vintage ?? "—"}`,
     `Vivino (comunidad) guardado: ${wine.vivino ?? "sin dato"}`,
-    `Rating Cavatale guardado (ancla; no re-roll desde cero): ${wine.cavataleRating ?? "sin dato"}`,
+    `Rating Cavatale guardado (histórico; no sesga el score): ${wine.cavataleRating ?? "sin dato"}`,
     `Precio guardado en Cavatale (MXN): ${wine.price ?? "sin dato"}`,
   ].join("\n");
 }

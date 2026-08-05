@@ -362,7 +362,7 @@ export default function CavaPage() {
   };
 
   return (
-    <main className="grain relative min-h-screen min-h-[100dvh] xl:flex xl:h-dvh xl:min-h-0 xl:flex-col xl:overflow-y-auto">
+    <main className="grain relative min-h-screen min-h-[100dvh]">
       {showHowTo ? (
         <div
           className="fixed inset-0 z-[80] flex items-end justify-center p-4 sm:items-center"
@@ -398,7 +398,7 @@ export default function CavaPage() {
           </div>
         </div>
       ) : null}
-      <div className="relative z-10 mx-auto flex w-full max-w-[1400px] flex-1 flex-col px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))] md:px-8 xl:min-h-0 xl:overflow-y-auto xl:pb-6">
+      <div className="relative z-10 mx-auto flex w-full max-w-[1400px] flex-col px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))] md:px-8 xl:pb-6">
         {!isOnline ? (
           <div
             role="status"
@@ -786,11 +786,11 @@ export default function CavaPage() {
           />
         </div>
 
-        <div className="flex min-h-[min(70vh,800px)] flex-1 flex-col overflow-hidden">
+        <div className="flex flex-col">
         <ResizableDesktopPanels
           map={
-            <section className="panel-focus flex h-full min-h-0 flex-col overflow-y-auto p-5">
-              <div className="mb-4 flex shrink-0 items-baseline justify-between gap-3">
+            <section className="panel-focus p-5">
+              <div className="mb-4 flex items-baseline justify-between gap-3">
                 <h2 className="display text-2xl text-ink">
                   {activeCellar ? activeCellar.name : t("cava.cellarMap")}
                 </h2>
@@ -841,7 +841,7 @@ export default function CavaPage() {
             </section>
           }
           detail={
-            <section className="panel-focus flex h-full min-h-0 min-w-0 flex-col overflow-y-auto p-5">
+            <section className="panel-focus min-w-0 p-5">
               <WineDetail {...detailProps} />
             </section>
           }

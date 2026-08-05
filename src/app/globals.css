@@ -823,40 +823,38 @@ select {
   }
 
   /*
-   * Host fills remaining viewport height (flex child of cava page).
-   * Hard min-height floor: flex-1 + min-height:0 alone collapses to ~header
-   * height when header/filters consume most of 100dvh (~60–80px panels).
+   * Bar + Ficha size to content (no inner scroll, no dvh clip shell).
+   * Inventario height is set in JS to max(bar, ficha); list scrolls inside.
    */
   .desktop-panels-host.desktop-only {
     display: flex;
     flex-direction: column;
-    flex: 1 1 auto;
-    min-height: min(70vh, 800px);
-    overflow: hidden;
   }
 
-  /* Shared row fills host; columns stretch; list/detail scroll inside. */
   .desktop-panels {
     display: grid;
     gap: 0;
-    align-items: stretch;
-    flex: 1 1 0%;
-    min-height: 0;
-    overflow: hidden;
+    align-items: start;
   }
 
   .desktop-panels > .min-w-0 {
-    min-height: 0;
-    height: 100%;
-    overflow: hidden;
     display: flex;
     flex-direction: column;
+    min-width: 0;
   }
 
-  .desktop-panels > .min-w-0 > .panel,
-  .desktop-panels > .min-w-0 > .panel-focus,
-  .desktop-panels > .min-w-0 > .panel-quiet {
-    flex: 1 1 0%;
+  .desktop-panels > .desktop-panel-map > .panel-focus,
+  .desktop-panels > .desktop-panel-detail > .panel-focus {
+    overflow: visible;
+  }
+
+  .desktop-panels > .desktop-panel-inventory {
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  .desktop-panels > .desktop-panel-inventory > .panel-quiet {
+    flex: 1 1 auto;
     min-height: 0;
     height: 100%;
     overflow: hidden;

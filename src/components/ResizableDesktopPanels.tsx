@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
@@ -45,7 +46,10 @@ function loadCols(): [number, number, number] {
 
 export function ResizableDesktopPanels({ map, inventory, detail }: Props) {
   const [cols, setCols] = useState<[number, number, number] | null>(null);
+  const [inventoryHeight, setInventoryHeight] = useState<number | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const mapColRef = useRef<HTMLDivElement>(null);
+  const detailColRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
     index: 0 | 1;
     startX: number;
@@ -59,6 +63,28 @@ export function ResizableDesktopPanels({ map, inventory, detail }: Props) {
   useEffect(() => {
     if (!cols) return;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(cols));
+  }, [cols]);
+
+  /**
+   * Inventario height = max(Bar, Ficha) content heights.
+   * Bar/Ficha size to content (no inner scroll); only Inventario scrolls.
+   */
+  useLayoutEffect(() => {
+    if (!cols) return;
+    const mapEl = mapColRef.current;
+    const detailEl = detailColRef.current;
+    if (!mapEl || !detailEl) return;
+
+    const sync = () => {
+      const next = Math.max(mapEl.offsetHeight, detailEl.offsetHeight);
+      setInventoryHeight((prev) => (prev === next ? prev : next));
+    };
+
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(mapEl);
+    ro.observe(detailEl);
+    return () => ro.disconnect();
   }, [cols]);
 
   const onPointerMove = useCallback((e: PointerEvent) => {
@@ -132,17 +158,29 @@ export function ResizableDesktopPanels({ map, inventory, detail }: Props) {
   }
 
   return (
-    <div className="desktop-panels-host desktop-only mt-6 h-full min-h-0 flex-1">
+    <div className="desktop-panels-host desktop-only mt-6">
       <div
         ref={wrapRef}
-        className="desktop-panels min-h-0 flex-1"
+        className="desktop-panels"
         style={{
           gridTemplateColumns: `${cols[0]}fr ${cols[1]}fr ${cols[2]}fr`,
         }}
       >
-        <div className="flex h-full min-h-0 min-w-0 flex-col">{map}</div>
+        <div
+          ref={mapColRef}
+          className="desktop-panel-map min-w-0"
+        >
+          {map}
+        </div>
 
-        <div className="relative flex h-full min-h-0 min-w-0 flex-col">
+        <div
+          className="desktop-panel-inventory relative min-w-0"
+          style={
+            inventoryHeight != null
+              ? { height: inventoryHeight, maxHeight: inventoryHeight }
+              : undefined
+          }
+        >
           <button
             type="button"
             aria-label="Redimensionar mapa e inventario"
@@ -153,7 +191,10 @@ export function ResizableDesktopPanels({ map, inventory, detail }: Props) {
           {inventory}
         </div>
 
-        <div className="relative flex h-full min-h-0 min-w-0 flex-col">
+        <div
+          ref={detailColRef}
+          className="desktop-panel-detail relative min-w-0"
+        >
           <button
             type="button"
             aria-label="Redimensionar inventario y detalle"

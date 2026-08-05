@@ -14,7 +14,6 @@ import { useLocale, useT } from "@/lib/i18n";
 import {
   countryDisplayName,
   formatCavataleRating,
-  formatVivino,
   getEmptySlots,
   getWineBySlot,
   typeAccent,
@@ -61,8 +60,6 @@ function cellMeta(wine: Wine): string {
   const bits: string[] = [];
   if (wine.cavataleRating != null) {
     bits.push(formatCavataleRating(wine.cavataleRating));
-  } else if (wine.vivino != null) {
-    bits.push(formatVivino(wine.vivino));
   } else if (wine.vintage != null) {
     bits.push(String(wine.vintage));
   } else if (wine.type) {
@@ -1317,9 +1314,7 @@ function Row({
           wine.vintage != null ? String(wine.vintage) : "",
           wine.cavataleRating != null
             ? `Cavatale ${formatCavataleRating(wine.cavataleRating)}`
-            : wine.vivino != null
-              ? `Vivino ${formatVivino(wine.vivino)}`
-              : "",
+            : "",
           countryDisplayName(wine.country, locale),
           wine.type,
           slot,

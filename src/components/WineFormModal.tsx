@@ -6,7 +6,7 @@ import {
   countryDisplayName,
   countryFlagEmoji,
   formatPrice,
-  formatVivino,
+  formatCavataleRating,
   getEmptySlots,
   getWineBySlot,
   parseLocation,
@@ -85,7 +85,9 @@ function buildCatalog(wines: Wine[]): Wine[] {
     }
     // Prefer the one with more complete data
     const score = (x: Wine) =>
-      (x.vivino != null ? 2 : 0) + (x.price != null ? 1 : 0) + (x.grape ? 1 : 0);
+      (x.cavataleRating != null ? 2 : 0) +
+      (x.price != null ? 1 : 0) +
+      (x.grape ? 1 : 0);
     if (score(w) > score(prev)) map.set(key, w);
   }
   return [...map.values()].sort((a, b) =>
@@ -353,7 +355,7 @@ export function WineFormModal({
       applyFieldsHint(
         fields,
         proposedPrice,
-        payload.needsEnrich ? "Buscando Vivino y precio…" : undefined
+        payload.needsEnrich ? "Buscando precio de referencia…" : undefined
       );
 
       // Identity is already on screen — enrich market data in the background.
@@ -573,7 +575,13 @@ export function WineFormModal({
                                 {w.name}
                               </span>
                               <span className="block truncate text-xs text-ink-soft">
-                                {[w.winery, w.vintage, formatVivino(w.vivino)]
+                                {[
+                                  w.winery,
+                                  w.vintage,
+                                  w.cavataleRating != null
+                                    ? formatCavataleRating(w.cavataleRating)
+                                    : null,
+                                ]
                                   .filter(Boolean)
                                   .join(" · ")}
                               </span>
@@ -817,21 +825,6 @@ export function WineFormModal({
                     patch("vintage", parseOptionalNumber(e.target.value))
                   }
                   placeholder="2021"
-                />
-              </label>
-
-              <label>
-                <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                  {t("wine.vivino")}
-                </span>
-                <input
-                  className={fieldClass}
-                  inputMode="decimal"
-                  value={draft.vivino ?? ""}
-                  onChange={(e) =>
-                    patch("vivino", parseOptionalNumber(e.target.value))
-                  }
-                  placeholder="4.1"
                 />
               </label>
 

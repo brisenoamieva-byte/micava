@@ -9,7 +9,6 @@ import { placeLabel } from "@/lib/network";
 import {
   countryDisplayName,
   formatCavataleRating,
-  formatVivino,
   typeAccent,
 } from "@/lib/wines";
 import { useLocale, useT, wineTypeLabel } from "@/lib/i18n";
@@ -38,7 +37,6 @@ function wineSearchHaystack(w: PublicWine): string {
 
 function ratingScore(w: PublicWine): number {
   if (w.cavatale_rating != null) return w.cavatale_rating;
-  if (w.vivino != null) return w.vivino;
   return -1;
 }
 
@@ -371,14 +369,9 @@ function WineGroupList({ wines }: { wines: PublicWine[] }) {
               <p className="font-medium text-ink">
                 {t("wine.rating")} {formatCavataleRating(w.cavatale_rating)}
               </p>
-            ) : null}
-            {w.vivino != null ? (
-              <p className={w.cavatale_rating != null ? "" : "font-medium text-ink"}>
-                {t("wine.vivino")} {formatVivino(w.vivino)}
-              </p>
-            ) : w.cavatale_rating == null ? (
+            ) : (
               <p>—</p>
-            ) : null}
+            )}
           </div>
         </li>
       ))}

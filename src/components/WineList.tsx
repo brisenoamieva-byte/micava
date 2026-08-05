@@ -7,7 +7,6 @@ import {
   countryDisplayName,
   formatCavataleRating,
   formatPrice,
-  formatVivino,
   typeAccent,
 } from "@/lib/wines";
 
@@ -81,7 +80,7 @@ export function WineList({
               <span className="block font-medium text-ink">
                 {wine.cavataleRating != null
                   ? `Cavatale ${formatCavataleRating(wine.cavataleRating)}`
-                  : `Vivino ${formatVivino(wine.vivino)}`}
+                  : "—"}
               </span>
               <span className="block">{formatPrice(wine.price)}</span>
             </span>

@@ -30,7 +30,7 @@ export type CellarInsights = {
   bottles: number;
   value: number;
   avgPrice: number | null;
-  /** Mean Cavatale rating when available; falls back to Vivino mean if none. */
+  /** Mean Cavatale rating (bottles with a Cavatale score only). */
   avgCavatale: number | null;
   /** @deprecated Prefer avgCavatale; kept as alias for callers. */
   avgVivino: number | null;
@@ -78,17 +78,17 @@ function replenishKey(w: { name: string; winery: string }): string {
 }
 
 function preferBottle(a: Wine, b: Wine): Wine {
-  const aC = a.cavataleRating ?? a.vivino ?? 0;
-  const bC = b.cavataleRating ?? b.vivino ?? 0;
+  const aC = a.cavataleRating ?? 0;
+  const bC = b.cavataleRating ?? 0;
   if (aC !== bC) return aC > bC ? a : b;
   return (a.price ?? 0) >= (b.price ?? 0) ? a : b;
 }
 
-/** Official quality score for dashboard ranking (Cavatale first). */
-export function qualityScore(w: Pick<Wine, "cavataleRating" | "vivino">): number | null {
-  if (w.cavataleRating != null) return w.cavataleRating;
-  if (w.vivino != null) return w.vivino;
-  return null;
+/** Official quality score for dashboard ranking (Cavatale only). */
+export function qualityScore(
+  w: Pick<Wine, "cavataleRating">
+): number | null {
+  return w.cavataleRating ?? null;
 }
 
 function uniqueByIdentity(wines: Wine[]): Wine[] {

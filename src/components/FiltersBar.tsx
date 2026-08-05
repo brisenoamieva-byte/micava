@@ -60,7 +60,7 @@ type DualRangeFieldProps = {
   maxAria: string;
 };
 
-/** Shared layout so Vivino / Cavatale / Precio align across sm:grid-cols-3. */
+/** Shared layout so Cavatale / Precio align across sm:grid-cols-2. */
 function DualRangeField({
   label,
   bounds,
@@ -81,7 +81,7 @@ function DualRangeField({
 
   return (
     <label className="flex min-w-0 flex-col">
-      {/* Reserved 2-line slot keeps Vivino/Cavatale/Precio cards aligned; items-end
+      {/* Reserved 2-line slot keeps range cards aligned; items-end
           pins the title to the bottom so it reads with its slider, not the block above. */}
       <span className="mb-0.5 grid min-h-[2.5rem] grid-cols-[minmax(0,1fr)_auto] items-end gap-x-2 text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:min-h-[2.75rem] sm:text-xs">
         <span className="leading-snug">{label}</span>
@@ -151,8 +151,6 @@ export function FiltersBar({ filters, onChange, total, wines }: Props) {
     (): { value: SortOption; label: string }[] => [
       { value: "cavatale-desc", label: t("filters.sortCavataleDesc") },
       { value: "cavatale-asc", label: t("filters.sortCavataleAsc") },
-      { value: "vivino-desc", label: t("filters.sortVivinoDesc") },
-      { value: "vivino-asc", label: t("filters.sortVivinoAsc") },
       { value: "price-desc", label: t("filters.sortPriceDesc") },
       { value: "price-asc", label: t("filters.sortPriceAsc") },
       { value: "default", label: t("filters.sortOriginal") },
@@ -214,14 +212,6 @@ export function FiltersBar({ filters, onChange, total, wines }: Props) {
     };
   }, [wines]);
 
-  const vivinoBounds = useMemo(
-    () =>
-      scoreBounds(
-        wines.map((w) => w.vivino).filter((v): v is number => v != null)
-      ),
-    [wines]
-  );
-
   const cavataleBounds = useMemo(
     () =>
       scoreBounds(
@@ -239,12 +229,6 @@ export function FiltersBar({ filters, onChange, total, wines }: Props) {
   const atPriceCeil =
     filters.maxPrice == null || filters.maxPrice >= priceBounds.max;
   const priceUnfiltered = atPriceFloor && atPriceCeil;
-
-  const vivinoMin = filters.minVivino ?? vivinoBounds.min;
-  const vivinoMax = filters.maxVivino ?? vivinoBounds.max;
-  const vivinoUnfiltered =
-    (filters.minVivino == null || filters.minVivino <= vivinoBounds.min) &&
-    (filters.maxVivino == null || filters.maxVivino >= vivinoBounds.max);
 
   const cavataleMin = filters.minCavatale ?? cavataleBounds.min;
   const cavataleMax = filters.maxCavatale ?? cavataleBounds.max;
@@ -274,22 +258,6 @@ export function FiltersBar({ filters, onChange, total, wines }: Props) {
     });
   }
 
-  function onMinVivinoSlide(raw: number) {
-    const rounded = Math.round(Math.min(raw, vivinoMax) * 10) / 10;
-    patch({
-      minVivino: rounded <= vivinoBounds.min ? null : rounded,
-      maxVivino: filters.maxVivino,
-    });
-  }
-
-  function onMaxVivinoSlide(raw: number) {
-    const rounded = Math.round(Math.max(raw, vivinoMin) * 10) / 10;
-    patch({
-      minVivino: filters.minVivino,
-      maxVivino: rounded >= vivinoBounds.max ? null : rounded,
-    });
-  }
-
   function onMinCavataleSlide(raw: number) {
     const rounded = Math.round(Math.min(raw, cavataleMax) * 10) / 10;
     patch({
@@ -311,10 +279,6 @@ export function FiltersBar({ filters, onChange, total, wines }: Props) {
   const priceLabel = priceUnfiltered
     ? anyLabel
     : `${formatPrice(minValue)} – ${formatPrice(maxValue)}${atPriceCeil ? "+" : ""}`;
-
-  const vivinoLabel = vivinoUnfiltered
-    ? anyLabel
-    : `${vivinoMin.toFixed(1)} – ${vivinoMax.toFixed(1)}`;
 
   const cavataleLabel = cavataleUnfiltered
     ? anyLabel
@@ -430,22 +394,8 @@ export function FiltersBar({ filters, onChange, total, wines }: Props) {
           </label>
         </div>
 
-        {/* Tres rangos: Calificación Vivino · Calificación Cavatale · Precio */}
-        <div className="grid grid-cols-1 items-stretch gap-x-2.5 gap-y-4 sm:grid-cols-3 sm:gap-y-2.5">
-          <DualRangeField
-            label={<ScoreRangeTitle name={t("wine.vivino")} />}
-            bounds={vivinoBounds}
-            minValue={vivinoMin}
-            maxValue={vivinoMax}
-            step={0.1}
-            displayLabel={vivinoLabel}
-            formatBound={(n) => n.toFixed(1)}
-            onMin={onMinVivinoSlide}
-            onMax={onMaxVivinoSlide}
-            minAria={t("filters.minVivinoAria")}
-            maxAria={t("filters.maxVivinoAria")}
-          />
-
+        {/* Rangos: Calificación Cavatale · Precio */}
+        <div className="grid grid-cols-1 items-stretch gap-x-2.5 gap-y-4 sm:grid-cols-2 sm:gap-y-2.5">
           <DualRangeField
             label={<ScoreRangeTitle name={t("wine.rating")} />}
             bounds={cavataleBounds}

@@ -143,7 +143,7 @@ export function scanFieldsToDraftPatch(
 
 /**
  * Apply scan/AI catalog fields onto a draft.
- * Never overwrite a price (or Vivino) the user already typed with null or a new estimate.
+ * Never overwrite a price (or score) the user already typed with null or a new estimate.
  */
 export function mergeScanPatchIntoDraft(
   prev: WineDraft,
@@ -168,7 +168,6 @@ export function missingScanFieldLabels(fields: ScanLabelFields): string[] {
     { key: "grape", label: "uva" },
     { key: "aging", label: "añejamiento" },
     { key: "vintage", label: "año" },
-    { key: "vivino", label: "calificación Vivino" },
     { key: "price", label: "precio" },
   ];
   return labels
@@ -238,7 +237,7 @@ export async function fetchScanLabel(
   return { status: res.status, payload };
 }
 
-/** Background Vivino/price pass after identity is already shown. */
+/** Background market/price pass after identity is already shown. */
 export async function fetchEnrichLabel(
   fields: ScanLabelFields,
   enrichHint?: ScanLabelEnrichHint,

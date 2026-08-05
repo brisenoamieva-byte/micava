@@ -9,7 +9,6 @@ import {
   countryDisplayName,
   formatCavataleRating,
   formatPrice,
-  formatVivino,
 } from "@/lib/wines";
 
 type Props = {
@@ -322,7 +321,7 @@ export function StatsDashboard({
           metric={(w) =>
             w.cavataleRating != null
               ? `${t("wine.rating")} ${formatCavataleRating(w.cavataleRating)}`
-              : `${t("wine.vivino")} ${formatVivino(w.vivino)}`
+              : "—"
           }
           onSelect={onSelectWine}
         />
@@ -489,7 +488,7 @@ function DrilldownList({
               <span className="shrink-0 text-right text-xs font-medium text-ink">
                 {w.cavataleRating != null
                   ? `${t("wine.rating")} ${formatCavataleRating(w.cavataleRating)}`
-                  : `${t("wine.vivino")} ${formatVivino(w.vivino)}`}
+                  : "—"}
                 <span className="mt-0.5 block font-normal text-ink-soft">
                   {formatPrice(w.price)}
                 </span>

@@ -124,7 +124,7 @@ export const confidenceLabel: Record<MatchConfidence, string> = {
 };
 
 export const sourceLabel: Record<RatingSource, string> = {
-  vivino: "Vivino",
+  vivino: "Externa",
   "wine-searcher": "Wine-Searcher",
   manual: "Manual",
 };

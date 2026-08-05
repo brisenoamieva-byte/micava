@@ -2,7 +2,7 @@
 
 import { CountryFlag } from "@/components/CountryFlag";
 import type { CellarLogEntry } from "@/lib/types";
-import { formatPrice, formatVivino } from "@/lib/wines";
+import { formatPrice } from "@/lib/wines";
 
 type Props = {
   entries: CellarLogEntry[];
@@ -89,8 +89,7 @@ export function RecentHistory({ entries }: Props) {
               ) : null}
             </div>
             <div className="shrink-0 text-right text-xs text-ink">
-              Vivino {formatVivino(e.wine.vivino)}
-              <span className="mt-0.5 block text-ink-soft">
+              <span className="block text-ink-soft">
                 {formatPrice(e.wine.price)}
               </span>
             </div>

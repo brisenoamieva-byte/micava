@@ -1,5 +1,5 @@
 import type { Wine } from "@/lib/types";
-import { formatPrice, formatVivino } from "@/lib/wines";
+import { formatPrice, formatCavataleRating } from "@/lib/wines";
 
 export const CAVATALE_URL = "https://cavatale.com";
 export const CAVATALE_REGISTRO_URL = `${CAVATALE_URL}/registro`;
@@ -34,7 +34,6 @@ export function buildWineShareText(
     | "winery"
     | "vintage"
     | "region"
-    | "vivino"
     | "cavataleRating"
     | "price"
     | "slot"
@@ -50,8 +49,8 @@ export function buildWineShareText(
 
   const ratingLine =
     wine.cavataleRating != null
-      ? `Cavatale ${formatVivino(wine.cavataleRating)} · Vivino ${formatVivino(wine.vivino)} · ${formatPrice(wine.price)}`
-      : `Vivino ${formatVivino(wine.vivino)} · ${formatPrice(wine.price)}`;
+      ? `Cavatale ${formatCavataleRating(wine.cavataleRating)} · ${formatPrice(wine.price)}`
+      : formatPrice(wine.price);
 
   const lines = [
     wine.name,

@@ -123,12 +123,12 @@ export default function TerminosPage() {
               6. Contenido generado por IA
             </h2>
             <p className="text-ink-soft">
-              Las historias, curiosidades, maridajes, precios estimados, scores
-              Vivino estimados y la calificación Cavatale pueden generarse con
-              modelos de inteligencia artificial. Son orientativos: pueden
-              contener errores o imprecisiones. No sustituyen fichas oficiales
-              de bodega, crítica profesional ni asesoramiento legal, médico o
-              comercial. Úsalos como ayuda para conversar y organizar tu cava.
+              Las historias, curiosidades, maridajes, precios estimados y la
+              calificación Cavatale pueden generarse con modelos de
+              inteligencia artificial. Son orientativos: pueden contener errores
+              o imprecisiones. No sustituyen fichas oficiales de bodega, crítica
+              profesional ni asesoramiento legal, médico o comercial. Úsalos
+              como ayuda para conversar y organizar tu cava.
             </p>
           </section>
 

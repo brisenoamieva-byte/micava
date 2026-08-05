@@ -27,7 +27,7 @@ export function formatVivino(value: number | null | undefined): string {
   return value.toFixed(1);
 }
 
-/** Same 1–5 display as Vivino; used for calificación Cavatale. */
+/** 1–5 score display (one decimal); used for calificación Cavatale. */
 export function formatCavataleRating(
   value: number | null | undefined
 ): string {
@@ -104,11 +104,6 @@ export function cellarStats(
   const withPrice = list.filter((w) => w.price != null);
   const value = withPrice.reduce((sum, w) => sum + (w.price ?? 0), 0);
   const countries = new Set(list.map((w) => w.country).filter(Boolean));
-  const rated = list.filter((w) => w.vivino != null);
-  const avgVivino =
-    rated.length === 0
-      ? null
-      : rated.reduce((sum, w) => sum + (w.vivino ?? 0), 0) / rated.length;
   const cavataleRated = list.filter((w) => w.cavataleRating != null);
   const avgCavatale =
     cavataleRated.length === 0
@@ -125,7 +120,7 @@ export function cellarStats(
     bottles: list.length,
     value,
     countries: countries.size,
-    avgVivino,
+    avgVivino: avgCavatale,
     avgCavatale,
     emptySlots: getEmptySlots(inGrid, cols, rows, opts?.cellarId).length,
   };
@@ -155,8 +150,6 @@ export function sortWines(list: Wine[], sort: SortOption): Wine[] {
 
   const copy = [...list];
   copy.sort((a, b) => {
-    if (sort === "vivino-desc") return compareNullable(a.vivino, b.vivino, "desc");
-    if (sort === "vivino-asc") return compareNullable(a.vivino, b.vivino, "asc");
     if (sort === "cavatale-desc")
       return compareNullable(a.cavataleRating, b.cavataleRating, "desc");
     if (sort === "cavatale-asc")
@@ -175,10 +168,6 @@ export function filterWines(list: Wine[], filters: Filters): Wine[] {
     if (filters.country && w.country !== filters.country) return false;
     if (filters.type && w.type !== filters.type) return false;
     if (filters.grape && !wineHasGrape(w, filters.grape)) return false;
-    if (filters.minVivino != null && (w.vivino == null || w.vivino < filters.minVivino))
-      return false;
-    if (filters.maxVivino != null && (w.vivino == null || w.vivino > filters.maxVivino))
-      return false;
     if (
       filters.minCavatale != null &&
       (w.cavataleRating == null || w.cavataleRating < filters.minCavatale)

@@ -50,8 +50,6 @@ const initialFilters: Filters = {
   country: "",
   type: "",
   grape: "",
-  minVivino: null,
-  maxVivino: null,
   minCavatale: null,
   maxCavatale: null,
   minPrice: null,

@@ -77,8 +77,6 @@ export type CellarData = {
 
 export type SortOption =
   | "default"
-  | "vivino-desc"
-  | "vivino-asc"
   | "cavatale-desc"
   | "cavatale-asc"
   | "price-desc"
@@ -89,8 +87,6 @@ export type Filters = {
   country: string;
   type: string;
   grape: string;
-  minVivino: number | null;
-  maxVivino: number | null;
   minCavatale: number | null;
   maxCavatale: number | null;
   minPrice: number | null;

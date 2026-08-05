@@ -133,10 +133,8 @@ export function StatsDashboard({
                   total: insights.totalSlots,
                 })}
                 {" · "}
-                {insights.occupancyLabel.startsWith("units:")
-                  ? t("stats.unitsCount", {
-                      count: insights.occupancyLabel.slice("units:".length),
-                    })
+                {insights.unitCount > 1
+                  ? t("stats.unitsCount", { count: insights.unitCount })
                   : insights.occupancyLabel}
               </p>
             </div>

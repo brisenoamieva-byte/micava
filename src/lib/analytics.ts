@@ -39,7 +39,7 @@ export type CellarInsights = {
   occupancy: number;
   emptySlots: number;
   totalSlots: number;
-  /** e.g. "12×6" for one unit, or "2 muebles". */
+  /** Single-unit grid size, e.g. "12×6". Prefer `unitCount` + i18n for multi-unit. */
   occupancyLabel: string;
   unitCount: number;
   byCountry: NamedCount[];
@@ -215,7 +215,7 @@ export function buildInsights(
   const occupancyLabel =
     units.length === 1
       ? `${units[0].cols}×${units[0].rows.length}`
-      : `units:${units.length}`;
+      : "";
 
   // Classification bands: only bottles with a real Cavatale rating.
   const scoreDefs = [

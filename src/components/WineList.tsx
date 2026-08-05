@@ -83,7 +83,7 @@ export function WineList({
                   ? `Cavatale ${formatCavataleRating(wine.cavataleRating)}`
                   : "—"}
               </span>
-              <span className="block">{formatPrice(wine.price, wine.priceCurrency)}</span>
+              <span className="block">{formatPrice(wine.price)}</span>
             </span>
           </button>
         );

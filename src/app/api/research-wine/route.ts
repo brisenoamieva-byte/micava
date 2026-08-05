@@ -11,10 +11,13 @@ import {
   type KimiResearch,
 } from "@/lib/kimi-research";
 import {
+  addKimiUsage,
   parseKimiUsage,
   recordKimiUsage,
   type KimiTokenUsage,
 } from "@/lib/kimi-usage";
+import { resolveMarketGeoFromRequest } from "@/lib/market-geo";
+import { researchWineRetailPrice } from "@/lib/wine-price-research";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -61,7 +64,7 @@ NUNCA menciones Vivino ni el score comunitario dentro de summary/curiosity/talkH
 ## Estimaciones de referencia (secundarias)
 
 - vivino (number|null): mejor estimación del promedio comunitario 1–5 de ESTA botella; si no hay señal, null. Independiente de cavataleRating. Nunca inventes un Vivino “bonito”.
-- price (number|null): menudeo de referencia en MXN (entero) para México si puedes; si no, null.
+- price (number|null): déjalo null. El servidor busca precio de menudeo con web search (geo del usuario) y lo guarda en MXN. No inventes precios de memoria.
 - confidence: "high" | "medium" | "low". "high" SOLO si la identidad es clara Y (si das vivino) la estimación es fiable.
 
 ## Campos narrativos — coherencia de UNA sola botella
@@ -145,6 +148,13 @@ type Body = {
   recalculateRating?: boolean;
   /** UI locale: "en" | "es" (default es). Narratives follow this language. */
   locale?: string | null;
+  /**
+   * ISO 3166-1 alpha-2 market country for retail price search
+   * (e.g. MX, US). Overrides Vercel geo / Accept-Language when set.
+   */
+  countryCode?: string | null;
+  /** Alias of countryCode. */
+  marketCountry?: string | null;
 };
 
 const ENCOUNTER_TALKHOOK_BIAS = `
@@ -194,7 +204,7 @@ MODO SOLO HISTORIA: esta botella YA tiene Rating Cavatale oficial guardado.
 - Reescribe summary, curiosity, ${talkHookHint}, pairings y pairingNote.
 - cavataleRating: copia EXACTAMENTE el "Rating Cavatale guardado" de la ficha.
 - ratingParts: null (no recalcules ejes).
-- Puedes actualizar vivino/price solo si estás seguro; si no, null.
+- vivino solo si estás seguro; si no, null. price: siempre null (el servidor lo busca aparte).
 No metas Vivino en los textos narrativos.
 ${mode === "encounter" ? ENCOUNTER_TALKHOOK_BIAS : ""}
 Ficha:\n\n${identity}`;
@@ -206,7 +216,7 @@ Dame JSON con:
 1) ratingParts {taste, story, table, originality} en MEDIOS PUNTOS (1–5). Sé estricto con las anclas; no regales notas altas.
 2) cavataleRating (el servidor lo recalcula con 30/30/25/15; puedes poner tu estimado).
 3) summary (historia íntima; NUNCA abrir con denominación/región genérica), curiosity, ${talkHookHint}, pairings + pairingNote.
-4) vivino/price solo si los conoces bien.
+4) vivino solo si lo conoces bien; price siempre null (precio lo busca el servidor con web search).
 No metas Vivino en los textos narrativos.
 ${mode === "encounter" ? ENCOUNTER_TALKHOOK_BIAS : ""}
 Ficha:\n\n${identity}`;
@@ -358,6 +368,10 @@ export async function POST(request: Request) {
 
   const mode = resolveMode(body.mode);
   const locale = resolveLocale(body.locale);
+  const market = resolveMarketGeoFromRequest(
+    request,
+    body.countryCode ?? body.marketCountry ?? null
+  );
   const forceRecalculate = Boolean(body.recalculateRating);
   const existingRating =
     body.cavataleRating != null && Number.isFinite(body.cavataleRating)
@@ -369,8 +383,29 @@ export async function POST(request: Request) {
     : "";
   const userPrompt =
     buildUserPrompt(identity, mode, { ratingLocked }) + correctionBlock;
-  const first = await callKimi(apiKey, userPrompt, locale);
-  let sessionUsage: KimiTokenUsage | null = first.usage;
+
+  const wineForPrice = {
+    name,
+    winery: body.winery ?? "",
+    country: body.country ?? "",
+    region: body.region ?? "",
+    type: body.type ?? "",
+    grape: body.grape ?? "",
+    vintage: body.vintage ?? null,
+  };
+
+  const [first, priceLookup] = await Promise.all([
+    callKimi(apiKey, userPrompt, locale),
+    researchWineRetailPrice({
+      apiKey,
+      wine: wineForPrice,
+      market,
+    }),
+  ]);
+  let sessionUsage: KimiTokenUsage | null = addKimiUsage(
+    first.usage,
+    priceLookup.usage
+  );
 
   if (!first.ok) {
     await recordKimiUsage({
@@ -415,6 +450,10 @@ export async function POST(request: Request) {
     modelRating: finalized.research.cavataleRating,
   });
 
+  // Prefer geo web-search price (always MXN for storage); keep model price only as fallback.
+  const kimiPrice =
+    priceLookup.priceMxn ?? finalized.research.kimiPrice ?? null;
+
   await recordKimiUsage({
     userId: guard.userId,
     route: USAGE_ROUTE,
@@ -425,6 +464,7 @@ export async function POST(request: Request) {
   const research = {
     ...finalized.research,
     cavataleRating: officialRating,
+    kimiPrice,
     kimiCheckedAt: new Date().toISOString(),
   };
   return NextResponse.json({

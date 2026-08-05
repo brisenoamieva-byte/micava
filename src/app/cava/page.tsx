@@ -817,8 +817,8 @@ export default function CavaPage() {
             </section>
           }
           inventory={
-            <section className="panel-quiet flex min-h-[420px] flex-col p-5">
-              <div className="mb-4 flex items-baseline justify-between gap-3">
+            <section className="panel-quiet flex h-full min-h-[420px] flex-col p-5">
+              <div className="mb-4 flex shrink-0 items-baseline justify-between gap-3">
                 <h2 className="display text-2xl text-ink">{t("cava.inventory")}</h2>
                 <p className="text-sm text-ink-soft">{visible.length}</p>
               </div>

@@ -18,6 +18,7 @@ import {
 } from "@/lib/scan-label";
 import type { Encounter, EncounterDraft, WineDraft } from "@/lib/types";
 import { useLocale, useT } from "@/lib/i18n";
+import { clientCountryCodeHint } from "@/lib/market-geo";
 import { countryDisplayName, formatCavataleRating } from "@/lib/wines";
 
 type Step = "identify" | "story";
@@ -261,6 +262,7 @@ export function EncuentroModal({
     setError("");
     setThinHint(false);
     try {
+      const countryCode = clientCountryCodeHint();
       const res = await fetch("/api/research-wine", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -276,6 +278,7 @@ export function EncuentroModal({
           vintage: identity.vintage,
           cavataleRating: research.cavataleRating,
           locale,
+          ...(countryCode ? { countryCode } : {}),
         }),
         signal: abort.signal,
       });

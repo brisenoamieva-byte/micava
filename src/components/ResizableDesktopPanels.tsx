@@ -140,9 +140,9 @@ export function ResizableDesktopPanels({ map, inventory, detail }: Props) {
           gridTemplateColumns: `${cols[0]}fr ${cols[1]}fr ${cols[2]}fr`,
         }}
       >
-        <div className="min-w-0">{map}</div>
+        <div className="min-h-0 min-w-0">{map}</div>
 
-        <div className="relative min-w-0">
+        <div className="relative min-h-0 min-w-0">
           <button
             type="button"
             aria-label="Redimensionar mapa e inventario"
@@ -153,7 +153,7 @@ export function ResizableDesktopPanels({ map, inventory, detail }: Props) {
           {inventory}
         </div>
 
-        <div className="relative min-w-0">
+        <div className="relative min-h-0 min-w-0">
           <button
             type="button"
             aria-label="Redimensionar inventario y detalle"

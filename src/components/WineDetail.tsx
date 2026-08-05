@@ -15,6 +15,7 @@ import { confidenceLabel, formatCheckedAt } from "@/lib/rating-verify";
 import { formatCavataleRating, formatPrice, typeAccent } from "@/lib/wines";
 import { buildWineShareText, shareOrCopyText } from "@/lib/share-wine";
 import { useLocale, useT, wineTypeLabel } from "@/lib/i18n";
+import { clientCountryCodeHint } from "@/lib/market-geo";
 import { AiTheaterStatus } from "@/components/AiTheaterStatus";
 import { ThinkingIndicator } from "@/components/ThinkingIndicator";
 
@@ -198,6 +199,7 @@ export function WineDetail({
     const storedNote = wine.kimiUserNote?.trim() || null;
     const userCorrection = correctionFromSubmit || storedNote || undefined;
     const recalculateRating = Boolean(opts?.recalculateRating);
+    const countryCode = clientCountryCodeHint();
 
     setKimiLoading(true);
     setKimiError("");
@@ -221,6 +223,7 @@ export function WineDetail({
           ...(userCorrection ? { userCorrection } : {}),
           ...(recalculateRating ? { recalculateRating: true } : {}),
           locale,
+          ...(countryCode ? { countryCode } : {}),
         }),
         signal: abort.signal,
       });

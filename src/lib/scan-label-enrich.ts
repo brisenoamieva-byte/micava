@@ -5,18 +5,21 @@
 
 import { kimiChatWithWebSearch } from "@/lib/kimi-web-search";
 import type { KimiTokenUsage } from "@/lib/kimi-usage";
+import { resolveMarketGeo } from "@/lib/market-geo";
 import {
   extractJsonObject,
   parseScanLabelResult,
   type ScanLabelFields,
 } from "@/lib/scan-label";
 import { wineCountriesForPrompt } from "@/lib/wine-countries";
+import { buildWinePriceSearchQuery } from "@/lib/wine-price-research";
 
 const MODEL = process.env.KIMI_MODEL?.trim() || "kimi-k2.6";
 /** Cap tool rounds — each round is a full LLM + search trip. */
 export const ENRICH_MAX_ROUNDS = 2;
 
 const COUNTRY_PROMPT = wineCountriesForPrompt();
+const MX_MARKET = resolveMarketGeo({ countryCode: "MX" });
 
 export const ENRICH_SYSTEM = `Eres un investigador de vinos para Cavatale (México).
 Debes USAR la búsqueda web ($web_search) para confirmar identidad, rating Vivino y precio de referencia en MXN.
@@ -24,7 +27,7 @@ Responde SOLO con JSON válido (sin markdown) con EXACTAMENTE:
 name, winery, country, region, type, grape, aging, vintage, vivino, price, confidence, notes.
 
 Reglas:
-- Busca primero en Vivino / sitios de vino / tiendas MX (La Europea, Vinoteca, Amazon MX, etc.).
+- Busca primero en Vivino / sitios de vino / tiendas MX (${MX_MARKET.retailersHint}).
 - country: exactamente uno de: ${COUNTRY_PROMPT}. Usa el nombre en español de la lista.
 - vivino: número 1–5 (un decimal ok) del vino/cosecha si aparece; si solo hay rango, toma el más citado; si no hay dato fiable, null.
 - price: entero MXN de menudeo típico actual o reciente; si solo USD/EUR, convierte aprox. a MXN; si no hay, null.
@@ -56,15 +59,16 @@ export function buildSearchQuery(
   hint: EnrichHint
 ): string {
   if (hint.searchQuery?.trim()) return hint.searchQuery.trim();
-  const parts = [
-    fields.name,
-    fields.winery,
-    fields.vintage != null ? String(fields.vintage) : "",
-    fields.region,
-    "Vivino",
-    "precio México",
-  ].filter(Boolean);
-  return parts.join(" ");
+  const priceQuery = buildWinePriceSearchQuery(
+    {
+      name: fields.name,
+      winery: fields.winery,
+      region: fields.region,
+      vintage: fields.vintage,
+    },
+    MX_MARKET
+  );
+  return [priceQuery, "Vivino"].filter(Boolean).join(" ");
 }
 
 export function mergeEnrichment(

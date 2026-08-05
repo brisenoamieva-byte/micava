@@ -6,6 +6,7 @@ import type { KimiResearch } from "@/lib/kimi-research";
 import { buildWineShareText, shareOrCopyText } from "@/lib/share-wine";
 import type { DepartAction, DepartExtras, Wine } from "@/lib/types";
 import { useLocale, useT } from "@/lib/i18n";
+import { clientCountryCodeHint } from "@/lib/market-geo";
 
 type Props = {
   open: boolean;
@@ -94,6 +95,7 @@ export function DepartTasteModal({
     const wineSnapshot = wine;
     void (async () => {
       try {
+        const countryCode = clientCountryCodeHint();
         const res = await fetch("/api/research-wine", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -110,6 +112,7 @@ export function DepartTasteModal({
             cavataleRating: wineSnapshot.cavataleRating,
             price: wineSnapshot.price,
             locale,
+            ...(countryCode ? { countryCode } : {}),
           }),
         });
         const raw = await res.text();

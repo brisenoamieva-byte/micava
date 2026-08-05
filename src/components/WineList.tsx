@@ -43,7 +43,8 @@ export function WineList({
     <div
       className={[
         "min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain pr-1",
-        compact ? "max-h-[min(62dvh,560px)]" : "max-h-[560px]",
+        // Mobile: cap height in document flow. Desktop: fill the panel via flex-1.
+        compact ? "max-h-[min(62dvh,560px)]" : "",
       ].join(" ")}
     >
       {wines.map((wine) => {

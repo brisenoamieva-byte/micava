@@ -29,6 +29,8 @@ export type KimiResearch = {
   cavataleRating: number | null;
   kimiVivino: number | null;
   kimiPrice: number | null;
+  /** ISO 4217 for kimiPrice; null → treat as MXN. */
+  kimiPriceCurrency?: string | null;
   kimiSummary: string | null;
   kimiCuriosity: string | null;
   kimiTalkHook: string | null;
@@ -44,6 +46,7 @@ export const emptyKimiResearch: KimiResearch = {
   cavataleRating: null,
   kimiVivino: null,
   kimiPrice: null,
+  kimiPriceCurrency: null,
   kimiSummary: null,
   kimiCuriosity: null,
   kimiTalkHook: null,
@@ -103,13 +106,17 @@ export function withKimiDefaults<T extends Partial<Wine>>(
     labelImageUrl: string | null;
     cavataleRating: number | null;
     kimiUserNote: string | null;
+    priceCurrency: string | null;
+    kimiPriceCurrency: string | null;
   } {
   return {
     ...wine,
     labelImageUrl: wine.labelImageUrl ?? null,
     cavataleRating: wine.cavataleRating ?? null,
+    priceCurrency: wine.priceCurrency ?? null,
     kimiVivino: wine.kimiVivino ?? null,
     kimiPrice: wine.kimiPrice ?? null,
+    kimiPriceCurrency: wine.kimiPriceCurrency ?? null,
     kimiSummary: wine.kimiSummary ?? null,
     kimiCuriosity: wine.kimiCuriosity ?? null,
     kimiTalkHook: wine.kimiTalkHook ?? null,

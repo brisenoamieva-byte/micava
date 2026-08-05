@@ -30,12 +30,14 @@ export type WineRow = {
   vivino: number | null;
   cavatale_rating: number | null;
   price: number | null;
+  price_currency?: string | null;
   external_rating: number | null;
   rating_source: string | null;
   last_checked_at: string | null;
   match_confidence: string | null;
   kimi_vivino: number | null;
   kimi_price: number | null;
+  kimi_price_currency?: string | null;
   kimi_summary: string | null;
   kimi_curiosity: string | null;
   kimi_talk_hook: string | null;
@@ -87,12 +89,14 @@ export function wineFromRow(row: WineRow): Wine {
       vivino: row.vivino,
       cavataleRating: row.cavatale_rating ?? null,
       price: row.price,
+      priceCurrency: row.price_currency ?? null,
       externalRating: row.external_rating,
       ratingSource: row.rating_source as Wine["ratingSource"],
       lastCheckedAt: row.last_checked_at,
       matchConfidence: row.match_confidence as Wine["matchConfidence"],
       kimiVivino: row.kimi_vivino ?? null,
       kimiPrice: row.kimi_price ?? null,
+      kimiPriceCurrency: row.kimi_price_currency ?? null,
       kimiSummary: row.kimi_summary ?? null,
       kimiCuriosity: row.kimi_curiosity ?? null,
       kimiTalkHook: row.kimi_talk_hook ?? null,
@@ -129,6 +133,7 @@ export function wineToRow(
     vivino: wine.vivino,
     cavatale_rating: wine.cavataleRating,
     price: wine.price,
+    price_currency: wine.priceCurrency ?? "MXN",
     external_rating: wine.externalRating,
     rating_source: wine.ratingSource,
     last_checked_at: wine.lastCheckedAt,
@@ -137,6 +142,7 @@ export function wineToRow(
   if (includeKimi) {
     base.kimi_vivino = wine.kimiVivino;
     base.kimi_price = wine.kimiPrice;
+    base.kimi_price_currency = wine.kimiPriceCurrency;
     base.kimi_summary = wine.kimiSummary;
     base.kimi_curiosity = wine.kimiCuriosity;
     base.kimi_talk_hook = wine.kimiTalkHook;

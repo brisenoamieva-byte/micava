@@ -78,6 +78,7 @@ export default function CavaPage() {
     saveKimiUserNote,
     setLabelImageUrl,
     applyKimiResearch,
+    saveVerifiedPrice,
     moveWine,
     departWine,
     saveEncounter,
@@ -353,6 +354,10 @@ export default function CavaPage() {
       w: Wine,
       fields: { vivino?: boolean; price?: boolean }
     ) => applyKimiResearch(w.id, fields),
+    onSaveVerifiedPrice: (
+      w: Wine,
+      result: { amount: number; currency: string }
+    ) => saveVerifiedPrice(w.id, result),
     onMove: (w: Wine) => setMoveSheetWine(w),
   };
 

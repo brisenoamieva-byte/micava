@@ -1,6 +1,7 @@
 /**
  * Geo-aware retail price lookup via Kimi $web_search.
- * Stores MXN only (UI/formatPrice is MXN); converts local prices when needed.
+ * Contar historia path stores MXN (priceMxn). Verify-price path keeps
+ * original currency (amount + ISO code) without forcing MXN conversion.
  */
 
 import { extractJsonObject } from "@/lib/scan-label";
@@ -55,6 +56,28 @@ export type WinePriceResearchResult = {
   error: string | null;
 };
 
+export type VerifiedWinePrice = {
+  amount: number | null;
+  currency: string | null;
+  source: "local" | "international" | null;
+  confidence: string | null;
+  notes: string | null;
+  usage: KimiTokenUsage | null;
+  error: string | null;
+};
+
+/** International / Wine-Searcher style market when local retail has no hit. */
+export const INTERNATIONAL_PRICE_MARKET: MarketGeo = {
+  countryCode: "XX",
+  isMexico: false,
+  currency: "USD",
+  marketLabel: "international",
+  retailersHint:
+    "Wine-Searcher, Vivino, wine.com, major EU/US/UK retailers, producer shop",
+  searchPriceHint: "retail price Wine-Searcher Vivino bottle",
+  pairingCuisineHint: "",
+};
+
 function asOptionalNumber(value: unknown): number | null {
   if (value == null || value === "") return null;
   const n =
@@ -75,6 +98,18 @@ function clampPriceMxn(value: number | null): number | null {
   const n = Math.round(value);
   if (n <= 0 || n > 1_000_000) return null;
   return n;
+}
+
+function clampRetailAmount(value: number | null): number | null {
+  if (value == null) return null;
+  const n = Math.round(value);
+  if (n <= 0 || n > 1_000_000) return null;
+  return n;
+}
+
+function normalizeCurrency(raw: unknown): string | null {
+  const currency = asString(raw).toUpperCase();
+  return currency && /^[A-Z]{3}$/.test(currency) ? currency : null;
 }
 
 function convertLocalToMxn(
@@ -130,6 +165,36 @@ ${mxRule}
 - notes: una frase corta sobre fuentes (sin URLs largas). Si convertiste a MXN, menciónalo.`;
 }
 
+function buildVerifyPriceSystem(
+  market: MarketGeo,
+  pass: "local" | "international"
+): string {
+  const marketBlock =
+    pass === "local"
+      ? `Mercado LOCAL primero: ${market.marketLabel} (${market.countryCode}).
+Tiendas preferidas: ${market.retailersHint}.
+Moneda preferida del mercado: ${market.currency}.`
+      : `Mercado INTERNACIONAL (fallback): busca el precio de menudeo más fiable a nivel global.
+Fuentes: Wine-Searcher, Vivino, wine.com, retailers EU/US/UK, tienda del productor.
+Devuelve el precio en la moneda ORIGINAL de la fuente (EUR, USD, GBP, etc.) — NO conviertas a MXN.`;
+
+  return `Eres un verificador de precios de vino para Cavatale (solo precio, sin historia).
+Debes USAR $web_search. Responde SOLO con JSON válido (sin markdown):
+amount, currency, confidence, notes.
+
+${marketBlock}
+
+Reglas:
+- amount: entero redondeado del precio de menudeo típico / promedio razonable (1 botella).
+- currency: código ISO 4217 de amount (MXN, USD, EUR, GBP…). OBLIGATORIO si hay amount.
+- NO conviertas a otra moneda. Si el anuncio está en EUR, amount en euros y currency "EUR".
+- Prefiere precio típico/promedio, no el outlier más barato ni subastas.
+- No inventes. Si no hay dato fiable: amount null, currency null.
+- confidence: "high" | "medium" | "low".
+- Preferible 1 búsqueda corta (máx 2). Luego responde JSON de inmediato.
+- notes: una frase corta sobre la fuente (sin URLs largas).`;
+}
+
 function buildPriceUser(wine: WinePriceIdentity, market: MarketGeo): string {
   const query = buildWinePriceSearchQuery(wine, market);
   return `Estima el precio de menudeo típico de esta botella para el mercado ${market.marketLabel}:
@@ -146,6 +211,29 @@ function buildPriceUser(wine: WinePriceIdentity, market: MarketGeo): string {
 Usa $web_search (preferible 1 búsqueda) y devuelve JSON con priceMxn rellenado cuando haya datos públicos fiables.`;
 }
 
+function buildVerifyPriceUser(
+  wine: WinePriceIdentity,
+  market: MarketGeo,
+  pass: "local" | "international"
+): string {
+  const query = buildWinePriceSearchQuery(
+    wine,
+    pass === "international" ? INTERNATIONAL_PRICE_MARKET : market
+  );
+  return `Verifica SOLO el precio de menudeo típico de esta botella (${pass === "local" ? "mercado local" : "búsqueda internacional"}):
+
+- name: ${wine.name}
+- winery: ${wine.winery || ""}
+- country: ${wine.country || ""}
+- region: ${wine.region || ""}
+- type: ${wine.type || ""}
+- grape: ${wine.grape || ""}
+- vintage: ${wine.vintage ?? ""}
+- consulta sugerida: ${query}
+
+Usa $web_search y devuelve JSON con amount + currency (moneda original, sin convertir).`;
+}
+
 function emptyResult(
   usage: KimiTokenUsage | null = null,
   error: string | null = null
@@ -154,6 +242,21 @@ function emptyResult(
     priceMxn: null,
     priceLocal: null,
     currency: null,
+    notes: null,
+    usage,
+    error,
+  };
+}
+
+function emptyVerified(
+  usage: KimiTokenUsage | null = null,
+  error: string | null = null
+): VerifiedWinePrice {
+  return {
+    amount: null,
+    currency: null,
+    source: null,
+    confidence: null,
     notes: null,
     usage,
     error,
@@ -177,12 +280,11 @@ function parsePricePayload(raw: unknown): Omit<
     asOptionalNumber(o.priceMxn ?? o.price_mxn ?? o.price ?? o.kimiPrice)
   );
   const priceLocal = asOptionalNumber(o.priceLocal ?? o.price_local);
-  const currency = asString(o.currency).toUpperCase() || null;
+  const currency = normalizeCurrency(o.currency);
   const notes = asString(o.notes) || null;
   const localRounded =
     priceLocal != null && priceLocal > 0 ? Math.round(priceLocal) : null;
-  const currencyOk =
-    currency && /^[A-Z]{3}$/.test(currency) ? currency : null;
+  const currencyOk = currency;
 
   // If model filled local price but forgot MXN, convert with rough FX.
   if (priceMxn == null && localRounded != null) {
@@ -202,6 +304,42 @@ function parsePricePayload(raw: unknown): Omit<
     priceLocal: localRounded,
     currency: currencyOk,
     notes,
+  };
+}
+
+function parseVerifyPayload(raw: unknown): {
+  amount: number | null;
+  currency: string | null;
+  confidence: string | null;
+  notes: string | null;
+} {
+  if (!raw || typeof raw !== "object") {
+    return { amount: null, currency: null, confidence: null, notes: null };
+  }
+  const o = raw as Record<string, unknown>;
+  const currency = normalizeCurrency(o.currency);
+  let amount = clampRetailAmount(
+    asOptionalNumber(o.amount ?? o.priceLocal ?? o.price_local ?? o.price)
+  );
+  // Legacy shape from local research helpers.
+  if (amount == null) {
+    const mxn = clampRetailAmount(asOptionalNumber(o.priceMxn ?? o.price_mxn));
+    if (mxn != null && (currency == null || currency === "MXN")) {
+      amount = mxn;
+    }
+  }
+  const confidenceRaw = asString(o.confidence).toLowerCase();
+  const confidence =
+    confidenceRaw === "high" ||
+    confidenceRaw === "medium" ||
+    confidenceRaw === "low"
+      ? confidenceRaw
+      : null;
+  return {
+    amount,
+    currency: amount != null ? currency ?? null : null,
+    notes: asString(o.notes) || null,
+    confidence,
   };
 }
 
@@ -243,6 +381,69 @@ async function researchWineRetailPriceOnce(options: {
     return { ...parsed, usage: result.usage, error: null };
   } catch (e) {
     return emptyResult(
+      result.usage,
+      e instanceof Error
+        ? `JSON de precio inválido: ${e.message}`
+        : "JSON de precio inválido."
+    );
+  }
+}
+
+async function verifyWineRetailPriceOnce(options: {
+  apiKey: string;
+  wine: WinePriceIdentity;
+  market: MarketGeo;
+  pass: "local" | "international";
+  maxRounds: number;
+}): Promise<VerifiedWinePrice> {
+  const { apiKey, wine, market, pass, maxRounds } = options;
+  const searchMarket =
+    pass === "international" ? INTERNATIONAL_PRICE_MARKET : market;
+
+  const result = await kimiChatWithWebSearch({
+    apiKey,
+    model: MODEL,
+    system: buildVerifyPriceSystem(searchMarket, pass),
+    user: buildVerifyPriceUser(wine, market, pass),
+    maxRounds,
+    maxTokens: 512,
+  });
+
+  if (!result.content) {
+    return emptyVerified(
+      result.usage,
+      result.error || "Búsqueda de precio sin contenido."
+    );
+  }
+
+  try {
+    const parsed = parseVerifyPayload(extractJsonObject(result.content));
+    if (parsed.amount == null) {
+      return {
+        amount: null,
+        currency: null,
+        source: pass,
+        confidence: parsed.confidence,
+        notes: parsed.notes,
+        usage: result.usage,
+        error: parsed.notes || "No se encontró un precio usable.",
+      };
+    }
+    // Default currency: local market currency, else USD for international.
+    const currency =
+      parsed.currency ??
+      (pass === "local" ? searchMarket.currency : "USD");
+    return {
+      amount: parsed.amount,
+      currency,
+      source: pass,
+      confidence: parsed.confidence,
+      notes: parsed.notes,
+      usage: result.usage,
+      error: null,
+    };
+  } catch (e) {
+    return emptyVerified(
       result.usage,
       e instanceof Error
         ? `JSON de precio inválido: ${e.message}`
@@ -314,5 +515,65 @@ export async function researchWineRetailPrice(options: {
     notes: second.notes ?? first.notes,
     usage,
     error,
+  };
+}
+
+/**
+ * Price-only verification: local market first, then international retail.
+ * Returns amount + ISO currency as-is (no forced MXN conversion).
+ */
+export async function verifyWineRetailPrice(options: {
+  apiKey: string;
+  wine: WinePriceIdentity;
+  market: MarketGeo;
+  maxRounds?: number;
+}): Promise<VerifiedWinePrice> {
+  const { apiKey, wine, market, maxRounds = PRICE_RESEARCH_MAX_ROUNDS } =
+    options;
+  if (!wine.name.trim()) {
+    return emptyVerified(null, "Falta nombre del vino para precio.");
+  }
+
+  const local = await verifyWineRetailPriceOnce({
+    apiKey,
+    wine,
+    market,
+    pass: "local",
+    maxRounds,
+  });
+  if (local.amount != null && local.currency) {
+    return local;
+  }
+
+  console.warn("[verify-price] local miss → international", {
+    wine: wine.name,
+    market: market.countryCode,
+    error: local.error,
+  });
+
+  const intl = await verifyWineRetailPriceOnce({
+    apiKey,
+    wine,
+    market,
+    pass: "international",
+    maxRounds: Math.min(maxRounds, 3),
+  });
+  const usage = addKimiUsage(local.usage, intl.usage);
+
+  if (intl.amount != null && intl.currency) {
+    return { ...intl, usage, error: null };
+  }
+
+  return {
+    amount: null,
+    currency: null,
+    source: null,
+    confidence: intl.confidence ?? local.confidence,
+    notes: intl.notes ?? local.notes,
+    usage,
+    error:
+      intl.error ||
+      local.error ||
+      "Precio no encontrado en mercado local ni internacional.",
   };
 }

@@ -13,13 +13,29 @@ export const wines: Wine[] = seedWines;
 export const GRID_COLS = cellar.meta.gridCols;
 export const GRID_ROWS = cellar.meta.gridRows;
 
-export function formatPrice(value: number | null | undefined): string {
+/** Normalize to ISO 4217; invalid/missing → MXN. */
+export function resolvePriceCurrency(
+  currency: string | null | undefined
+): string {
+  const code = typeof currency === "string" ? currency.trim().toUpperCase() : "";
+  return /^[A-Z]{3}$/.test(code) ? code : "MXN";
+}
+
+export function formatPrice(
+  value: number | null | undefined,
+  currency?: string | null
+): string {
   if (value == null) return "—";
-  return new Intl.NumberFormat("es-MX", {
-    style: "currency",
-    currency: "MXN",
-    maximumFractionDigits: 0,
-  }).format(value);
+  const code = resolvePriceCurrency(currency);
+  try {
+    return new Intl.NumberFormat("es-MX", {
+      style: "currency",
+      currency: code,
+      maximumFractionDigits: code === "JPY" || Number.isInteger(value) ? 0 : 2,
+    }).format(value);
+  } catch {
+    return `${Math.round(value)} ${code}`;
+  }
 }
 
 export function formatVivino(value: number | null | undefined): string {

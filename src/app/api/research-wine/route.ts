@@ -477,6 +477,7 @@ export async function POST(request: Request) {
     ...finalized.research,
     cavataleRating: officialRating,
     kimiPrice,
+    kimiPriceCurrency: kimiPrice != null ? "MXN" : null,
     kimiCheckedAt: new Date().toISOString(),
   };
   return NextResponse.json({

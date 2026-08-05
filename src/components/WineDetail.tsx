@@ -12,7 +12,7 @@ import {
 import { resolveLabelImageUrl } from "@/lib/label-image";
 import { resolvePairingsForWine } from "@/lib/pairings";
 import { confidenceLabel, formatCheckedAt } from "@/lib/rating-verify";
-import { formatCavataleRating, formatPrice, typeAccent } from "@/lib/wines";
+import { formatCavataleRating, formatPrice, resolvePriceCurrency, typeAccent } from "@/lib/wines";
 import { buildWineShareText, shareOrCopyText } from "@/lib/share-wine";
 import { useLocale, useT, wineTypeLabel } from "@/lib/i18n";
 import { clientCountryCodeHint } from "@/lib/market-geo";
@@ -35,6 +35,11 @@ type Props = {
     wine: Wine,
     fields: { vivino?: boolean; price?: boolean }
   ) => number | void;
+  /** Persist price-only verify result (no story/rating refresh). */
+  onSaveVerifiedPrice?: (
+    wine: Wine,
+    result: { amount: number; currency: string }
+  ) => number | void;
   onMove?: (wine: Wine) => void;
 };
 
@@ -49,6 +54,7 @@ export function WineDetail({
   onSaveKimiResearch,
   onSaveKimiUserNote,
   onApplyKimiResearch,
+  onSaveVerifiedPrice,
   onMove,
 }: Props) {
   const t = useT();
@@ -59,11 +65,14 @@ export function WineDetail({
   const [researchJustDone, setResearchJustDone] = useState(false);
   const [thinStoryHint, setThinStoryHint] = useState(false);
   const [applyHint, setApplyHint] = useState<string | null>(null);
+  const [priceVerifyLoading, setPriceVerifyLoading] = useState(false);
+  const [priceVerifyError, setPriceVerifyError] = useState("");
   const [labelSrc, setLabelSrc] = useState<string | null>(null);
   const [correctionOpen, setCorrectionOpen] = useState(false);
   const [correctionDraft, setCorrectionDraft] = useState("");
   const [correctionError, setCorrectionError] = useState("");
   const researchAbortRef = useRef<AbortController | null>(null);
+  const priceVerifyAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     setShareHint(null);
@@ -72,12 +81,16 @@ export function WineDetail({
     setResearchJustDone(false);
     setThinStoryHint(false);
     setApplyHint(null);
+    setPriceVerifyLoading(false);
+    setPriceVerifyError("");
     setLabelSrc(null);
     setCorrectionOpen(false);
     setCorrectionDraft(wine?.kimiUserNote ?? "");
     setCorrectionError("");
     researchAbortRef.current?.abort();
     researchAbortRef.current = null;
+    priceVerifyAbortRef.current?.abort();
+    priceVerifyAbortRef.current = null;
   }, [wine?.id]);
 
   useEffect(() => {
@@ -153,10 +166,13 @@ export function WineDetail({
 
     const parts: string[] = [];
     if (fields.price && wine.kimiPrice != null) {
+      const fmt = formatPrice(wine.kimiPrice, wine.kimiPriceCurrency);
       parts.push(
-        wine.price === wine.kimiPrice
-          ? `Precio ya era ${formatPrice(wine.kimiPrice)}`
-          : `Precio actualizado a ${formatPrice(wine.kimiPrice)}`
+        wine.price === wine.kimiPrice &&
+          resolvePriceCurrency(wine.priceCurrency) ===
+            resolvePriceCurrency(wine.kimiPriceCurrency)
+          ? t("wine.priceAlreadyWas", { price: fmt })
+          : t("wine.priceUpdatedTo", { price: fmt })
       );
     }
     if (!parts.length) {
@@ -170,6 +186,93 @@ export function WineDetail({
       n > 1 ? ` · ${n} botellas iguales` : "";
     setApplyHint(`Guardado en tu ficha${twin} · ${parts.join(" · ")}`);
     window.setTimeout(() => setApplyHint(null), 5000);
+  }
+
+  async function handleVerifyPrice() {
+    if (!wine || !onSaveVerifiedPrice || priceVerifyLoading || kimiLoading) {
+      return;
+    }
+    priceVerifyAbortRef.current?.abort();
+    const abort = new AbortController();
+    priceVerifyAbortRef.current = abort;
+    const timeoutId = window.setTimeout(() => abort.abort(), 55_000);
+    const countryCode = clientCountryCodeHint();
+
+    setPriceVerifyLoading(true);
+    setPriceVerifyError("");
+    try {
+      const res = await fetch("/api/verify-wine-price", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: wine.name,
+          winery: wine.winery,
+          country: wine.country,
+          region: wine.region,
+          type: wine.type,
+          grape: wine.grape,
+          vintage: wine.vintage,
+          ...(countryCode ? { countryCode } : {}),
+        }),
+        signal: abort.signal,
+      });
+      const raw = await res.text();
+      let payload: {
+        error?: string;
+        amount?: number | null;
+        currency?: string | null;
+        source?: string | null;
+        notes?: string | null;
+      } = {};
+      try {
+        payload = JSON.parse(raw) as typeof payload;
+      } catch {
+        throw new Error(t("wine.priceVerifyFailed"));
+      }
+      if (!res.ok || payload.amount == null || !payload.currency) {
+        if (res.status === 429) {
+          throw new Error("Demasiadas consultas. Espera un momento y reintenta.");
+        }
+        throw new Error(payload.error || t("wine.priceVerifyFailed"));
+      }
+      const currency = payload.currency.toUpperCase();
+      onSaveVerifiedPrice(wine, {
+        amount: Math.round(payload.amount),
+        currency,
+      });
+      const sourceLabel =
+        payload.source === "international"
+          ? t("wine.priceSourceIntl")
+          : payload.source === "local"
+            ? t("wine.priceSourceLocal")
+            : null;
+      setApplyHint(
+        `${formatPrice(payload.amount, currency)}${
+          sourceLabel ? ` · ${sourceLabel}` : ""
+        }`
+      );
+      window.setTimeout(() => setApplyHint(null), 5000);
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") {
+        setPriceVerifyError(
+          "La consulta se canceló o tardó demasiado. Puedes reintentar."
+        );
+      } else if (e instanceof TypeError) {
+        setPriceVerifyError("Sin conexión. Revisa internet e intenta de nuevo.");
+      } else {
+        const msg =
+          e instanceof Error ? e.message : t("wine.priceVerifyFailed");
+        setPriceVerifyError(
+          msg === "Failed to fetch" ? t("wine.priceVerifyFailed") : msg
+        );
+      }
+    } finally {
+      window.clearTimeout(timeoutId);
+      if (priceVerifyAbortRef.current === abort) {
+        priceVerifyAbortRef.current = null;
+      }
+      setPriceVerifyLoading(false);
+    }
   }
 
   async function handleShare() {
@@ -315,7 +418,10 @@ export function WineDetail({
   }
 
   const priceNeedsApply =
-    wine.kimiPrice != null && wine.price !== wine.kimiPrice;
+    wine.kimiPrice != null &&
+    (wine.price !== wine.kimiPrice ||
+      resolvePriceCurrency(wine.priceCurrency) !==
+        resolvePriceCurrency(wine.kimiPriceCurrency));
   const hasRefEstimates = wine.kimiPrice != null;
   const refsAllMatch = hasRefEstimates && !priceNeedsApply;
   const hasKimi =
@@ -325,6 +431,7 @@ export function WineDetail({
     Boolean(wine.kimiSummary) ||
     Boolean(wine.kimiCuriosity) ||
     Boolean(wine.kimiTalkHook);
+  const showPriceReference = hasKimi;
   const hasDiscoveryStory =
     Boolean(wine.kimiSummary) ||
     Boolean(wine.kimiCuriosity) ||
@@ -371,7 +478,9 @@ export function WineDetail({
           </span>
         ) : null}
         {wine.price != null ? (
-          <span className="text-xs text-ink-soft">{formatPrice(wine.price)}</span>
+          <span className="text-xs text-ink-soft">
+            {formatPrice(wine.price, wine.priceCurrency)}
+          </span>
         ) : null}
       </div>
 
@@ -599,16 +708,16 @@ export function WineDetail({
             </div>
           ) : null}
 
-          {hasKimi && hasRefEstimates ? (
+          {showPriceReference ? (
             <div className="mt-4 space-y-3 border-t border-[rgba(110,31,44,0.14)] pt-4">
               <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                Referencia (precio)
+                {t("wine.priceReference")}
               </p>
               {refsAllMatch ? (
                 <p className="text-sm text-ink-soft">
-                  Coincide con tu ficha
+                  {t("wine.priceMatchesFicha")}
                   {wine.kimiPrice != null
-                    ? ` · ${formatPrice(wine.kimiPrice)}`
+                    ? ` · ${formatPrice(wine.kimiPrice, wine.kimiPriceCurrency)}`
                     : ""}
                   .
                 </p>
@@ -617,14 +726,19 @@ export function WineDetail({
                   {priceNeedsApply ? (
                     <>
                       <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                        Precio estimado
+                        {t("wine.estimatedPrice")}
                       </p>
                       <p className="mt-1 text-sm text-ink">
-                        {formatPrice(wine.kimiPrice)}
+                        {formatPrice(wine.kimiPrice, wine.kimiPriceCurrency)}
                         <span className="text-ink-soft">
                           {wine.price == null
-                            ? " · tu ficha no tiene precio"
-                            : ` · tuyo ${formatPrice(wine.price)}`}
+                            ? t("wine.noPriceOnFicha")
+                            : t("wine.yourPrice", {
+                                price: formatPrice(
+                                  wine.price,
+                                  wine.priceCurrency
+                                ),
+                              })}
                         </span>
                       </p>
                       {onApplyKimiResearch ? (
@@ -633,14 +747,15 @@ export function WineDetail({
                           className="mt-2 text-xs text-ink-soft underline-offset-2 hover:text-ink hover:underline"
                           onClick={() => applyKimiToFicha({ price: true })}
                         >
-                          Usar este precio
+                          {t("wine.useThisPrice")}
                         </button>
                       ) : null}
                     </>
                   ) : (
                     <p className="text-sm text-ink-soft">
-                      Precio en ficha: {formatPrice(wine.price)} (coincide con
-                      la estimación)
+                      {t("wine.priceOnFicha", {
+                        price: formatPrice(wine.price, wine.priceCurrency),
+                      })}
                     </p>
                   )}
                   {onApplyKimiResearch && priceNeedsApply ? (
@@ -649,10 +764,33 @@ export function WineDetail({
                       className="btn btn-ghost min-h-[44px] w-full text-sm"
                       onClick={() => applyKimiToFicha({ price: true })}
                     >
-                      Aplicar precio a mi ficha
+                      {t("wine.applyPriceToFicha")}
                     </button>
                   ) : null}
                 </>
+              ) : (
+                <p className="text-sm text-ink-soft">
+                  {wine.price != null
+                    ? formatPrice(wine.price, wine.priceCurrency)
+                    : "—"}
+                </p>
+              )}
+              {onSaveVerifiedPrice ? (
+                <button
+                  type="button"
+                  className="btn btn-ghost min-h-[44px] w-full text-sm"
+                  disabled={priceVerifyLoading || kimiLoading}
+                  onClick={() => void handleVerifyPrice()}
+                >
+                  {priceVerifyLoading
+                    ? t("wine.verifyingPrice")
+                    : t("wine.verifyPrice")}
+                </button>
+              ) : null}
+              {priceVerifyError ? (
+                <p className="text-sm text-[var(--wine-deep)]" role="alert">
+                  {priceVerifyError}
+                </p>
               ) : null}
               {applyHint ? (
                 <p className="text-sm text-[var(--wine-deep)]" role="status">

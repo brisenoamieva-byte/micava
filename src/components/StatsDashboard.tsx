@@ -329,7 +329,7 @@ export function StatsDashboard({
           title={t("stats.topValue")}
           subtitle={t("stats.topValueHint")}
           wines={insights.topByPrice}
-          metric={(w) => formatPrice(w.price)}
+          metric={(w) => formatPrice(w.price, w.priceCurrency)}
           onSelect={onSelectWine}
         />
       </div>
@@ -490,7 +490,7 @@ function DrilldownList({
                   ? `${t("wine.rating")} ${formatCavataleRating(w.cavataleRating)}`
                   : "—"}
                 <span className="mt-0.5 block font-normal text-ink-soft">
-                  {formatPrice(w.price)}
+                  {formatPrice(w.price, w.priceCurrency)}
                 </span>
               </span>
             </button>

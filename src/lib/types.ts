@@ -22,6 +22,8 @@ export type Wine = {
   /** Official Cavatale score (1–5) from Kimi research — not Vivino. */
   cavataleRating: number | null;
   price: number | null;
+  /** ISO 4217 for `price`; null/absent treated as MXN. */
+  priceCurrency: string | null;
   /** Score looked up on an external platform (manual for now). */
   externalRating: number | null;
   ratingSource: RatingSource | null;
@@ -32,8 +34,10 @@ export type Wine = {
   labelImageUrl: string | null;
   /** Kimi estimate of community Vivino score (1–5), for reference. */
   kimiVivino: number | null;
-  /** Kimi estimate of typical retail price in MXN. */
+  /** Kimi / verify estimate of typical retail price (amount in kimiPriceCurrency). */
   kimiPrice: number | null;
+  /** ISO 4217 for `kimiPrice`; null treated as MXN (legacy Contar historia). */
+  kimiPriceCurrency: string | null;
   /** Short story / discovery note from research IA. */
   kimiSummary: string | null;
   /** One memorable curiosity about the wine. */

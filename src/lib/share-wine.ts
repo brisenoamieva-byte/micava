@@ -36,6 +36,7 @@ export function buildWineShareText(
     | "region"
     | "cavataleRating"
     | "price"
+    | "priceCurrency"
     | "slot"
     | "kimiSummary"
     | "kimiCuriosity"
@@ -49,8 +50,8 @@ export function buildWineShareText(
 
   const ratingLine =
     wine.cavataleRating != null
-      ? `Cavatale ${formatCavataleRating(wine.cavataleRating)} · ${formatPrice(wine.price)}`
-      : formatPrice(wine.price);
+      ? `Cavatale ${formatCavataleRating(wine.cavataleRating)} · ${formatPrice(wine.price, wine.priceCurrency)}`
+      : formatPrice(wine.price, wine.priceCurrency);
 
   const lines = [
     wine.name,

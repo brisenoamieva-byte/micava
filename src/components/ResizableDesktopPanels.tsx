@@ -132,17 +132,17 @@ export function ResizableDesktopPanels({ map, inventory, detail }: Props) {
   }
 
   return (
-    <div className="desktop-panels-host desktop-only mt-6">
+    <div className="desktop-panels-host desktop-only mt-6 h-full min-h-0 flex-1">
       <div
         ref={wrapRef}
-        className="desktop-panels"
+        className="desktop-panels min-h-0 flex-1"
         style={{
           gridTemplateColumns: `${cols[0]}fr ${cols[1]}fr ${cols[2]}fr`,
         }}
       >
-        <div className="min-h-0 min-w-0">{map}</div>
+        <div className="flex h-full min-h-0 min-w-0 flex-col">{map}</div>
 
-        <div className="relative min-h-0 min-w-0">
+        <div className="relative flex h-full min-h-0 min-w-0 flex-col">
           <button
             type="button"
             aria-label="Redimensionar mapa e inventario"
@@ -153,7 +153,7 @@ export function ResizableDesktopPanels({ map, inventory, detail }: Props) {
           {inventory}
         </div>
 
-        <div className="relative min-h-0 min-w-0">
+        <div className="relative flex h-full min-h-0 min-w-0 flex-col">
           <button
             type="button"
             aria-label="Redimensionar inventario y detalle"

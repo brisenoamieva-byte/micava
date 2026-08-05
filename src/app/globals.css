@@ -822,25 +822,24 @@ select {
     display: block;
   }
 
-  /* Host fills remaining viewport height (flex child of cava page). */
+  /*
+   * Host fills remaining viewport height (flex child of cava page).
+   * Hard min-height floor: flex-1 + min-height:0 alone collapses to ~header
+   * height when header/filters consume most of 100dvh (~60–80px panels).
+   */
   .desktop-panels-host.desktop-only {
     display: flex;
     flex-direction: column;
-    flex: 1 1 0%;
-    min-height: 0;
+    flex: 1 1 auto;
+    min-height: min(70vh, 800px);
     overflow: hidden;
   }
 
-  /*
-   * Shared row from flex (not height:100%) so the grid gets a definite block size.
-   * height:100% + minmax(0,1fr) with an indefinite parent collapses the row to 0
-   * and clips Inventario's flex-1 list.
-   */
+  /* Shared row fills host; columns stretch; list/detail scroll inside. */
   .desktop-panels {
     display: grid;
     gap: 0;
     align-items: stretch;
-    grid-template-rows: minmax(0, 1fr);
     flex: 1 1 0%;
     min-height: 0;
     overflow: hidden;
@@ -848,6 +847,7 @@ select {
 
   .desktop-panels > .min-w-0 {
     min-height: 0;
+    height: 100%;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -858,6 +858,8 @@ select {
   .desktop-panels > .min-w-0 > .panel-quiet {
     flex: 1 1 0%;
     min-height: 0;
+    height: 100%;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
   }

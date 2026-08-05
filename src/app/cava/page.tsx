@@ -362,7 +362,7 @@ export default function CavaPage() {
   };
 
   return (
-    <main className="grain relative min-h-screen min-h-[100dvh] xl:flex xl:h-dvh xl:min-h-0 xl:flex-col xl:overflow-hidden">
+    <main className="grain relative min-h-screen min-h-[100dvh] xl:flex xl:h-dvh xl:min-h-0 xl:flex-col xl:overflow-y-auto">
       {showHowTo ? (
         <div
           className="fixed inset-0 z-[80] flex items-end justify-center p-4 sm:items-center"
@@ -398,14 +398,7 @@ export default function CavaPage() {
           </div>
         </div>
       ) : null}
-      <div
-        className={[
-          "relative z-10 mx-auto flex w-full max-w-[1400px] flex-1 flex-col px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))] md:px-8 xl:min-h-0 xl:pb-6",
-          mode === "cava" && ready && wines.length > 0
-            ? "xl:overflow-hidden"
-            : "xl:overflow-y-auto",
-        ].join(" ")}
-      >
+      <div className="relative z-10 mx-auto flex w-full max-w-[1400px] flex-1 flex-col px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))] md:px-8 xl:min-h-0 xl:overflow-y-auto xl:pb-6">
         {!isOnline ? (
           <div
             role="status"
@@ -712,26 +705,30 @@ export default function CavaPage() {
           <>
         {showStoryNext &&
           !(mode === "cava" && mobilePanel === "detalle") ? (
-          <FirstRunGuide
-            variant="story-next"
-            onScan={() => openAdd()}
-            onTellStory={() => {
-              if (selected) {
-                selectWine(
-                  selected,
-                  true,
-                  mobilePanel === "mapa" ? "mapa" : "lista"
-                );
-              }
-            }}
-            onDismiss={dismissStoryHint}
-          />
+          <div className="shrink-0">
+            <FirstRunGuide
+              variant="story-next"
+              onScan={() => openAdd()}
+              onTellStory={() => {
+                if (selected) {
+                  selectWine(
+                    selected,
+                    true,
+                    mobilePanel === "mapa" ? "mapa" : "lista"
+                  );
+                }
+              }}
+              onDismiss={dismissStoryHint}
+            />
+          </div>
         ) : !guideDismissed && wines.length > 0 ? (
-          <FirstRunGuide
-            variant="compact"
-            onScan={() => openAdd()}
-            onDismiss={dismissGuide}
-          />
+          <div className="shrink-0">
+            <FirstRunGuide
+              variant="compact"
+              onScan={() => openAdd()}
+              onDismiss={dismissGuide}
+            />
+          </div>
         ) : null}
         <div
           className={[
@@ -789,10 +786,10 @@ export default function CavaPage() {
           />
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="flex min-h-[min(70vh,800px)] flex-1 flex-col overflow-hidden">
         <ResizableDesktopPanels
           map={
-            <section className="panel-focus min-h-0 overflow-y-auto p-5">
+            <section className="panel-focus flex h-full min-h-0 flex-col overflow-y-auto p-5">
               <div className="mb-4 flex shrink-0 items-baseline justify-between gap-3">
                 <h2 className="display text-2xl text-ink">
                   {activeCellar ? activeCellar.name : t("cava.cellarMap")}
@@ -830,7 +827,7 @@ export default function CavaPage() {
             </section>
           }
           inventory={
-            <section className="panel-quiet min-h-0 overflow-hidden p-5">
+            <section className="panel-quiet flex h-full min-h-0 flex-col overflow-hidden p-5">
               <div className="mb-4 flex shrink-0 items-baseline justify-between gap-3">
                 <h2 className="display text-2xl text-ink">{t("cava.inventory")}</h2>
                 <p className="text-sm text-ink-soft">{visible.length}</p>
@@ -844,7 +841,7 @@ export default function CavaPage() {
             </section>
           }
           detail={
-            <section className="panel-focus min-h-0 min-w-0 overflow-y-auto p-5">
+            <section className="panel-focus flex h-full min-h-0 min-w-0 flex-col overflow-y-auto p-5">
               <WineDetail {...detailProps} />
             </section>
           }

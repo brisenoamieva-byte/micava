@@ -487,6 +487,12 @@ export const es = {
     vintageLabel: "Añada",
     regionLabel: "Región",
     countriesCount: "{count} países",
+    priceUpTo400: "Hasta $400",
+    price401to600: "$401–600",
+    price601to900: "$601–900",
+    priceOver900: "Más de $900",
+    unitsCount: "{count} muebles",
+    noData: "Sin dato",
   },
   bitacora: {
     title: "Bitácora",

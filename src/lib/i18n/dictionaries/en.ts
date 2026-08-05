@@ -491,6 +491,12 @@ export const en = {
     vintageLabel: "Vintage",
     regionLabel: "Region",
     countriesCount: "{count} countries",
+    priceUpTo400: "Up to $400",
+    price401to600: "$401–600",
+    price601to900: "$601–900",
+    priceOver900: "Over $900",
+    unitsCount: "{count} units",
+    noData: "No data",
   },
   bitacora: {
     title: "Logbook",

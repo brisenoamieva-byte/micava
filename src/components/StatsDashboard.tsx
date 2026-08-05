@@ -133,7 +133,11 @@ export function StatsDashboard({
                   total: insights.totalSlots,
                 })}
                 {" · "}
-                {insights.occupancyLabel}
+                {insights.occupancyLabel.startsWith("units:")
+                  ? t("stats.unitsCount", {
+                      count: insights.occupancyLabel.slice("units:".length),
+                    })
+                  : insights.occupancyLabel}
               </p>
             </div>
           </div>
@@ -175,7 +179,9 @@ export function StatsDashboard({
                   <div className="min-w-0">
                     <div className="mb-1 flex items-baseline justify-between gap-2">
                       <span className="truncate text-sm font-medium text-ink">
-                        {countryDisplayName(c.name, locale)}
+                        {c.name === "__none__"
+                          ? t("stats.noData")
+                          : countryDisplayName(c.name, locale)}
                       </span>
                       <span className="shrink-0 text-xs text-ink-soft">
                         {c.count} · {Math.round(c.share * 100)}%
@@ -355,7 +361,11 @@ export function StatsDashboard({
                     : "text-ink hover:bg-[rgba(20,18,16,0.05)]",
                 ].join(" ")}
               >
-                <span className="font-medium">{r.name || t("stats.noRegion")}</span>
+                <span className="font-medium">
+                  {r.name === "__none__" || !r.name
+                    ? t("stats.noRegion")
+                    : r.name}
+                </span>
                 <span className="text-xs tabular-nums text-ink-soft">
                   {r.count}
                 </span>
@@ -660,7 +670,21 @@ function BandBlock({
   color: string;
   emptyHint?: string;
 }) {
+  const t = useT();
   const total = bands.reduce((s, b) => s + b.count, 0);
+
+  function bandLabel(label: string): string {
+    if (
+      label === "priceUpTo400" ||
+      label === "price401to600" ||
+      label === "price601to900" ||
+      label === "priceOver900"
+    ) {
+      return t(`stats.${label}`);
+    }
+    return label;
+  }
+
   return (
     <div>
       <p className="mb-2 text-[11px] uppercase tracking-[0.14em] text-ink-soft">{title}</p>
@@ -671,7 +695,7 @@ function BandBlock({
           {bands.map((b) => (
             <div key={b.label}>
               <div className="mb-0.5 flex justify-between text-xs">
-                <span className="text-ink">{b.label}</span>
+                <span className="text-ink">{bandLabel(b.label)}</span>
                 <span className="text-ink-soft">{b.count}</span>
               </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-[rgba(26,23,20,0.08)]">

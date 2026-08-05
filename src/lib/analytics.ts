@@ -107,7 +107,7 @@ function groupCount(
 ): NamedCount[] {
   const map = new Map<string, { count: number; value: number }>();
   for (const w of items) {
-    const key = keyFn(w) || "Sin dato";
+    const key = keyFn(w) || "__none__";
     const cur = map.get(key) ?? { count: 0, value: 0 };
     cur.count += 1;
     cur.value += w.price ?? 0;
@@ -215,7 +215,7 @@ export function buildInsights(
   const occupancyLabel =
     units.length === 1
       ? `${units[0].cols}×${units[0].rows.length}`
-      : `${units.length} muebles`;
+      : `units:${units.length}`;
 
   // Classification bands: only bottles with a real Cavatale rating.
   const scoreDefs = [
@@ -236,10 +236,10 @@ export function buildInsights(
   });
 
   const priceDefs = [
-    { label: "Hasta $400", test: (p: number) => p <= 400 },
-    { label: "$401–600", test: (p: number) => p > 400 && p <= 600 },
-    { label: "$601–900", test: (p: number) => p > 600 && p <= 900 },
-    { label: "Más de $900", test: (p: number) => p > 900 },
+    { label: "priceUpTo400", test: (p: number) => p <= 400 },
+    { label: "price401to600", test: (p: number) => p > 400 && p <= 600 },
+    { label: "price601to900", test: (p: number) => p > 600 && p <= 900 },
+    { label: "priceOver900", test: (p: number) => p > 900 },
   ];
   const priceBands: BandCount[] = priceDefs.map((b) => {
     const count = withPrice.filter((w) => b.test(w.price ?? 0)).length;

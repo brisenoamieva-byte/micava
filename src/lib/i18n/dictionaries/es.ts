@@ -240,6 +240,71 @@ export const es = {
       "Oficial Cavatale · evidencia citada → 30% sabor · 30% historia · 25% mesa · 15% originalidad (el servidor baja enums sin cita).",
     cavataleFooter:
       "Cavatale no es un consenso de catas como Vivino: mide qué tanto hay para contar en la mesa. La IA propone evidencia con citas; el servidor valida y aplica la fórmula fija 30/30/25/15. Sin cita concreta, no hay score alto. Actualizar historia vuelve a calcular. El precio es referencia de mercado.",
+    cavataleBreakdown: {
+      title: "Desglose",
+      formulaNote:
+        "Cada eje (1–5) × su peso suma el total oficial (un decimal).",
+      evidenceTitle: "Evidencia clasificada",
+      axes: {
+        taste: "Sabor",
+        story: "Historia",
+        table: "Mesa",
+        originality: "Originalidad",
+      },
+      axisHints: {
+        taste: "Oficio de la línea y señal de crianza — no es tu gusto personal.",
+        story: "Personas con nombre y hechos de lugar de esta botella.",
+        table: "Qué tan contable es en la mesa con hechos reales.",
+        originality: "Ángulo propio vs tipicidad intercambiable de la DO.",
+      },
+      evidence: {
+        craft: "Oficio",
+        people: "Personas",
+        placeFacts: "Lugar",
+        tellability: "Contable",
+        distinctiveness: "Carácter",
+        agingTier: "Crianza",
+      },
+      values: {
+        craft: {
+          unknown: "Sin señales claras",
+          basic: "Entry / commodity",
+          sound: "Bien hecho, tipicidad correcta",
+          fine: "Reputación clara de calidad",
+          outstanding: "Referencia de categoría",
+        },
+        people: {
+          none: "Sin personas nombradas",
+          generic: "Familia/enólogo sin nombre propio",
+          named: "Al menos un nombre propio real",
+          rich: "Nombres + vínculo humano concreto",
+        },
+        placeFacts: {
+          none: "Sin hechos de lugar",
+          regionOnly: "Solo región / DO",
+          bottleSpecific: "Viñedo, pueblo o parcela de esta botella",
+          intimate: "Detalle íntimo de lugar ligado a personas",
+        },
+        tellability: {
+          none: "Nada contable",
+          mild: "Dato correcto pero flojo de gancho",
+          strong: "Hecho que abre conversación",
+          magnetic: "El dato que la gente repite",
+        },
+        distinctiveness: {
+          commodity: "Genérico de supermercado",
+          typical: "Tipicidad correcta, sin ángulo propio",
+          distinct: "Ángulo / estilo propio claro",
+          rare: "Poco común / singular",
+        },
+        agingTier: {
+          none: "Sin dato",
+          entry: "Joven / sin crianza relevante",
+          aged: "Crianza / reserva / barrica",
+          reservaPlus: "Gran reserva / cru / vieilles vignes",
+        },
+      },
+    },
     talkHook: "Para contar",
     curiosity: "Dato curioso",
     pairings: "Maridajes",

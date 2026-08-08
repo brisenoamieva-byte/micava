@@ -21,6 +21,10 @@ export type Wine = {
   vivino: number | null;
   /** Official Cavatale score (1–5) from Kimi research — not Vivino. */
   cavataleRating: number | null;
+  /** Axis scores that produced cavataleRating (taste/story/table/originality). */
+  cavataleParts: import("@/lib/cavatale-rating").CavataleRatingParts | null;
+  /** Sanitized evidence enums behind the axes. */
+  cavataleEvidence: import("@/lib/cavatale-rating").CavataleRatingEvidence | null;
   price: number | null;
   /** ISO 4217 for `price`; null/absent treated as MXN. */
   priceCurrency: string | null;
@@ -163,6 +167,8 @@ export type Encounter = {
   aging: string;
   vintage: number | null;
   cavataleRating: number | null;
+  cavataleParts: import("@/lib/cavatale-rating").CavataleRatingParts | null;
+  cavataleEvidence: import("@/lib/cavatale-rating").CavataleRatingEvidence | null;
   kimiSummary: string | null;
   kimiCuriosity: string | null;
   kimiTalkHook: string | null;

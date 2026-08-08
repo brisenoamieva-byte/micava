@@ -17,6 +17,7 @@ import { buildWineShareText, shareOrCopyText } from "@/lib/share-wine";
 import { useLocale, useT, wineTypeLabel } from "@/lib/i18n";
 import { clientCountryCodeHint } from "@/lib/market-geo";
 import { AiTheaterStatus } from "@/components/AiTheaterStatus";
+import { CavataleRatingCard } from "@/components/CavataleRatingCard";
 import { ThinkingIndicator } from "@/components/ThinkingIndicator";
 
 type Props = {
@@ -695,16 +696,12 @@ export function WineDetail({
           ) : null}
 
           {hasKimi && wine.cavataleRating != null ? (
-            <div className="mt-4 rounded-[10px] border border-[rgba(110,31,44,0.28)] bg-[rgba(110,31,44,0.08)] px-3 py-3">
-              <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--wine)]">
-                {t("wine.rating")}
-              </p>
-              <p className="mt-1 display text-3xl leading-none text-ink">
-                {formatCavataleRating(wine.cavataleRating)}
-              </p>
-              <p className="mt-1.5 text-xs text-ink-soft">
-                {t("wine.cavataleRubric")}
-              </p>
+            <div className="mt-4">
+              <CavataleRatingCard
+                rating={wine.cavataleRating}
+                parts={wine.cavataleParts}
+                evidence={wine.cavataleEvidence}
+              />
             </div>
           ) : null}
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { AiTheaterStatus } from "@/components/AiTheaterStatus";
+import { CavataleRatingCard } from "@/components/CavataleRatingCard";
 import { LabelPhotoCapture } from "@/components/LabelPhotoCapture";
 import { ThinkingIndicator } from "@/components/ThinkingIndicator";
 import {
@@ -18,7 +19,7 @@ import {
 import type { Encounter, EncounterDraft, WineDraft } from "@/lib/types";
 import { useLocale, useT } from "@/lib/i18n";
 import { clientCountryCodeHint } from "@/lib/market-geo";
-import { countryDisplayName, formatCavataleRating } from "@/lib/wines";
+import { countryDisplayName } from "@/lib/wines";
 
 type Step = "identify" | "story";
 
@@ -334,6 +335,8 @@ export function EncuentroModal({
       aging: identity.aging.trim(),
       vintage: identity.vintage,
       cavataleRating: research.cavataleRating,
+      cavataleParts: research.cavataleParts,
+      cavataleEvidence: research.cavataleEvidence,
       kimiSummary: research.kimiSummary,
       kimiCuriosity: research.kimiCuriosity,
       kimiTalkHook: research.kimiTalkHook,
@@ -631,17 +634,12 @@ export function EncuentroModal({
                     </p>
                   ) : null}
                   {research.cavataleRating != null ? (
-                    <div className="rounded-[10px] border border-[rgba(110,31,44,0.28)] bg-[rgba(110,31,44,0.08)] px-3 py-3">
-                      <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--wine)]">
-                        {t("wine.rating")}
-                      </p>
-                      <p className="display mt-1 text-3xl leading-none text-ink">
-                        {formatCavataleRating(research.cavataleRating)}
-                      </p>
-                      <p className="mt-1.5 text-xs text-ink-soft">
-                        {t("scan.cavataleRubric")}
-                      </p>
-                    </div>
+                    <CavataleRatingCard
+                      rating={research.cavataleRating}
+                      parts={research.cavataleParts}
+                      evidence={research.cavataleEvidence}
+                      rubric={t("scan.cavataleRubric")}
+                    />
                   ) : null}
                   <button
                     type="button"

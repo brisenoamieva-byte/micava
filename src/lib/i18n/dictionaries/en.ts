@@ -1,5 +1,13 @@
 import type { es } from "./es";
 
+type DeepStringLeaves<T> = {
+  [K in keyof T]: T[K] extends string
+    ? string
+    : T[K] extends object
+      ? DeepStringLeaves<T[K]>
+      : T[K];
+};
+
 /** English UI copy — same shape as `es`. */
 export const en = {
   common: {
@@ -243,6 +251,71 @@ export const en = {
       "Official Cavatale · cited evidence → 30% taste · 30% story · 25% table · 15% originality (server downgrades uncited enums).",
     cavataleFooter:
       "Cavatale is not a tasting consensus like Vivino: it measures how much there is to tell at the table. The AI proposes evidence with citations; the server validates and applies the fixed 30/30/25/15 formula. No concrete cite → no high score. Refreshing the story recalculates. Price is a market reference.",
+    cavataleBreakdown: {
+      title: "Breakdown",
+      formulaNote:
+        "Each axis (1–5) × its weight adds up to the official total (one decimal).",
+      evidenceTitle: "Classified evidence",
+      axes: {
+        taste: "Taste",
+        story: "Story",
+        table: "Table",
+        originality: "Originality",
+      },
+      axisHints: {
+        taste: "Craft of the line and aging signal — not personal palate.",
+        story: "Named people and bottle-specific place facts.",
+        table: "How tellable it is at dinner with real facts.",
+        originality: "Own angle vs interchangeable DO typicity.",
+      },
+      evidence: {
+        craft: "Craft",
+        people: "People",
+        placeFacts: "Place",
+        tellability: "Tellability",
+        distinctiveness: "Character",
+        agingTier: "Aging",
+      },
+      values: {
+        craft: {
+          unknown: "No clear signals",
+          basic: "Entry / commodity",
+          sound: "Well made, correct typicity",
+          fine: "Clear quality reputation",
+          outstanding: "Category reference",
+        },
+        people: {
+          none: "No named people",
+          generic: "Family/winemaker without a proper name",
+          named: "At least one real proper name",
+          rich: "Names + concrete human link",
+        },
+        placeFacts: {
+          none: "No place facts",
+          regionOnly: "Region / appellation only",
+          bottleSpecific: "Vineyard, village, or plot for this bottle",
+          intimate: "Intimate place detail tied to people",
+        },
+        tellability: {
+          none: "Nothing to tell",
+          mild: "Correct but weak hook",
+          strong: "Fact that opens conversation",
+          magnetic: "The detail people repeat",
+        },
+        distinctiveness: {
+          commodity: "Supermarket generic",
+          typical: "Correct typicity, no own angle",
+          distinct: "Clear own style / angle",
+          rare: "Uncommon / singular",
+        },
+        agingTier: {
+          none: "No data",
+          entry: "Young / no relevant aging",
+          aged: "Aging / reserva / oak",
+          reservaPlus: "Gran reserva / cru / old vines",
+        },
+      },
+    },
     talkHook: "To tell",
     curiosity: "Fun fact",
     pairings: "Pairings",
@@ -718,8 +791,4 @@ export const en = {
     refiningHook: "Sharpening the hook…",
     preparingPairing: "Preparing pairings…",
   },
-} as const satisfies {
-  [K in keyof typeof es]: {
-    [P in keyof (typeof es)[K]]: string;
-  };
-};
+} as const satisfies DeepStringLeaves<typeof es>;

@@ -15,6 +15,8 @@ export type {
 } from "@/lib/cavatale-rating";
 export {
   CAVATALE_RATING_WEIGHTS,
+  buildCavataleAxisBreakdown,
+  CAVATALE_EVIDENCE_KEYS,
   computeCavataleRatingFromParts,
   computeOfficialFromEvidence,
   computePartsFromEvidence,
@@ -27,6 +29,10 @@ export {
 export type KimiResearch = {
   /** Official Cavatale rating 1–5 (primary). */
   cavataleRating: number | null;
+  /** Deterministic axis scores behind the official rating. */
+  cavataleParts: CavataleRatingParts | null;
+  /** Sanitized evidence enums (after cite checks). */
+  cavataleEvidence: CavataleRatingEvidence | null;
   kimiVivino: number | null;
   kimiPrice: number | null;
   /** ISO 4217 for kimiPrice; null → treat as MXN. */
@@ -44,6 +50,8 @@ export type KimiResearch = {
 
 export const emptyKimiResearch: KimiResearch = {
   cavataleRating: null,
+  cavataleParts: null,
+  cavataleEvidence: null,
   kimiVivino: null,
   kimiPrice: null,
   kimiPriceCurrency: null,
@@ -113,6 +121,8 @@ export function withKimiDefaults<T extends Partial<Wine>>(
     ...wine,
     labelImageUrl: wine.labelImageUrl ?? null,
     cavataleRating: wine.cavataleRating ?? null,
+    cavataleParts: wine.cavataleParts ?? null,
+    cavataleEvidence: wine.cavataleEvidence ?? null,
     priceCurrency: wine.priceCurrency ?? null,
     kimiVivino: wine.kimiVivino ?? null,
     kimiPrice: wine.kimiPrice ?? null,
@@ -325,6 +335,8 @@ export function parseKimiResearchPayload(raw: unknown): Omit<
 
   return {
     cavataleRating,
+    cavataleParts: ratingParts,
+    cavataleEvidence: ratingEvidence,
     ratingParts,
     ratingEvidence,
     kimiVivino,

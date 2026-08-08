@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CavataleRatingCard } from "@/components/CavataleRatingCard";
 import { CountryFlag } from "@/components/CountryFlag";
 import type { Encounter } from "@/lib/types";
 import { useLocale, useT } from "@/lib/i18n";
@@ -107,10 +108,11 @@ export function BitacoraPanel({ entries, onRemove }: Props) {
                       .join(" · ")}
                   </p>
                   {open.cavataleRating != null ? (
-                    <p className="text-sm text-[var(--wine)]">
-                      {t("wine.rating")}{" "}
-                      {formatCavataleRating(open.cavataleRating)}
-                    </p>
+                    <CavataleRatingCard
+                      rating={open.cavataleRating}
+                      parts={open.cavataleParts}
+                      evidence={open.cavataleEvidence}
+                    />
                   ) : null}
                   {open.kimiTalkHook ? (
                     <div className="tale-hook px-2.5 py-2.5">

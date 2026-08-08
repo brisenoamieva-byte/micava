@@ -497,6 +497,43 @@ export function computeOfficialFromEvidence(
   return parts ? computeCavataleRatingFromParts(parts) : null;
 }
 
+export type CavataleAxisKey = keyof CavataleRatingParts;
+
+export type CavataleAxisBreakdownRow = {
+  key: CavataleAxisKey;
+  score: number;
+  weight: number;
+  contribution: number;
+};
+
+/** Rows for UI: axis score × weight → contribution to total. */
+export function buildCavataleAxisBreakdown(
+  parts: CavataleRatingParts
+): CavataleAxisBreakdownRow[] {
+  const keys: CavataleAxisKey[] = ["taste", "story", "table", "originality"];
+  return keys.map((key) => {
+    const weight = CAVATALE_RATING_WEIGHTS[key];
+    const score = parts[key];
+    return {
+      key,
+      score,
+      weight,
+      contribution: Math.round(score * weight * 10) / 10,
+    };
+  });
+}
+
+export type CavataleEvidenceKey = keyof CavataleRatingEvidence;
+
+export const CAVATALE_EVIDENCE_KEYS: CavataleEvidenceKey[] = [
+  "craft",
+  "people",
+  "placeFacts",
+  "tellability",
+  "distinctiveness",
+  "agingTier",
+];
+
 /** Prompt block: explicit rubric + enum checklist (shared by research-wine). */
 export const CAVATALE_RATING_RUBRIC_PROMPT = `## Rating Cavatale — metodología fija (reproducible)
 

@@ -10,6 +10,10 @@ import {
   serializeKimiPairings,
   withKimiDefaults,
 } from "@/lib/kimi-research";
+import {
+  parseCavataleRatingEvidence,
+  parseCavataleRatingParts,
+} from "@/lib/cavatale-rating";
 import { withVerificationDefaults } from "@/lib/rating-verify";
 
 export type WineRow = {
@@ -29,6 +33,8 @@ export type WineRow = {
   vintage: number | null;
   vivino: number | null;
   cavatale_rating: number | null;
+  cavatale_parts?: unknown;
+  cavatale_evidence?: unknown;
   price: number | null;
   price_currency?: string | null;
   external_rating: number | null;
@@ -88,6 +94,8 @@ export function wineFromRow(row: WineRow): Wine {
       vintage: row.vintage,
       vivino: row.vivino,
       cavataleRating: row.cavatale_rating ?? null,
+      cavataleParts: parseCavataleRatingParts(row.cavatale_parts),
+      cavataleEvidence: parseCavataleRatingEvidence(row.cavatale_evidence),
       price: row.price,
       priceCurrency: row.price_currency ?? null,
       externalRating: row.external_rating,
@@ -132,6 +140,8 @@ export function wineToRow(
     vintage: wine.vintage,
     vivino: wine.vivino,
     cavatale_rating: wine.cavataleRating,
+    cavatale_parts: wine.cavataleParts,
+    cavatale_evidence: wine.cavataleEvidence,
     price: wine.price,
     price_currency: wine.priceCurrency ?? "MXN",
     external_rating: wine.externalRating,
@@ -247,6 +257,8 @@ export type EncounterRow = {
   aging: string;
   vintage: number | null;
   cavatale_rating: number | null;
+  cavatale_parts?: unknown;
+  cavatale_evidence?: unknown;
   kimi_summary: string | null;
   kimi_curiosity: string | null;
   kimi_talk_hook: string | null;
@@ -273,6 +285,8 @@ export function encounterFromRow(row: EncounterRow): Encounter {
     vintage: row.vintage,
     cavataleRating:
       row.cavatale_rating != null ? Number(row.cavatale_rating) : null,
+    cavataleParts: parseCavataleRatingParts(row.cavatale_parts),
+    cavataleEvidence: parseCavataleRatingEvidence(row.cavatale_evidence),
     kimiSummary: row.kimi_summary ?? null,
     kimiCuriosity: row.kimi_curiosity ?? null,
     kimiTalkHook: row.kimi_talk_hook ?? null,
@@ -303,6 +317,8 @@ export function encounterToRow(
     aging: entry.aging,
     vintage: entry.vintage,
     cavatale_rating: entry.cavataleRating,
+    cavatale_parts: entry.cavataleParts,
+    cavatale_evidence: entry.cavataleEvidence,
     kimi_summary: entry.kimiSummary,
     kimi_curiosity: entry.kimiCuriosity,
     kimi_talk_hook: entry.kimiTalkHook,

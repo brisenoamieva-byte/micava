@@ -176,6 +176,8 @@ function draftToWine(draft: WineDraft, id: string, existing?: Wine): Wine {
     vintage: draft.vintage,
     vivino: draft.vivino,
     cavataleRating: existing?.cavataleRating ?? null,
+    cavataleParts: existing?.cavataleParts ?? null,
+    cavataleEvidence: existing?.cavataleEvidence ?? null,
     price: draft.price,
     priceCurrency: existing?.priceCurrency ?? null,
     externalRating: existing?.externalRating ?? null,
@@ -820,6 +822,18 @@ export function CellarProvider({ children }: { children: ReactNode }) {
               research.cavataleRating != null
                 ? research.cavataleRating
                 : w.cavataleRating,
+            cavataleParts:
+              research.cavataleParts != null
+                ? research.cavataleParts
+                : research.cavataleRating != null
+                  ? null
+                  : w.cavataleParts,
+            cavataleEvidence:
+              research.cavataleEvidence != null
+                ? research.cavataleEvidence
+                : research.cavataleRating != null
+                  ? null
+                  : w.cavataleEvidence,
             kimiVivino: research.kimiVivino,
             kimiPrice: research.kimiPrice,
             kimiPriceCurrency:
@@ -1070,6 +1084,8 @@ export function CellarProvider({ children }: { children: ReactNode }) {
         aging: (input.aging ?? "").trim(),
         vintage: input.vintage ?? null,
         cavataleRating: input.cavataleRating ?? null,
+        cavataleParts: input.cavataleParts ?? null,
+        cavataleEvidence: input.cavataleEvidence ?? null,
         kimiSummary: input.kimiSummary ?? null,
         kimiCuriosity: input.kimiCuriosity ?? null,
         kimiTalkHook: input.kimiTalkHook ?? null,

@@ -453,9 +453,10 @@ export async function POST(request: Request) {
         aging: body.aging ?? null,
       })
     : null;
+  const officialParts = partsFromEvidence ?? finalized.ratingParts;
   const officialRating = resolveOfficialCavataleRating({
     existing: existingRating,
-    parts: partsFromEvidence ?? finalized.ratingParts,
+    parts: officialParts,
   });
 
   // Prefer geo web-search price (always MXN for storage); keep model price only as fallback.
@@ -472,6 +473,8 @@ export async function POST(request: Request) {
   const research = {
     ...finalized.research,
     cavataleRating: officialRating,
+    cavataleParts: officialParts,
+    cavataleEvidence: finalized.ratingEvidence,
     kimiPrice,
     kimiPriceCurrency: kimiPrice != null ? "MXN" : null,
     kimiCheckedAt: new Date().toISOString(),

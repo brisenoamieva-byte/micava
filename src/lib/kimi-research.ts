@@ -59,8 +59,6 @@ export const emptyKimiResearch: KimiResearch = {
 /**
  * Prefer a fresh research score when present; keep the stored one only as
  * fallback so a thin/failed pass never wipes an existing rating with null.
- * No dampening: the methodology should arrive at the correct score from
- * evidence; protecting a wrong prior is intentional non-goal.
  */
 export function stabilizeCavataleRating(
   existing: number | null | undefined,
@@ -80,23 +78,25 @@ export function stabilizeCavataleRating(
 }
 
 /**
- * Official score priority: evidence→parts (caller) > weighted parts >
- * model decimal (last resort) > keep existing.
+ * Official score: evidence→parts (caller) only.
+ * Free-form LLM decimals are ignored — they caused inflated first-pass scores.
+ * If parts missing, keep existing (do not invent a float).
  */
 export function resolveOfficialCavataleRating(options: {
   existing?: number | null;
   /** @deprecated Ignored. */
+  lockExisting?: boolean;
+  /** @deprecated Ignored. */
   forceRecalculate?: boolean;
   parts?: CavataleRatingParts | null;
+  /** @deprecated Ignored — free LLM floats are not official. */
   modelRating?: number | null;
   maxStep?: number;
 }): number | null {
   const fromParts = options.parts
     ? computeCavataleRatingFromParts(options.parts)
     : null;
-  // Prefer code-computed parts; free-form LLM float only if no parts.
-  const incoming = fromParts ?? options.modelRating ?? null;
-  return stabilizeCavataleRating(options.existing, incoming);
+  return stabilizeCavataleRating(options.existing, fromParts);
 }
 
 export function withKimiDefaults<T extends Partial<Wine>>(
@@ -292,7 +292,8 @@ export function parseKimiResearchPayload(raw: unknown): Omit<
   const legacyParts = parseCavataleRatingParts(
     o.ratingParts ?? o.cavataleParts ?? o.scores ?? o.rating_parts
   );
-  // Prefer code-mapped axes from structured evidence over free half-points.
+  // Prefer code-mapped axes from structured (+ sanitized) evidence.
+  // Never trust free-form cavataleRating floats — they inflate first passes.
   const ratingParts =
     (ratingEvidence
       ? computePartsFromEvidence(ratingEvidence)
@@ -300,13 +301,7 @@ export function parseKimiResearchPayload(raw: unknown): Omit<
   const fromParts = ratingParts
     ? computeCavataleRatingFromParts(ratingParts)
     : null;
-  const modelRating = clampScore(
-    asOptionalNumber(
-      o.cavataleRating ?? o.cavatale_rating ?? o.ratingCavatale
-    )
-  );
-  // Never prefer free-form float when parts/evidence exist.
-  const cavataleRating = fromParts ?? modelRating;
+  const cavataleRating = fromParts;
 
   let kimiVivino = clampScore(
     asOptionalNumber(o.vivino ?? o.kimiVivino ?? o.vivinoEstimate)

@@ -109,6 +109,15 @@ export type CavataleRatingEvidence = {
   agingTier: AgingTier;
 };
 
+/** Concrete citations that justify high enums (anti-inflation). */
+export type CavataleRatingCites = {
+  craftCite: string;
+  peopleCite: string;
+  placeCite: string;
+  tellCite: string;
+  distinctCite: string;
+};
+
 const CRAFT: readonly CraftLevel[] = [
   "unknown",
   "basic",
@@ -151,6 +160,149 @@ function pickEnum<T extends string>(
   return (allowed as readonly string[]).includes(v) ? (v as T) : null;
 }
 
+function asCite(raw: unknown): string {
+  if (typeof raw !== "string") return "";
+  return raw.trim().replace(/\s+/g, " ").slice(0, 240);
+}
+
+function citeHasSubstance(cite: string, minLen = 12): boolean {
+  return cite.replace(/\s/g, "").length >= minLen;
+}
+
+/** Proper-name signal: at least one Capitalized token ≥2 letters. */
+function citeHasProperName(cite: string): boolean {
+  if (!cite.trim()) return false;
+  return /(?:^|[\s,./(«"'])[\p{Lu}][\p{L}'’-]{1,}/u.test(cite);
+}
+
+function citeHasHumanLink(cite: string): boolean {
+  const c = cite
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "");
+  return /padre|madre|hijo|hija|familia|fund|herencia|generacion|esposa|esposo|nieto|abuelo|duo|pareja|sucesor|founder|family|son|daughter|heir/.test(
+    c
+  );
+}
+
+function citeHasPlaceSpecifics(cite: string): boolean {
+  const c = cite
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "");
+  if (
+    /vineyard|vineedo|vina|parcela|pago|finca|pueblo|aldea|single\s*vineyard|lieu-?dit|cru|terroir\s+de/.test(
+      c
+    )
+  ) {
+    return true;
+  }
+  // Generic DO-only cites don't count as bottle-specific.
+  if (
+    /^(ribera(\s+del\s+duero)?|rioja|priorat|mendoza|valle de guadalupe|bordeaux|burgundy|toscana|chianti)[\s.]*$/i.test(
+      cite.trim()
+    )
+  ) {
+    return false;
+  }
+  return citeHasSubstance(cite, 18);
+}
+
+function citeSupportsOutstanding(cite: string): boolean {
+  const c = cite
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "");
+  return /icono|referencia|benchmark|grand\s*cru|primera\s*linea|cult|legendary|benchmark|world[- ]class|mejor\s+de/.test(
+    c
+  );
+}
+
+export function parseCavataleRatingCites(raw: unknown): CavataleRatingCites {
+  const o =
+    raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  return {
+    craftCite: asCite(o.craftCite ?? o.craft_cite ?? o.craftJustification),
+    peopleCite: asCite(
+      o.peopleCite ?? o.people_cite ?? o.peopleJustification ?? o.personas
+    ),
+    placeCite: asCite(o.placeCite ?? o.place_cite ?? o.placeJustification),
+    tellCite: asCite(
+      o.tellCite ?? o.tell_cite ?? o.tellabilityCite ?? o.mesaCite
+    ),
+    distinctCite: asCite(
+      o.distinctCite ?? o.distinct_cite ?? o.originalityCite
+    ),
+  };
+}
+
+/**
+ * Downgrade optimistic enums that lack concrete citations.
+ * Same bottle + same real facts → same sanitized evidence → same score.
+ */
+export function sanitizeCavataleEvidence(
+  evidence: CavataleRatingEvidence,
+  cites: CavataleRatingCites
+): CavataleRatingEvidence {
+  let { craft, people, placeFacts, tellability, distinctiveness, agingTier } =
+    evidence;
+
+  if (craft === "outstanding" && !citeSupportsOutstanding(cites.craftCite)) {
+    craft = citeHasSubstance(cites.craftCite, 15) ? "fine" : "sound";
+  }
+  if (craft === "fine" && !citeHasSubstance(cites.craftCite, 15)) {
+    craft = "sound";
+  }
+
+  if (people === "rich") {
+    if (!citeHasProperName(cites.peopleCite)) {
+      people = citeHasSubstance(cites.peopleCite, 8) ? "generic" : "none";
+    } else if (!citeHasHumanLink(cites.peopleCite)) {
+      people = "named";
+    }
+  } else if (people === "named" && !citeHasProperName(cites.peopleCite)) {
+    people = citeHasSubstance(cites.peopleCite, 8) ? "generic" : "none";
+  }
+
+  if (
+    (placeFacts === "bottleSpecific" || placeFacts === "intimate") &&
+    !citeHasPlaceSpecifics(cites.placeCite)
+  ) {
+    placeFacts = citeHasSubstance(cites.placeCite, 8) ? "regionOnly" : "none";
+  }
+  if (placeFacts === "intimate" && !citeHasHumanLink(cites.placeCite)) {
+    placeFacts = "bottleSpecific";
+  }
+
+  if (tellability === "magnetic" && !citeHasSubstance(cites.tellCite, 28)) {
+    tellability = citeHasSubstance(cites.tellCite, 16) ? "strong" : "mild";
+  }
+  if (tellability === "strong" && !citeHasSubstance(cites.tellCite, 16)) {
+    tellability = citeHasSubstance(cites.tellCite, 8) ? "mild" : "none";
+  }
+
+  if (distinctiveness === "rare" && !citeHasSubstance(cites.distinctCite, 20)) {
+    distinctiveness = citeHasSubstance(cites.distinctCite, 12)
+      ? "distinct"
+      : "typical";
+  }
+  if (
+    distinctiveness === "distinct" &&
+    !citeHasSubstance(cites.distinctCite, 12)
+  ) {
+    distinctiveness = "typical";
+  }
+
+  return {
+    craft,
+    people,
+    placeFacts,
+    tellability,
+    distinctiveness,
+    agingTier,
+  };
+}
+
 export function parseCavataleRatingEvidence(
   raw: unknown
 ): CavataleRatingEvidence | null {
@@ -181,14 +333,18 @@ export function parseCavataleRatingEvidence(
   ) {
     return null;
   }
-  return {
-    craft,
-    people,
-    placeFacts,
-    tellability,
-    distinctiveness,
-    agingTier,
-  };
+  const cites = parseCavataleRatingCites(o);
+  return sanitizeCavataleEvidence(
+    {
+      craft,
+      people,
+      placeFacts,
+      tellability,
+      distinctiveness,
+      agingTier,
+    },
+    cites
+  );
 }
 
 /** Infer aging tier from ficha text (deterministic; complements model enum). */
@@ -344,54 +500,46 @@ export function computeOfficialFromEvidence(
 /** Prompt block: explicit rubric + enum checklist (shared by research-wine). */
 export const CAVATALE_RATING_RUBRIC_PROMPT = `## Rating Cavatale — metodología fija (reproducible)
 
-El score oficial NO es un decimal inventado. Clasifica EVIDENCIA en enums; el SERVIDOR calcula ejes y el total con pesos fijos:
-  0.30*taste + 0.30*story + 0.25*table + 0.15*originality (un decimal).
+El score oficial NO es un decimal inventado. Clasifica EVIDENCIA en enums + CITAS; el SERVIDOR:
+1) baja enums sin cita suficiente,
+2) calcula ejes y el total con pesos fijos 0.30*taste + 0.30*story + 0.25*table + 0.15*originality.
 
 Devuelve OBLIGATORIAMENTE ratingEvidence (objeto) si la identidad es clara.
-ratingParts es opcional (auto-chequeo legado); el servidor prioriza ratingEvidence y NUNCA toma cavataleRating libre como fuente de verdad si hay evidencia o partes.
+ratingParts es opcional (legado). NUNCA uses cavataleRating libre como fuente de verdad: el servidor lo ignora si hay evidencia.
 
-### ratingEvidence — elige EXACTAMENTE uno por campo (criterios concretos)
+### ratingEvidence — enums + citas (citas OBLIGATORIAS para niveles altos)
 
-craft (calidad/reputación de elaboración de ESTA botella/línea — no tu gusto personal):
-- unknown: no hay señales serias de calidad de ESTA etiqueta
-- basic: commodity / entry genérico sin prestigio de línea
-- sound: bien hecho, productor serio, tipicidad correcta (la mayoría de buenos vinos de mesa)
-- fine: reputación clara de calidad (crítica/pares/estilo reconocido de la casa/línea)
-- outstanding: referencia de categoría (muy raro; solo con consenso claro)
+Incluye SIEMPRE estas claves de cita (string; "" si no hay hecho):
+craftCite, peopleCite, placeCite, tellCite, distinctCite.
 
-people (humanos verificables en el relato de ESTA bodega/botella):
-- none: no conoces personas
-- generic: "una familia" / "el enólogo" sin nombre ni vínculo concreto
-- named: al menos un nombre propio real (fundador, dueño, enólogo) de ESTA casa
-- rich: nombres + vínculo/decisión humana concreta (padre/hijo, herencia, gesto fundacional)
+craft (calidad/reputación de ESTA botella/línea — no tu gusto):
+- unknown / basic / sound / fine / outstanding
+- fine exige craftCite con señal concreta (≥~15 chars). outstanding casi nunca; exige señal de icono/referencia.
 
-placeFacts (especificidad del lugar/botella — no folleto de DO):
-- none: sin hechos de lugar
-- regionOnly: solo región/DO genérica
-- bottleSpecific: viñedo, pueblo, parcela, añada o decisión de elaboración de ESTA botella
-- intimate: detalle íntimo verificable del lugar/proyecto ligado a personas
+people:
+- none / generic / named / rich
+- named exige peopleCite con NOMBRE PROPIO real. rich exige además vínculo humano (padre/hijo, herencia, fundación…).
 
-tellability (¿se puede contar en la mesa con hechos reales?):
-- none: nada contable
-- mild: un dato correcto pero flojo de gancho
-- strong: anécdota o hecho que abre conversación
-- magnetic: el dato que la gente repite (raro; requiere hecho concreto fuerte)
+placeFacts:
+- none / regionOnly / bottleSpecific / intimate
+- bottleSpecific/intimate exigen placeCite con viñedo/pueblo/parcela/sitio — NO basta “Ribera del Duero” / DO genérica.
 
-distinctiveness (¿es intercambiable o tiene ángulo propio?):
-- commodity: genérico de supermercado / etiqueta sin carácter
-- typical: tipicidad correcta de región/uva, sin ángulo propio
-- distinct: estilo, uva, proyecto o ángulo propio claro
-- rare: poco común / singular en contexto de cava personal
+tellability:
+- none / mild / strong / magnetic
+- strong/magnetic exigen tellCite con el hecho contable (no marketing vacío).
 
-agingTier (señales de añejamiento de ESTA botella):
-- none: sin dato
-- entry: joven / sin crianza relevante
-- aged: crianza/reserva/barrica u oak aging declarado
-- reservaPlus: gran reserva / vieilles vignes / cru superior / reserva especial
+distinctiveness:
+- commodity / typical / distinct / rare
+- distinct/rare exigen distinctCite con el ángulo propio. Un Reserva tipico de DO → typical (no distinct).
 
-### Reglas de consistencia (anti-ruido)
-- Misma evidencia factual → MISMOS enums. No “re-opines” entre Actualizar; reclasifica solo si los HECHOS cambian.
-- No regales fine/outstanding, rich, magnetic o rare sin hechos concretos nombrables.
-- Si identity dudosa o sin señales → ratingEvidence null (y ratingParts null).
-- Un Rating Cavatale guardado en la ficha es SOLO contexto histórico; NO lo uses para sesgar enums. Recalcula solo con evidencia actual.
+agingTier:
+- none / entry / aged / reservaPlus
+
+### Reglas anti-inflado (críticas)
+- Sin cita suficiente el SERVIDOR degrada el enum. No inventes citas.
+- Misma evidencia factual → MISMOS enums y MISMAS citas entre Actualizar.
+- No regales fine/outstanding, rich, magnetic o rare.
+- Un Reserva comercial tipico de Ribera/Rioja con poca gente nombrable suele ser: craft=sound, people=none|generic, placeFacts=regionOnly, tellability=mild, distinctiveness=typical, agingTier=aged.
+- Si identity dudosa → ratingEvidence null.
+- Rating guardado en ficha = contexto histórico; NO sesgues enums hacia él. Recalcula solo con hechos actuales.
 - NUNCA menciones Vivino ni el score comunitario en summary/curiosity/talkHook/pairingNote.`;

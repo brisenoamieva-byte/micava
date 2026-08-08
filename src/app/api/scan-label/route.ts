@@ -18,7 +18,7 @@ import {
 import { wineCountriesForPrompt } from "@/lib/wine-countries";
 
 export const runtime = "nodejs";
-export const maxDuration = 45;
+export const maxDuration = 60;
 
 const KIMI_BASE = "https://api.moonshot.ai/v1";
 const MODEL = process.env.KIMI_MODEL?.trim() || "kimi-k2.6";
@@ -29,10 +29,16 @@ const COUNTRY_PROMPT = wineCountriesForPrompt();
 
 /**
  * Pass 1: vision only. Market data (Vivino/price) is filled by /api/enrich-label.
+ * May receive 1–2 photos (front label + optional back / contraetiqueta).
  */
 const VISION_SYSTEM = `Eres un sommelier / experto en identificación de vinos por ETIQUETA VISUAL.
 
 Tu trabajo NO es solo leer texto (OCR). Muchas etiquetas modernas son casi solo imagen: ilustración, tipografía estilizada, logo, colores, composición. Debes RECONOCER el vino comercial cuando la marca es identificable por su diseño, igual que un humano que ya lo ha visto en tienda o Vivino.
+
+Puedes recibir 1 o 2 fotos de la MISMA botella:
+- Foto 1: etiqueta frontal (frente).
+- Foto 2 (opcional): contraetiqueta / reverso (datos técnicos: uvas, DO, alcohol, añada, bodega).
+Combina ambas. Prioriza texto legible de la contraetiqueta para grape/aging/vintage/region cuando exista; usa el frente para nombre/bodega/huella visual.
 
 Prioridad de identificación:
 1) Huella visual: arte, ilustración, mascota, colores dominantes, tipografía característica, escudo/logo, layout (qué va arriba/abajo), contraetiqueta si se ve.
@@ -54,11 +60,13 @@ Definiciones:
 - vivino (number|null): score típico Vivino 1–5 SOLO si identificaste el vino concreto con certeza razonable. Si no, null (se buscará después). NUNCA inventes.
 - price (number|null): precio menudeo típico en MXN (entero) si conoces ese vino en México con certeza; si no, null.
 - confidence ("high"|"medium"|"low"): certeza de la IDENTIDAD del vino (no de la foto).
-- notes (string): breve: qué viste (ej. "solo ilustración de búho, tipografía curva") y qué es dudoso.
+- notes (string): breve: qué viste (ej. "frente ilustración + contraetiqueta con Tempranillo 2018") y qué es dudoso.
 - matchMethod ("text"|"visual"|"mixed"): text=principalmente OCR; visual=casi sin texto / por diseño; mixed=ambos.
 - searchQuery (string): 1 consulta corta en inglés o español para buscar en internet ese vino exacto + Vivino/precio (ej. "Monte Xanic Cabernet 2020 Vivino price Mexico"). Si name="", arma query con pistas visuales.
 
-Si la imagen no parece una etiqueta de vino, name="" y confidence="low".`;
+Si ninguna imagen parece una etiqueta de vino, name="" y confidence="low".`;
+
+const MAX_SCAN_IMAGES = 2;
 
 type KimiChatResponse = {
   choices?: Array<{ message?: { content?: string | null } }>;
@@ -74,37 +82,63 @@ function badRequest(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
 }
 
-async function readImageDataUrl(request: Request): Promise<string> {
+async function readImageDataUrls(request: Request): Promise<string[]> {
   const contentType = request.headers.get("content-type") ?? "";
 
   if (contentType.includes("multipart/form-data")) {
     const form = await request.formData();
-    const file = form.get("image");
-    if (!(file instanceof File)) {
+    const files = [
+      form.get("image"),
+      form.get("image2"),
+      ...form.getAll("images"),
+    ].filter((f): f is File => f instanceof File);
+    const unique = files.slice(0, MAX_SCAN_IMAGES);
+    if (unique.length === 0) {
       throw new Error("Falta el archivo image.");
     }
-    if (!file.type.startsWith("image/")) {
-      throw new Error("El archivo debe ser una imagen.");
+    const urls: string[] = [];
+    for (const file of unique) {
+      if (!file.type.startsWith("image/")) {
+        throw new Error("El archivo debe ser una imagen.");
+      }
+      if (file.size > MAX_BYTES) {
+        throw new Error("La imagen es demasiado grande (máx. ~6 MB).");
+      }
+      const buf = Buffer.from(await file.arrayBuffer());
+      const mime = file.type === "image/jpg" ? "image/jpeg" : file.type;
+      urls.push(`data:${mime};base64,${buf.toString("base64")}`);
     }
-    if (file.size > MAX_BYTES) {
-      throw new Error("La imagen es demasiado grande (máx. ~6 MB).");
-    }
-    const buf = Buffer.from(await file.arrayBuffer());
-    const mime = file.type === "image/jpg" ? "image/jpeg" : file.type;
-    return `data:${mime};base64,${buf.toString("base64")}`;
+    return urls;
   }
 
-  const body = (await request.json()) as { imageDataUrl?: string };
-  const dataUrl = body.imageDataUrl?.trim();
-  if (!dataUrl?.startsWith("data:image/")) {
+  const body = (await request.json()) as {
+    imageDataUrl?: string;
+    imageDataUrls?: unknown;
+  };
+  const fromArray = Array.isArray(body.imageDataUrls)
+    ? body.imageDataUrls.filter(
+        (u): u is string => typeof u === "string" && u.trim().startsWith("data:image/")
+      )
+    : [];
+  const legacy =
+    typeof body.imageDataUrl === "string" &&
+    body.imageDataUrl.trim().startsWith("data:image/")
+      ? [body.imageDataUrl.trim()]
+      : [];
+  const urls = (fromArray.length ? fromArray : legacy)
+    .map((u) => u.trim())
+    .slice(0, MAX_SCAN_IMAGES);
+  if (urls.length === 0) {
     throw new Error(
-      "Envía imageDataUrl (data:image/...;base64,...) o multipart image."
+      "Envía imageDataUrls (1–2 data:image/...;base64,...) o imageDataUrl, o multipart image."
     );
   }
-  if (dataUrl.length > MAX_BYTES * 1.4) {
-    throw new Error("La imagen es demasiado grande.");
+  for (const dataUrl of urls) {
+    if (dataUrl.length > MAX_BYTES * 1.4) {
+      throw new Error("La imagen es demasiado grande.");
+    }
   }
-  return dataUrl;
+  return urls;
 }
 
 function parseVisionExtras(raw: unknown): EnrichHint {
@@ -140,12 +174,17 @@ function applyMethodNote(
 
 async function visionIdentify(
   apiKey: string,
-  imageDataUrl: string
+  imageDataUrls: string[]
 ): Promise<{
   fields: ScanLabelFields;
   extras: EnrichHint;
   usage: KimiTokenUsage | null;
 }> {
+  const imageParts = imageDataUrls.map((url) => ({
+    type: "image_url" as const,
+    image_url: { url },
+  }));
+  const multi = imageDataUrls.length > 1;
   const kimiRes = await fetch(`${KIMI_BASE}/chat/completions`, {
     method: "POST",
     headers: {
@@ -155,6 +194,7 @@ async function visionIdentify(
     body: JSON.stringify({
       model: MODEL,
       thinking: { type: "disabled" },
+      temperature: 0,
       response_format: { type: "json_object" },
       max_tokens: 2048,
       messages: [
@@ -162,13 +202,12 @@ async function visionIdentify(
         {
           role: "user",
           content: [
-            {
-              type: "image_url",
-              image_url: { url: imageDataUrl },
-            },
+            ...imageParts,
             {
               type: "text",
-              text: "Identifica este vino. Si casi no hay texto, usa la huella visual (arte, colores, logo). Completa el JSON incluyendo matchMethod, searchQuery, y vivino/price solo si estás seguro; si no, null.",
+              text: multi
+                ? "Hay 2 fotos de la misma botella: la primera es el FRENTE (etiqueta) y la segunda el REVERSO (contraetiqueta). Combina ambas. Si casi no hay texto en el frente, usa la huella visual y lee la contraetiqueta. Completa el JSON incluyendo matchMethod, searchQuery, y vivino/price solo si estás seguro; si no, null."
+                : "Identifica este vino. Si casi no hay texto, usa la huella visual (arte, colores, logo). Completa el JSON incluyendo matchMethod, searchQuery, y vivino/price solo si estás seguro; si no, null.",
             },
           ],
         },
@@ -216,9 +255,9 @@ export async function POST(request: Request) {
     );
   }
 
-  let imageDataUrl: string;
+  let imageDataUrls: string[];
   try {
-    imageDataUrl = await readImageDataUrl(request);
+    imageDataUrls = await readImageDataUrls(request);
   } catch (e) {
     return badRequest(e instanceof Error ? e.message : "Imagen inválida.");
   }
@@ -230,7 +269,7 @@ export async function POST(request: Request) {
     usage: KimiTokenUsage | null;
   };
   try {
-    vision = await visionIdentify(apiKey, imageDataUrl);
+    vision = await visionIdentify(apiKey, imageDataUrls);
     sessionUsage = addKimiUsage(sessionUsage, vision.usage);
   } catch (e) {
     const errUsage =

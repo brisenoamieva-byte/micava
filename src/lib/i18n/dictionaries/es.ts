@@ -237,9 +237,9 @@ export const es = {
     tellStory: "Contar historia",
     retellStory: "Actualizar historia",
     cavataleRubric:
-      "Oficial Cavatale · evidencia → 30% sabor · 30% historia · 25% mesa · 15% originalidad (fórmula fija en servidor).",
+      "Oficial Cavatale · evidencia citada → 30% sabor · 30% historia · 25% mesa · 15% originalidad (el servidor baja enums sin cita).",
     cavataleFooter:
-      "La calificación Cavatale es el score oficial: evidencia clasificada → ejes fijos (sabor, historia, mesa, originalidad) → fórmula 30/30/25/15 en el servidor. Al actualizar se recalcula con la evidencia actual; si los hechos no cambian, el método debe llegar al mismo score. El precio es referencia de mercado.",
+      "Cavatale no es un consenso de catas como Vivino: mide qué tanto hay para contar en la mesa. La IA propone evidencia con citas; el servidor valida y aplica la fórmula fija 30/30/25/15. Sin cita concreta, no hay score alto. Actualizar historia vuelve a calcular. El precio es referencia de mercado.",
     talkHook: "Para contar",
     curiosity: "Dato curioso",
     pairings: "Maridajes",
@@ -361,7 +361,7 @@ export const es = {
   },
   scan: {
     title: "Escanear botella",
-    subtitle: "Toma o sube una foto de la etiqueta.",
+    subtitle: "Toma o sube hasta 2 fotos: frente y contraetiqueta.",
     takePhoto: "Tomar foto",
     upload: "Subir imagen",
     scanning: "Leyendo la etiqueta…",
@@ -374,7 +374,18 @@ export const es = {
     whatBottle: "¿Qué botella es?",
     theStory: "La historia",
     identifySubtitle:
-      "Escanea o escribe el nombre · puedes guardar la historia sin sumarla a tu cava",
+      "Frente y, si puedes, contraetiqueta · o escribe el nombre",
+    twoPhotosHint:
+      "Hasta 2 fotos de la misma botella: frente (etiqueta) y reverso (contraetiqueta) para leer más datos.",
+    photoFront: "Frente",
+    photoBack: "Reverso",
+    optional: "opcional",
+    tapToCapture: "Toca para capturar",
+    retake: "Repetir",
+    identifyPhotos: "Identificar etiqueta",
+    twoPhotosMax: "Máximo 2 fotos. Puedes quitar o repetir alguna.",
+    addBackOptional:
+      "Puedes agregar la contraetiqueta o identificar solo con el frente.",
     storySubtitle: "Historia, dato curioso y algo para contar sobre esta botella.",
     fixIdentity: "Corregir identidad",
     thisBottle: "Esta botella",

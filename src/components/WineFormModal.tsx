@@ -15,13 +15,12 @@ import { wineToDraft } from "@/lib/cellar-store";
 import {
   fetchEnrichLabel,
   fetchScanLabel,
-  imageFileToDataUrl,
   mergeScanPatchIntoDraft,
   missingScanFieldLabels,
   scanFieldsToDraftPatch,
   type ScanLabelFields,
 } from "@/lib/scan-label";
-import { ThinkingIndicator } from "@/components/ThinkingIndicator";
+import { LabelPhotoCapture } from "@/components/LabelPhotoCapture";
 import { useLocale, useT, wineTypeLabel } from "@/lib/i18n";
 
 type Props = {
@@ -125,8 +124,8 @@ export function WineFormModal({
   const [labelImageDataUrl, setLabelImageDataUrl] = useState<string | null>(
     null
   );
-  const [lastScanFile, setLastScanFile] = useState<File | null>(null);
-  const scanInputRef = useRef<HTMLInputElement>(null);
+  const [scanImages, setScanImages] = useState<string[]>([]);
+  const [lastScanImages, setLastScanImages] = useState<string[]>([]);
   const scanAbortRef = useRef<AbortController | null>(null);
   const enrichAbortRef = useRef<AbortController | null>(null);
 
@@ -179,7 +178,8 @@ export function WineFormModal({
     setEnriching(false);
     setScanHint("");
     setLabelImageDataUrl(null);
-    setLastScanFile(null);
+    setScanImages([]);
+    setLastScanImages([]);
     scanAbortRef.current?.abort();
     scanAbortRef.current = null;
     enrichAbortRef.current?.abort();
@@ -240,11 +240,12 @@ export function WineFormModal({
     setError("");
     setScanHint("");
     setLabelImageDataUrl(null);
+    setScanImages([]);
   }
 
-  async function handleScanFile(file: File | undefined) {
-    if (!file || scanning) return;
-    setLastScanFile(file);
+  async function handleScanImages(urls: string[]) {
+    if (!urls.length || scanning) return;
+    setLastScanImages(urls);
     setScanning(true);
     setEnriching(false);
     setError("");
@@ -253,8 +254,7 @@ export function WineFormModal({
     enrichAbortRef.current?.abort();
     const abort = new AbortController();
     scanAbortRef.current = abort;
-    // Vision-only should finish well under this; enrich runs separately.
-    const timeoutId = window.setTimeout(() => abort.abort(), 35_000);
+    const timeoutId = window.setTimeout(() => abort.abort(), 45_000);
 
     function applyFieldsHint(
       fields: ScanLabelFields,
@@ -286,12 +286,9 @@ export function WineFormModal({
     }
 
     try {
-      const { dataUrl } = await imageFileToDataUrl(file);
-      if (abort.signal.aborted) throw new DOMException("Aborted", "AbortError");
+      const { status, payload } = await fetchScanLabel(urls, abort.signal);
+      const primaryLabel = urls[0] ?? null;
 
-      const { status, payload } = await fetchScanLabel(dataUrl, abort.signal);
-
-      // Partial identity: apply what we got without wiping typed fields; warn.
       if (status === 422 && payload.fields) {
         const patch = scanFieldsToDraftPatch(payload.fields);
         setDraft((prev) => {
@@ -306,7 +303,7 @@ export function WineFormModal({
             location: prev.location || initialSlot || "",
           };
         });
-        setLabelImageDataUrl(dataUrl);
+        setLabelImageDataUrl(primaryLabel);
         setFromExisting(false);
         setStep("form");
         setError(
@@ -349,7 +346,7 @@ export function WineFormModal({
           location: prev.location || initialSlot || "",
         };
       });
-      setLabelImageDataUrl(dataUrl);
+      setLabelImageDataUrl(primaryLabel);
       setFromExisting(false);
       setStep("form");
       applyFieldsHint(
@@ -358,7 +355,6 @@ export function WineFormModal({
         payload.needsEnrich ? "Buscando precio de referencia…" : undefined
       );
 
-      // Identity is already on screen — enrich market data in the background.
       if (payload.needsEnrich) {
         const enrichAbort = new AbortController();
         enrichAbortRef.current = enrichAbort;
@@ -406,21 +402,17 @@ export function WineFormModal({
       } else {
         setError(e instanceof Error ? e.message : "Error al escanear.");
       }
-      // Do not mutate draft on hard failure — keep what the user already typed.
     } finally {
       window.clearTimeout(timeoutId);
       if (scanAbortRef.current === abort) scanAbortRef.current = null;
       setScanning(false);
-      if (scanInputRef.current) scanInputRef.current.value = "";
     }
   }
 
   function retryLastScan() {
-    if (lastScanFile && !scanning) {
-      void handleScanFile(lastScanFile);
-      return;
+    if (lastScanImages.length && !scanning) {
+      void handleScanImages(lastScanImages);
     }
-    scanInputRef.current?.click();
   }
 
   function handleSubmit(e: FormEvent) {
@@ -474,15 +466,6 @@ export function WineFormModal({
         className="panel max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[18px] p-4 sm:rounded-[14px] sm:p-5"
         onClick={(e) => e.stopPropagation()}
       >
-        <input
-          ref={scanInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="sr-only"
-          tabIndex={-1}
-          onChange={(e) => void handleScanFile(e.target.files?.[0])}
-        />
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <h2 id="wine-form-title" className="display text-2xl text-ink">
@@ -600,46 +583,38 @@ export function WineFormModal({
               </>
             ) : null}
 
-            <div className="flex flex-col gap-2">
-              <button
-                type="button"
-                className="btn btn-primary flex min-h-[48px] w-full items-center justify-center disabled:opacity-60"
-                disabled={scanning}
-                aria-busy={scanning}
-                onClick={() => scanInputRef.current?.click()}
-              >
-                {scanning ? (
-                  <ThinkingIndicator
-                    tone="cream"
-                    size="sm"
-                    label={t("wine.identifyingLabel")}
-                  />
-                ) : (
-                  t("wine.scanLabel")
-                )}
-              </button>
-              <button
-                type="button"
-                className="btn btn-ghost flex min-h-[48px] w-full items-center justify-center border border-[var(--line)]"
-                disabled={scanning}
-                onClick={startBlank}
-              >
-                {t("wine.writeByHand")}
-              </button>
-            </div>
+            <LabelPhotoCapture
+              images={scanImages}
+              onImagesChange={setScanImages}
+              scanning={scanning}
+              onIdentify={(urls) => void handleScanImages(urls)}
+              identifyLabel={t("scan.identifyPhotos")}
+              footer={
+                <button
+                  type="button"
+                  className="btn btn-ghost flex min-h-[48px] w-full items-center justify-center border border-[var(--line)]"
+                  disabled={scanning}
+                  onClick={startBlank}
+                >
+                  {t("wine.writeByHand")}
+                </button>
+              }
+            />
             {error && showingPick ? (
               <div className="space-y-2">
                 <p className="text-sm text-[var(--wine)]" role="alert">
                   {error}
                 </p>
-                <button
-                  type="button"
-                  className="btn btn-ghost min-h-[40px] w-full border border-[var(--line)] text-sm disabled:opacity-60"
-                  disabled={scanning}
-                  onClick={() => retryLastScan()}
-                >
-                  {t("wine.retryScan")}
-                </button>
+                {lastScanImages.length > 0 ? (
+                  <button
+                    type="button"
+                    className="btn btn-ghost min-h-[40px] w-full border border-[var(--line)] text-sm disabled:opacity-60"
+                    disabled={scanning}
+                    onClick={() => retryLastScan()}
+                  >
+                    {t("wine.retryScan")}
+                  </button>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -662,25 +637,13 @@ export function WineFormModal({
             ) : null}
 
             <div className="mb-3 flex flex-col gap-2">
-              <button
-                type="button"
-                className="btn btn-ghost flex min-h-[44px] w-full items-center justify-center border border-[var(--line)] disabled:opacity-60"
-                disabled={scanning}
-                aria-busy={scanning}
-                onClick={() => scanInputRef.current?.click()}
-              >
-                {scanning ? (
-                  <ThinkingIndicator
-                    tone="wine"
-                    size="sm"
-                    label={t("wine.identifyingLabel")}
-                  />
-                ) : editing ? (
-                  t("wine.fillFromPhoto")
-                ) : (
-                  t("wine.scanLabel")
-                )}
-              </button>
+              <LabelPhotoCapture
+                images={scanImages}
+                onImagesChange={setScanImages}
+                scanning={scanning}
+                onIdentify={(urls) => void handleScanImages(urls)}
+                busyTone="wine"
+              />
               {scanHint ? (
                 <p className="text-xs text-ink-soft">
                   {enriching && !scanHint.includes(t("scan.enriching").slice(0, 8))
@@ -690,7 +653,7 @@ export function WineFormModal({
               ) : enriching ? (
                 <p className="text-xs text-ink-soft">{t("scan.enriching")}</p>
               ) : null}
-              {error ? (
+              {error && lastScanImages.length > 0 ? (
                 <button
                   type="button"
                   className="text-xs text-ink-soft underline-offset-2 hover:text-ink hover:underline disabled:opacity-60"

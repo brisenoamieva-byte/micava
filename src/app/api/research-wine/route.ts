@@ -149,7 +149,7 @@ type Body = {
    */
   mode?: ResearchMode | string | null;
   /**
-   * @deprecated No longer used for dampening. Scores come from evidence→code.
+   * @deprecated Scores always recompute from sanitized evidence.
    */
   recalculateRating?: boolean;
   /** UI locale: "en" | "es" (default es). Narratives follow this language. */
@@ -202,8 +202,8 @@ function buildUserPrompt(identity: string, mode: ResearchMode): string {
   return `${opener}
 
 Dame JSON con:
-1) ratingEvidence {craft, people, placeFacts, tellability, distinctiveness, agingTier} — enums del rubric; misma evidencia → mismos enums (no re-opines).
-2) ratingParts opcional; cavataleRating opcional (el servidor calcula 30/30/25/15 desde evidencia; ignora el decimal libre si hay evidencia).
+1) ratingEvidence {craft, people, placeFacts, tellability, distinctiveness, agingTier, craftCite, peopleCite, placeCite, tellCite, distinctCite} — enums + citas; el servidor degrada enums sin cita.
+2) ratingParts opcional; cavataleRating libre lo IGNORA el servidor (solo cuenta evidencia→fórmula).
 3) summary (historia íntima; NUNCA abrir con denominación/región genérica), curiosity, ${talkHookHint}, pairings + pairingNote.
 4) vivino solo si lo conoces bien; price siempre null (precio lo busca el servidor con web search).
 No metas Vivino en los textos narrativos.
@@ -253,6 +253,7 @@ async function callKimi(
         model: MODEL,
         // Instant mode: thinking defaults ON and often exceeds mobile/proxy timeouts.
         thinking: { type: "disabled" },
+        temperature: 0,
         response_format: { type: "json_object" },
         max_tokens: 2048,
         messages: [
@@ -446,7 +447,7 @@ export async function POST(request: Request) {
     );
   }
 
-  // Evidence enums → code-mapped axes → weighted total (no prior-score clamp).
+  // Evidence (+ cite sanitization) → axes → weighted total. Always recompute.
   const partsFromEvidence = finalized.ratingEvidence
     ? computePartsFromEvidence(finalized.ratingEvidence, {
         aging: body.aging ?? null,
@@ -455,11 +456,6 @@ export async function POST(request: Request) {
   const officialRating = resolveOfficialCavataleRating({
     existing: existingRating,
     parts: partsFromEvidence ?? finalized.ratingParts,
-    // Free-form LLM float only if evidence/parts missing entirely.
-    modelRating:
-      partsFromEvidence || finalized.ratingParts
-        ? null
-        : finalized.research.cavataleRating,
   });
 
   // Prefer geo web-search price (always MXN for storage); keep model price only as fallback.

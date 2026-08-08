@@ -542,7 +542,7 @@ export function WineDetail({
 
           {researchJustDone && !kimiLoading && !kimiError ? (
             <p className="mt-2 text-sm text-[var(--wine-deep)]" role="status">
-              Historia actualizada. La calificación Cavatale se mantiene.
+              {t("wine.storyReady")}
             </p>
           ) : null}
 

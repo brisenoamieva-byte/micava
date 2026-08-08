@@ -192,17 +192,31 @@ export type ScanLabelApiSuccess = {
 };
 
 /** Vision-only identify. Market data comes from fetchEnrichLabel. */
+export const MAX_SCAN_LABEL_IMAGES = 2;
+
 export async function fetchScanLabel(
-  imageDataUrl: string,
+  imageDataUrls: string | string[],
   signal?: AbortSignal
 ): Promise<{
   status: number;
   payload: ScanLabelApiSuccess & { error?: string };
 }> {
+  const urls = (Array.isArray(imageDataUrls) ? imageDataUrls : [imageDataUrls])
+    .map((u) => u.trim())
+    .filter((u) => u.startsWith("data:image/"))
+    .slice(0, MAX_SCAN_LABEL_IMAGES);
+  if (urls.length === 0) {
+    throw new Error("Falta al menos una imagen de la etiqueta.");
+  }
+
   const res = await fetch("/api/scan-label", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ imageDataUrl }),
+    body: JSON.stringify(
+      urls.length === 1
+        ? { imageDataUrl: urls[0], imageDataUrls: urls }
+        : { imageDataUrls: urls }
+    ),
     signal,
   });
   const raw = await res.text();

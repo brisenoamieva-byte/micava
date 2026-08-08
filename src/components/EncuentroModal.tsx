@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { AiTheaterStatus } from "@/components/AiTheaterStatus";
+import { LabelPhotoCapture } from "@/components/LabelPhotoCapture";
 import { ThinkingIndicator } from "@/components/ThinkingIndicator";
 import {
   assessKimiStoryQuality,
@@ -11,7 +12,6 @@ import {
 import {
   fetchEnrichLabel,
   fetchScanLabel,
-  imageFileToDataUrl,
   mergeScanPatchIntoDraft,
   scanFieldsToDraftPatch,
 } from "@/lib/scan-label";
@@ -86,7 +86,7 @@ export function EncuentroModal({
   const [kimiLoading, setKimiLoading] = useState(false);
   const [thinHint, setThinHint] = useState(false);
   const [saved, setSaved] = useState(false);
-  const scanInputRef = useRef<HTMLInputElement>(null);
+  const [scanImages, setScanImages] = useState<string[]>([]);
   const scanAbortRef = useRef<AbortController | null>(null);
   const enrichAbortRef = useRef<AbortController | null>(null);
   const researchAbortRef = useRef<AbortController | null>(null);
@@ -103,6 +103,7 @@ export function EncuentroModal({
     setKimiLoading(false);
     setThinHint(false);
     setSaved(false);
+    setScanImages([]);
     scanAbortRef.current?.abort();
     enrichAbortRef.current?.abort();
     researchAbortRef.current?.abort();
@@ -118,8 +119,8 @@ export function EncuentroModal({
 
   if (!open) return null;
 
-  async function handleScanFile(file: File | undefined) {
-    if (!file || scanning) return;
+  async function handleScanImages(urls: string[]) {
+    if (!urls.length || scanning) return;
     setScanning(true);
     setEnriching(false);
     setError("");
@@ -128,13 +129,10 @@ export function EncuentroModal({
     enrichAbortRef.current?.abort();
     const abort = new AbortController();
     scanAbortRef.current = abort;
-    const timeoutId = window.setTimeout(() => abort.abort(), 35_000);
+    const timeoutId = window.setTimeout(() => abort.abort(), 45_000);
 
     try {
-      const { dataUrl } = await imageFileToDataUrl(file);
-      if (abort.signal.aborted) throw new DOMException("Aborted", "AbortError");
-
-      const { status, payload } = await fetchScanLabel(dataUrl, abort.signal);
+      const { status, payload } = await fetchScanLabel(urls, abort.signal);
 
       if ((status === 200 || status === 422) && payload.fields) {
         const patch = scanFieldsToDraftPatch(payload.fields);
@@ -232,7 +230,6 @@ export function EncuentroModal({
       window.clearTimeout(timeoutId);
       if (scanAbortRef.current === abort) scanAbortRef.current = null;
       setScanning(false);
-      if (scanInputRef.current) scanInputRef.current.value = "";
     }
   }
 
@@ -367,16 +364,6 @@ export function EncuentroModal({
         className="panel max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[18px] p-4 sm:rounded-[14px] sm:p-5"
         onClick={(e) => e.stopPropagation()}
       >
-        <input
-          ref={scanInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="sr-only"
-          tabIndex={-1}
-          onChange={(e) => void handleScanFile(e.target.files?.[0])}
-        />
-
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--wine)]">
@@ -410,23 +397,12 @@ export function EncuentroModal({
 
         {step === "identify" ? (
           <form className="space-y-3" onSubmit={goToStory}>
-            <button
-              type="button"
-              className="btn btn-primary flex min-h-[48px] w-full items-center justify-center disabled:opacity-60"
-              disabled={scanning}
-              aria-busy={scanning}
-              onClick={() => scanInputRef.current?.click()}
-            >
-              {scanning ? (
-                <ThinkingIndicator
-                  tone="cream"
-                  size="sm"
-                  label={t("scan.scanning")}
-                />
-              ) : (
-                t("wine.scanLabel")
-              )}
-            </button>
+            <LabelPhotoCapture
+              images={scanImages}
+              onImagesChange={setScanImages}
+              scanning={scanning}
+              onIdentify={(urls) => void handleScanImages(urls)}
+            />
             {scanHint ? (
               <p className="text-xs text-ink-soft">
                 {enriching && !scanHint.includes(t("scan.confirmingShort").slice(0, 8))

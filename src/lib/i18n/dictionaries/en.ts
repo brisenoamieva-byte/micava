@@ -240,9 +240,9 @@ export const en = {
     tellStory: "Tell story",
     retellStory: "Refresh story",
     cavataleRubric:
-      "Official Cavatale · evidence → 30% taste · 30% story · 25% table · 15% originality (fixed server formula).",
+      "Official Cavatale · cited evidence → 30% taste · 30% story · 25% table · 15% originality (server downgrades uncited enums).",
     cavataleFooter:
-      "Cavatale is the official score: classified evidence → fixed axes (taste, story, table, originality) → 30/30/25/15 in code. Refreshing recalculates from current evidence; if the facts don’t change, the method should land on the same score. Price is a market reference.",
+      "Cavatale is not a tasting consensus like Vivino: it measures how much there is to tell at the table. The AI proposes evidence with citations; the server validates and applies the fixed 30/30/25/15 formula. No concrete cite → no high score. Refreshing the story recalculates. Price is a market reference.",
     talkHook: "To tell",
     curiosity: "Fun fact",
     pairings: "Pairings",
@@ -365,7 +365,7 @@ export const en = {
   },
   scan: {
     title: "Scan bottle",
-    subtitle: "Take or upload a photo of the label.",
+    subtitle: "Take or upload up to 2 photos: front and back label.",
     takePhoto: "Take photo",
     upload: "Upload image",
     scanning: "Reading the label…",
@@ -378,7 +378,18 @@ export const en = {
     whatBottle: "Which bottle is it?",
     theStory: "The story",
     identifySubtitle:
-      "Scan or type the name · you can save the story without adding it to your cellar",
+      "Front and, if you can, back label · or type the name",
+    twoPhotosHint:
+      "Up to 2 photos of the same bottle: front label and back (contra-label) for more details.",
+    photoFront: "Front",
+    photoBack: "Back",
+    optional: "optional",
+    tapToCapture: "Tap to capture",
+    retake: "Retake",
+    identifyPhotos: "Identify label",
+    twoPhotosMax: "Max 2 photos. You can remove or retake either one.",
+    addBackOptional:
+      "You can add the back label or identify with the front only.",
     storySubtitle: "Story, fun fact, and something to tell about this bottle.",
     fixIdentity: "Fix identity",
     thisBottle: "This bottle",

@@ -253,7 +253,7 @@ async function callKimi(
         model: MODEL,
         // Instant mode: thinking defaults ON and often exceeds mobile/proxy timeouts.
         thinking: { type: "disabled" },
-        temperature: 0,
+        temperature: 0.6,
         response_format: { type: "json_object" },
         max_tokens: 2048,
         messages: [

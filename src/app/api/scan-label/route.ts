@@ -194,7 +194,7 @@ async function visionIdentify(
     body: JSON.stringify({
       model: MODEL,
       thinking: { type: "disabled" },
-      temperature: 0,
+      temperature: 0.6,
       response_format: { type: "json_object" },
       max_tokens: 2048,
       messages: [

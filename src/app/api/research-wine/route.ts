@@ -55,20 +55,20 @@ ${CAVATALE_RATING_RUBRIC_PROMPT}
 
 Los cuatro campos hablan del MISMO vino concreto. Misma bodega, misma gente, mismos hechos. No mezcles datos de otra etiqueta ni inventes para rellenar.
 
-- summary (string): LA HISTORIA ÍNTIMA — 3–5 frases en español MX/LatAm.
+- summary (string): LA HISTORIA ÍNTIMA — 2–4 frases cortas en español MX/LatAm (máx. ~80 palabras).
   Abre con persona, gesto o detalle vivo de ESTA botella/bodega — NUNCA con denominación, región o tipología ("X es una de las denominaciones más…", "Este tinto de Ribera…", "Se elabora en…").
   Preferencia fuerte: fundador/a, dueños, familia, enólogo/a. Nombres cuando los sepas.
   Si NO conoces personas de ESA bodega: 2–3 frases honestas con lo más concreto que sí sepas (lugar, proyecto, añada). Di la incertidumbre con naturalidad. NO inventes biografías.
   Incluye al menos un detalle concreto (nombre, año, viñedo, decisión, anécdota).
   Prohibido wine-speak vacío: "equilibrio perfecto", "expresión del terroir", "final largo y sedoso", "notas de fruta roja y especias" sin anclaje humano.
 
-- curiosity (string): EL DATO QUE SE REPITE — 1–2 frases. Anecdota de personas o hecho sorprendente del lugar/bodega. Debe hacer decir "¿en serio?". Distinto del summary (no parafrasear). Prohibido lo obvio ("es un tinto de la región").
+- curiosity (string): EL DATO QUE SE REPITE — 1 frase (máx. 2, ~40 palabras). Anecdota de personas o hecho sorprendente del lugar/bodega. Debe hacer decir "¿en serio?". Distinto del summary (no parafrasear). Prohibido lo obvio ("es un tinto de la región").
 
-- talkHook (string): EL GANCHO DE MESA — 1 frase (máx. 2). Provocación sobre gente/historia humana. Evita preguntas de cata ("¿notas fruta o madera?"). Distinto de summary y curiosity.
+- talkHook (string): EL GANCHO DE MESA — 1 frase corta. Provocación sobre gente/historia humana. Evita preguntas de cata ("¿notas fruta o madera?"). Distinto de summary y curiosity.
 
-- pairings (string[]): 4–6 platillos o momentos CONCRETOS para ESTA botella, anclados al MERCADO del usuario (ver bloque de mercado). Piensa en lo que alguien pediría o cocinaría HOY con esta botella (casa, restaurante, cena informal) — no en un catálogo de platillos típicos/folclóricos del país. No listas genéricas de uva. No sugieras cocina solo-mexicana regional si el usuario NO está en México.
+- pairings (string[]): 4 platillos CONCRETOS para ESTA botella, anclados al MERCADO del usuario (ver bloque de mercado). Piensa en lo que alguien pediría o cocinaría HOY con esta botella (casa, restaurante, cena informal) — no en un catálogo de platillos típicos/folclóricos del país. No listas genéricas de uva. No sugieras cocina solo-mexicana regional si el usuario NO está en México.
 
-- pairingNote (string): 1 frase con el hilo del maridaje. Sin mencionar Vivino ni Cavatale.
+- pairingNote (string): 1 frase corta con el hilo del maridaje. Sin mencionar Vivino ni Cavatale.
 
 ## Prohibiciones de apertura (summary)
 

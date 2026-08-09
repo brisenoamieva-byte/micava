@@ -98,12 +98,54 @@ function isGemini3Family(model: string): boolean {
   );
 }
 
-/** Gemini 3 prefers thinkingLevel; 2.5 uses thinkingBudget. */
+function isGeminiFlashLite(model: string): boolean {
+  const m = model.toLowerCase();
+  return m.includes("flash-lite") || m.includes("lite-latest");
+}
+
+/**
+ * Lite models: disable thinking (thinkingBudget 0) so output budget isn't eaten.
+ * Other Gemini 3: thinkingLevel minimal. Gemini 2.5: thinkingBudget 0.
+ */
 function thinkingConfigForModel(model: string): Record<string, unknown> {
-  if (isGemini3Family(model)) {
-    return { thinkingLevel: "minimal" };
+  if (isGeminiFlashLite(model) || !isGemini3Family(model)) {
+    return { thinkingBudget: 0 };
   }
-  return { thinkingBudget: 0 };
+  return { thinkingLevel: "minimal" };
+}
+
+function looksLikeCompleteJsonObject(text: string): boolean {
+  const t = text.trim();
+  if (!t.startsWith("{") || !t.includes("}")) return false;
+  // Cheap structural check: braces net to zero and ends with }/]/
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = 0; i < t.length; i++) {
+    const ch = t[i];
+    if (inString) {
+      if (escape) {
+        escape = false;
+        continue;
+      }
+      if (ch === "\\") {
+        escape = true;
+        continue;
+      }
+      if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+    if (ch === "{") depth += 1;
+    else if (ch === "}") {
+      depth -= 1;
+      if (depth < 0) return false;
+    }
+  }
+  return depth === 0 && !inString;
 }
 
 /**
@@ -188,7 +230,10 @@ export async function geminiGenerateJson(options: {
   if (!content) {
     throw Object.assign(new Error("Gemini no devolvió contenido."), { usage });
   }
-  if (candidate?.finishReason === "MAX_TOKENS") {
+  if (
+    candidate?.finishReason === "MAX_TOKENS" &&
+    !looksLikeCompleteJsonObject(content)
+  ) {
     throw Object.assign(
       new Error("Gemini cortó la respuesta (límite de tokens). Intenta de nuevo."),
       { usage }

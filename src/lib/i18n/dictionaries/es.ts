@@ -455,6 +455,8 @@ export const es = {
     photoBack: "Reverso",
     optional: "opcional",
     tapToCapture: "Toca para capturar",
+    cameraPermissionDenied:
+      "Permiso de cámara denegado. Actívalo en el navegador e inténtalo de nuevo.",
     retake: "Repetir",
     identifyPhotos: "Identificar etiqueta",
     twoPhotosMax: "Máximo 2 fotos. Puedes quitar o repetir alguna.",

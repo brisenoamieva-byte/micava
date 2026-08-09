@@ -88,60 +88,81 @@ export function LabelPhotoCapture({
     }
 
     try {
-      // Prefer rear camera for bottle labels.
-      let stream: MediaStream | null = null;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          audio: false,
-          video: {
-            facingMode: { ideal: "environment" },
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
-          },
-        });
-      } catch {
-        stream = null;
-      }
+      let stream = await requestRearStream();
+      stream = (await preferLabeledRearDevice(stream)) ?? stream;
 
-      // After permission, labels are available — pick an explicit rear device if listed.
-      if (stream) {
+      // Some phones ignore facingMode ideal and still open the selfie cam.
+      const facing = stream.getVideoTracks()[0]?.getSettings().facingMode;
+      if (facing === "user") {
         try {
-          const devices = await navigator.mediaDevices.enumerateDevices();
-          const rear = devices.find(
-            (d) =>
-              d.kind === "videoinput" &&
-              /back|rear|environment|trasera|posterior|world/i.test(
-                d.label || ""
-              )
-          );
-          const currentId = stream.getVideoTracks()[0]?.getSettings().deviceId;
-          if (rear?.deviceId && rear.deviceId !== currentId) {
-            for (const track of stream.getTracks()) track.stop();
-            stream = await navigator.mediaDevices.getUserMedia({
-              audio: false,
-              video: {
-                deviceId: { exact: rear.deviceId },
-                width: { ideal: 1920 },
-                height: { ideal: 1080 },
-              },
-            });
-          }
+          const rearOnly = await navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: { facingMode: { exact: "environment" } },
+          });
+          for (const track of stream.getTracks()) track.stop();
+          stream = rearOnly;
         } catch {
-          /* keep first stream */
+          /* keep stream — exact rear unavailable */
         }
-      }
-
-      if (!stream) {
-        stream = await navigator.mediaDevices.getUserMedia({
-          audio: false,
-          video: { facingMode: "environment" },
-        });
       }
 
       streamRef.current = stream;
       setLiveOpen(true);
-    } catch {
+    } catch (err) {
+      const name =
+        err && typeof err === "object" && "name" in err
+          ? String((err as { name?: string }).name)
+          : "";
+      if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+        setLiveError(t("scan.cameraPermissionDenied"));
+        return;
+      }
       openFileCameraFallback();
+    }
+  }
+
+  async function requestRearStream(): Promise<MediaStream> {
+    try {
+      return await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+      });
+    } catch {
+      return navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: { facingMode: "environment" },
+      });
+    }
+  }
+
+  /** After permission, labels exist — switch to an explicit rear device if listed. */
+  async function preferLabeledRearDevice(
+    stream: MediaStream
+  ): Promise<MediaStream | null> {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const rear = devices.find(
+        (d) =>
+          d.kind === "videoinput" &&
+          /back|rear|environment|trasera|posterior|world/i.test(d.label || "")
+      );
+      const currentId = stream.getVideoTracks()[0]?.getSettings().deviceId;
+      if (!rear?.deviceId || rear.deviceId === currentId) return stream;
+      for (const track of stream.getTracks()) track.stop();
+      return await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          deviceId: { exact: rear.deviceId },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+      });
+    } catch {
+      return stream;
     }
   }
 
@@ -288,19 +309,21 @@ export function LabelPhotoCapture({
         })}
       </div>
 
-      {liveOpen ? (
+      {liveOpen || liveError ? (
         <div className="overflow-hidden rounded-[12px] border border-[var(--line)] bg-[rgba(20,18,16,0.92)]">
-          <div className="relative aspect-[3/4] w-full bg-black sm:aspect-video">
-            <video
-              ref={videoRef}
-              playsInline
-              muted
-              autoPlay
-              className="h-full w-full object-cover"
-              // Mirror off — labels must read normally (rear camera).
-              style={{ transform: "none" }}
-            />
-          </div>
+          {liveOpen ? (
+            <div className="relative aspect-[3/4] w-full bg-black sm:aspect-video">
+              <video
+                ref={videoRef}
+                playsInline
+                muted
+                autoPlay
+                className="h-full w-full object-cover"
+                // Mirror off — labels must read normally (rear camera).
+                style={{ transform: "none" }}
+              />
+            </div>
+          ) : null}
           {liveError ? (
             <p className="px-3 py-2 text-xs text-[var(--cream)]" role="alert">
               {liveError}
@@ -315,14 +338,25 @@ export function LabelPhotoCapture({
             >
               {t("common.cancel")}
             </button>
-            <button
-              type="button"
-              className="btn btn-primary min-h-[44px] flex-1 disabled:opacity-60"
-              onClick={() => void snapLivePhoto()}
-              disabled={staging}
-            >
-              {staging ? t("scan.scanning") : t("scan.takePhoto")}
-            </button>
+            {liveOpen ? (
+              <button
+                type="button"
+                className="btn btn-primary min-h-[44px] flex-1 disabled:opacity-60"
+                onClick={() => void snapLivePhoto()}
+                disabled={staging}
+              >
+                {staging ? t("scan.scanning") : t("scan.takePhoto")}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn btn-primary min-h-[44px] flex-1 disabled:opacity-60"
+                onClick={() => void openRearCamera(targetSlot === "next" ? 0 : targetSlot)}
+                disabled={staging}
+              >
+                {t("common.retry")}
+              </button>
+            )}
           </div>
         </div>
       ) : null}

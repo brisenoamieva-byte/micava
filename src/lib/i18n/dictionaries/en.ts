@@ -467,6 +467,8 @@ export const en = {
     photoBack: "Back",
     optional: "optional",
     tapToCapture: "Tap to capture",
+    cameraPermissionDenied:
+      "Camera permission denied. Enable it in the browser and try again.",
     retake: "Retake",
     identifyPhotos: "Identify label",
     twoPhotosMax: "Max 2 photos. You can remove or retake either one.",

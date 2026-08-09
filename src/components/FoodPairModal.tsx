@@ -200,10 +200,19 @@ export function FoodPairModal({ open, wines, onClose, onOpenWine }: Props) {
                     .join(" · ")}
                 </p>
               </div>
-              {result.matchNote ? (
-                <p className="text-sm font-medium text-ink">{result.matchNote}</p>
-              ) : null}
-              <p className="text-sm leading-relaxed text-ink">{result.reason}</p>
+              <div className="rounded-[8px] border border-[rgba(110,31,44,0.16)] bg-[rgba(110,31,44,0.05)] px-3 py-2.5">
+                <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--wine)]">
+                  {t("foodPair.why")}
+                </p>
+                {result.matchNote ? (
+                  <p className="mt-1.5 text-sm font-medium text-ink">
+                    {result.matchNote}
+                  </p>
+                ) : null}
+                <p className="mt-1.5 text-sm leading-relaxed text-ink">
+                  {result.reason}
+                </p>
+              </div>
               <button
                 type="button"
                 className="btn btn-primary min-h-[48px] w-full text-base"

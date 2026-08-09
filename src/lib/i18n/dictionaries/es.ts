@@ -782,6 +782,7 @@ export const es = {
     timeout: "Tardó demasiado. Intenta de nuevo.",
     forDish: "Para",
     pick: "Tu botella",
+    why: "Por qué este vino",
     slot: "Hueco",
     openBottle: "Ver en mi cava",
     alternatives: "Otras opciones",

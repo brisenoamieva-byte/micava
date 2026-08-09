@@ -794,6 +794,7 @@ export const en = {
     timeout: "That took too long. Try again.",
     forDish: "For",
     pick: "Your bottle",
+    why: "Why this wine",
     slot: "Slot",
     openBottle: "View in my cellar",
     alternatives: "Other options",

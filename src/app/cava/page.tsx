@@ -9,6 +9,7 @@ import { CellarUnitsBar } from "@/components/CellarUnitsBar";
 import { DepartTasteModal } from "@/components/DepartTasteModal";
 import { DisplayNameEditor } from "@/components/DisplayNameEditor";
 import { EncuentroModal } from "@/components/EncuentroModal";
+import { FoodPairModal } from "@/components/FoodPairModal";
 import { FiltersBar } from "@/components/FiltersBar";
 import { FirstRunGuide } from "@/components/FirstRunGuide";
 import { InstallAppHint } from "@/components/InstallAppHint";
@@ -107,6 +108,7 @@ export default function CavaPage() {
   );
   const [formPrefill, setFormPrefill] = useState<WineDraft | null>(null);
   const [encuentroOpen, setEncuentroOpen] = useState(false);
+  const [foodPairOpen, setFoodPairOpen] = useState(false);
   const [editing, setEditing] = useState<Wine | null>(null);
   const [departWineTarget, setDepartWineTarget] = useState<Wine | null>(null);
   const [departAction, setDepartAction] = useState<DepartAction>("opened");
@@ -498,6 +500,15 @@ export default function CavaPage() {
                 title={t("cava.scanTitle")}
               >
                 {t("cava.scanBottle")}
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost min-h-[40px] px-3 text-sm"
+                onClick={() => setFoodPairOpen(true)}
+                disabled={!ready || wines.length === 0}
+                title={t("cava.pairMealTitle")}
+              >
+                {t("cava.pairMeal")}
               </button>
               <details className="relative">
                 <summary className="flex min-h-[40px] cursor-pointer list-none items-center px-1 text-sm underline-offset-2 hover:text-ink hover:underline [&::-webkit-details-marker]:hidden">
@@ -1047,6 +1058,16 @@ export default function CavaPage() {
         onAlsoAddToCava={(draft) => {
           setEncuentroOpen(false);
           openAdd("", { step: "form", prefill: draft });
+        }}
+      />
+
+      <FoodPairModal
+        open={foodPairOpen}
+        wines={wines}
+        onClose={() => setFoodPairOpen(false)}
+        onOpenWine={(wineId) => {
+          setSelectedId(wineId);
+          setMobilePanel("detalle");
         }}
       />
 

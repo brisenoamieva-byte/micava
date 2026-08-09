@@ -239,9 +239,9 @@ export const es = {
     tellStory: "Contar historia",
     retellStory: "Actualizar historia",
     cavataleRubric:
-      "Oficial Cavatale v2 · evidencia citada → 40% oficio · 20% lugar · 20% gente · 20% mesa (el servidor baja enums sin cita).",
+      "Oficial Cavatale v3 · 45% consenso de mercado (Vivino/Wine-Searcher) · 25% oficio · 12% lugar · 10% gente · 8% mesa. Sin dato de mercado: 40/20/20/20.",
     cavataleFooter:
-      "Cavatale no es un consenso de catas como Vivino: mide qué tan fuerte es la botella como elección de cava para abrir y contar algo verdadero. Oficio primero; lugar, gente y mesa completan. La IA clasifica evidencia con citas; el servidor valida y aplica la fórmula fija 40/20/20/20. Sin cita concreta, no hay score alto.",
+      "Cavatale v3 es un híbrido: ancla el score al consenso público (Vivino y/o Wine-Searcher) y suma el ADN propio — oficio, lugar, gente y mesa con evidencia citada. El servidor busca ratings externos, valida enums y aplica pesos fijos. Sin congelar: si el mercado o los hechos cambian, el score se mueve; si solo hay ruido de modelo, se amortigua.",
     cavataleBreakdown: {
       title: "Desglose",
       composeLabel: "Cómo se arma el total",
@@ -249,12 +249,15 @@ export const es = {
         "Cada eje (1–5) × su peso suma el total oficial (un decimal).",
       evidenceTitle: "Evidencia clasificada",
       axes: {
+        market: "Mercado",
         taste: "Oficio",
         originality: "Lugar",
         story: "Gente",
         table: "Mesa",
       },
       axisHints: {
+        market:
+          "Consenso público Vivino / Wine-Searcher (buscado en vivo) — ancla estable del mundo real.",
         taste: "Reputación de la línea y señal de crianza — no es tu gusto personal.",
         originality: "Qué tan concreto es el lugar y si tiene carácter propio.",
         story: "Personas con nombre y vínculo humano real.",
@@ -468,7 +471,7 @@ export const es = {
       "Un gancho para contar y, detrás, la historia completa — sin necesidad de cena ni mesa.",
     thinStoryHint: "Si suena a ficha de tienda, Actualizar suele dar otra versión.",
     cavataleRubric:
-      "Oficial Cavatale v2 · evidencia → fórmula fija 40/20/20/20 en servidor.",
+      "Oficial Cavatale v3 · 45% mercado · 25% oficio · 12% lugar · 10% gente · 8% mesa.",
     confirmingMarket: "Confirmando datos de mercado…",
     confirmingShort: "Confirmando datos…",
     lowConfidenceReview: "Baja confianza — revisa el nombre y la bodega",

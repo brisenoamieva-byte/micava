@@ -1,34 +1,48 @@
 /**
- * Cavatale official score methodology (v2).
+ * Cavatale official score methodology (v3 — hybrid).
  *
  * Question answered: “¿Qué tan fuerte es esta botella como elección de cava
- * para abrir y contar algo verdadero?”
+ * para abrir y contar algo verdadero — anclada al consenso público?”
  *
- * Not Vivino (crowd palate). Not folklore-only.
- * LLM classifies evidence enums + cites; the server sanitizes and applies a
- * fixed weighted formula. Same evidence → same score.
+ * When a market consensus (Vivino / Wine-Searcher) is available:
+ *   Mercado  45% — public community/critic consensus (1–5)
+ *   Oficio   25% — craft of the line + aging signal
+ *   Lugar    12% — place specificity + character
+ *   Gente    10% — named humans / human link
+ *   Mesa      8% — tellability at dinner
  *
- * Weights (v2 — craft-first, still story-aware):
- *   Oficio (taste)  40% — craft of the line + aging signal
- *   Lugar (originality) 20% — place specificity + character
- *   Gente (story)   20% — named humans / human link
- *   Mesa (table)    20% — tellability at dinner
+ * Without market data, falls back to evidence-only (v2):
+ *   Oficio 40% · Lugar 20% · Gente 20% · Mesa 20%
+ *
+ * LLM classifies evidence enums + cites; server sanitizes and applies the
+ * fixed formula. Same evidence + same market → same score. No freeze.
  */
 
-/** Four judged axes; final score is a fixed weighted formula (not a free LLM decimal). */
+/** Judged axes; `market` is optional — present → hybrid weights. */
 export type CavataleRatingParts = {
+  /** Public consensus 1–5 (Vivino / WS-mapped). Omit/null → evidence-only. */
+  market?: number | null;
   taste: number;
   story: number;
   table: number;
   originality: number;
 };
 
-/** v2 weights: oficio-led so serious bottles aren't crushed by thin people-data. */
+/** Evidence-only weights (no public consensus). */
 export const CAVATALE_RATING_WEIGHTS = {
   taste: 0.4,
   originality: 0.2,
   story: 0.2,
   table: 0.2,
+} as const;
+
+/** Hybrid weights when market consensus is present. */
+export const CAVATALE_RATING_WEIGHTS_HYBRID = {
+  market: 0.45,
+  taste: 0.25,
+  originality: 0.12,
+  story: 0.1,
+  table: 0.08,
 } as const;
 
 /** Snap to half-points 1.0–5.0 so component scores stay comparable across runs. */
@@ -39,10 +53,52 @@ export function snapHalfPoint(value: number | null | undefined): number | null {
   return snapped;
 }
 
-/** Deterministic official score from the four axes. */
+/** Market axis uses Vivino-style one-decimal precision (not half-points). */
+export function snapMarketPoint(value: number | null | undefined): number | null {
+  if (value == null || !Number.isFinite(value)) return null;
+  const snapped = Math.round(value * 10) / 10;
+  if (snapped < 1 || snapped > 5) return null;
+  return snapped;
+}
+
+export function hasMarketConsensus(parts: CavataleRatingParts): boolean {
+  const m = parts.market;
+  return m != null && Number.isFinite(m) && m >= 1 && m <= 5;
+}
+
+/**
+ * Attach (or strip) market consensus onto evidence axes.
+ * Does not invent a score — null market → evidence-only formula.
+ */
+export function attachMarketConsensus(
+  parts: CavataleRatingParts | null,
+  market: number | null | undefined
+): CavataleRatingParts | null {
+  if (!parts) return null;
+  const m = snapMarketPoint(market ?? null);
+  return {
+    taste: parts.taste,
+    story: parts.story,
+    table: parts.table,
+    originality: parts.originality,
+    market: m,
+  };
+}
+
+/** Deterministic official score from axes (+ market when present). */
 export function computeCavataleRatingFromParts(
   parts: CavataleRatingParts
 ): number {
+  if (hasMarketConsensus(parts)) {
+    const w = CAVATALE_RATING_WEIGHTS_HYBRID;
+    const raw =
+      (parts.market as number) * w.market +
+      parts.taste * w.taste +
+      parts.story * w.story +
+      parts.table * w.table +
+      parts.originality * w.originality;
+    return Math.round(raw * 10) / 10;
+  }
   const raw =
     parts.taste * CAVATALE_RATING_WEIGHTS.taste +
     parts.story * CAVATALE_RATING_WEIGHTS.story +
@@ -77,6 +133,11 @@ export function parseCavataleRatingParts(
       o.originality ?? o.interes ?? o.interest ?? o.originalidad
     )
   );
+  const market = snapMarketPoint(
+    asOptionalNumber(
+      o.market ?? o.mercado ?? o.consensus ?? o.vivino ?? o.kimiVivino
+    )
+  );
   if (
     taste == null ||
     story == null ||
@@ -85,7 +146,7 @@ export function parseCavataleRatingParts(
   ) {
     return null;
   }
-  return { taste, story, table, originality };
+  return { taste, story, table, originality, market };
 }
 
 export type CraftLevel =
@@ -501,7 +562,12 @@ export function computeOfficialFromEvidence(
   return parts ? computeCavataleRatingFromParts(parts) : null;
 }
 
-export type CavataleAxisKey = keyof CavataleRatingParts;
+export type CavataleAxisKey =
+  | "market"
+  | "taste"
+  | "story"
+  | "table"
+  | "originality";
 
 export type CavataleAxisBreakdownRow = {
   key: CavataleAxisKey;
@@ -514,7 +580,27 @@ export type CavataleAxisBreakdownRow = {
 export function buildCavataleAxisBreakdown(
   parts: CavataleRatingParts
 ): CavataleAxisBreakdownRow[] {
-  const keys: CavataleAxisKey[] = [
+  if (hasMarketConsensus(parts)) {
+    const w = CAVATALE_RATING_WEIGHTS_HYBRID;
+    const keys: CavataleAxisKey[] = [
+      "market",
+      "taste",
+      "originality",
+      "story",
+      "table",
+    ];
+    return keys.map((key) => {
+      const weight = w[key];
+      const score = parts[key] as number;
+      return {
+        key,
+        score,
+        weight,
+        contribution: Math.round(score * weight * 10) / 10,
+      };
+    });
+  }
+  const keys: Array<"taste" | "originality" | "story" | "table"> = [
     "taste",
     "originality",
     "story",
@@ -797,8 +883,9 @@ export function evidenceAxisDistance(
 }
 
 /** Focused classify-only prompt (no narrative). Used for stable scoring. */
-export const CAVATALE_EVIDENCE_CLASSIFY_PROMPT = `Eres el clasificador de evidencia Cavatale v2. NO inventas el decimal: solo enums + citas cortas y VERACES.
-Pregunta del score: ¿qué tan fuerte es esta botella como elección de cava para abrir y contar algo verdadero?
+export const CAVATALE_EVIDENCE_CLASSIFY_PROMPT = `Eres el clasificador de evidencia Cavatale v3 (ejes Oficio/Lugar/Gente/Mesa). NO inventas el decimal: solo enums + citas cortas y VERACES.
+El consenso de mercado (Vivino/Wine-Searcher) lo busca el servidor por separado — tú NO lo inventes ni lo copies aquí.
+Pregunta del eje Cavatale: ¿qué tan fuerte es esta botella como elección de cava para abrir y contar algo verdadero?
 Misma botella + mismos hechos → MISMOS enums. Sé PRECISO (ni inflar ni castigar). Estabilidad > creatividad.
 
 Devuelve SOLO JSON:
@@ -877,18 +964,21 @@ export const CAVATALE_EVIDENCE_RESPONSE_SCHEMA: Record<string, unknown> = {
 };
 
 /** Prompt block: explicit rubric + enum checklist (shared by research-wine). */
-export const CAVATALE_RATING_RUBRIC_PROMPT = `## Rating Cavatale v2 — metodología fija (reproducible)
+export const CAVATALE_RATING_RUBRIC_PROMPT = `## Rating Cavatale v3 — híbrido (reproducible)
 
-Pregunta: ¿qué tan fuerte es esta botella como elección de cava para abrir y contar algo verdadero?
-NO es Vivino (consenso de catas). NO es solo folklore.
+Pregunta: ¿qué tan fuerte es esta botella como elección de cava para abrir y contar algo verdadero, anclada al consenso público?
+NO es solo Vivino. NO es solo folklore. Es consenso de mercado + ADN Cavatale.
 
 El SERVIDOR:
-1) baja enums sin cita suficiente,
-2) calcula ejes con pesos fijos:
-   40% Oficio (craft+crianza) · 20% Lugar (place+carácter) · 20% Gente (people) · 20% Mesa (tellability).
+1) busca consenso público (Vivino 1–5 y/o Wine-Searcher 0–100) con web search,
+2) baja enums sin cita suficiente,
+3) calcula el total con pesos fijos:
+   CON consenso: 45% Mercado · 25% Oficio · 12% Lugar · 10% Gente · 8% Mesa.
+   SIN consenso: 40% Oficio · 20% Lugar · 20% Gente · 20% Mesa.
 
 Devuelve OBLIGATORIAMENTE ratingEvidence si la identidad es clara.
 NUNCA uses cavataleRating libre como fuente de verdad.
+El campo vivino es estimación secundaria; el consenso oficial lo fija el servidor.
 
 ### ratingEvidence — enums + citas
 

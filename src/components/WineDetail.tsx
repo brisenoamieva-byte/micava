@@ -320,6 +320,8 @@ export function WineDetail({
           grape: wine.grape,
           aging: wine.aging,
           vintage: wine.vintage,
+          vivino: wine.vivino,
+          kimiVivino: wine.kimiVivino,
           cavataleRating: wine.cavataleRating,
           cavataleEvidence: wine.cavataleEvidence,
           price: wine.price,

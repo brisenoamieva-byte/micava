@@ -273,6 +273,8 @@ export function EncuentroModal({
           grape: identity.grape.trim(),
           aging: identity.aging.trim(),
           vintage: identity.vintage,
+          vivino: research.kimiVivino,
+          kimiVivino: research.kimiVivino,
           cavataleRating: research.cavataleRating,
           cavataleEvidence: research.cavataleEvidence,
           locale,

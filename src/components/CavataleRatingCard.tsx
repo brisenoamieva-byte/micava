@@ -19,8 +19,9 @@ type Props = {
   rubric?: string;
 };
 
-/** Wine-toned fills for the four axes (monochrome progression, not a rainbow). */
+/** Wine-toned fills for the axes (monochrome progression, not a rainbow). */
 const AXIS_FILL: Record<CavataleAxisKey, string> = {
+  market: "var(--ink)",
   taste: "var(--wine-deep)",
   originality: "var(--wine)",
   story: "var(--wine-soft)",

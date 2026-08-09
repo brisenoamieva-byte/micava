@@ -109,6 +109,7 @@ export function DepartTasteModal({
             aging: wineSnapshot.aging,
             vintage: wineSnapshot.vintage,
             vivino: wineSnapshot.vivino,
+            kimiVivino: wineSnapshot.kimiVivino,
             cavataleRating: wineSnapshot.cavataleRating,
             cavataleEvidence: wineSnapshot.cavataleEvidence,
             price: wineSnapshot.price,

@@ -15,11 +15,14 @@ export type {
 } from "@/lib/cavatale-rating";
 export {
   CAVATALE_RATING_WEIGHTS,
+  CAVATALE_RATING_WEIGHTS_HYBRID,
   buildCavataleAxisBreakdown,
   CAVATALE_EVIDENCE_KEYS,
   computeCavataleRatingFromParts,
   computeOfficialFromEvidence,
   computePartsFromEvidence,
+  attachMarketConsensus,
+  hasMarketConsensus,
   parseCavataleRatingEvidence,
   parseCavataleRatingParts,
   snapHalfPoint,

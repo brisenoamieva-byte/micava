@@ -5,6 +5,7 @@ import {
   CAVATALE_EVIDENCE_CLASSIFY_PROMPT,
   CAVATALE_EVIDENCE_RESPONSE_SCHEMA,
   applyIdentityEvidenceAnchors,
+  attachMarketConsensus,
   computePartsFromEvidence,
   evidenceAxisDistance,
   mergeEvidenceMajority,
@@ -31,6 +32,7 @@ import {
 } from "@/lib/kimi-usage";
 import { resolveMarketGeoFromRequest } from "@/lib/market-geo";
 import { researchWineRetailPrice } from "@/lib/wine-price-research";
+import { researchWineMarketConsensus } from "@/lib/wine-consensus-research";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -152,6 +154,8 @@ type Body = {
   aging?: string;
   vintage?: number | null;
   vivino?: number | null;
+  /** Prior market consensus / Vivino estimate stored on the bottle. */
+  kimiVivino?: number | null;
   cavataleRating?: number | null;
   price?: number | null;
   /** Owner dispute / report of error — NOT ground truth. */
@@ -543,7 +547,7 @@ export async function POST(request: Request) {
     parseCavataleRatingEvidence(body.priorEvidence ?? body.cavataleEvidence) ??
     null;
 
-  const [first, priceLookup, evidencePass] = await Promise.all([
+  const [first, priceLookup, evidencePass, consensusLookup] = await Promise.all([
     callStoryLlm(llm, userPrompt, locale, marketBlock),
     kimiKeyForPrice
       ? researchWineRetailPrice({
@@ -558,6 +562,27 @@ export async function POST(request: Request) {
           notes: null as string | null,
         }),
     classifyEvidenceStable(llm, identity, priorEvidence),
+    kimiKeyForPrice
+      ? researchWineMarketConsensus({
+          apiKey: kimiKeyForPrice,
+          wine: wineForPrice,
+          priorScore:
+            body.kimiVivino != null && Number.isFinite(body.kimiVivino)
+              ? body.kimiVivino
+              : body.vivino != null && Number.isFinite(body.vivino)
+                ? body.vivino
+                : null,
+        })
+      : Promise.resolve({
+          score: null as number | null,
+          vivino: null as number | null,
+          wineSearcher100: null as number | null,
+          source: null,
+          confidence: null,
+          notes: null as string | null,
+          usage: null as KimiTokenUsage | null,
+          error: "Sin KIMI_API_KEY para consenso",
+        }),
   ]);
 
   /** Keep provider spend separate so the usage hint can split Kimi vs Gemini. */
@@ -565,6 +590,7 @@ export async function POST(request: Request) {
   let fallbackStoryUsage: KimiTokenUsage | null = null;
   let evidenceUsage: KimiTokenUsage | null = evidencePass.usage;
   const priceUsage = priceLookup.usage;
+  const consensusUsage = consensusLookup.usage;
 
   async function flushUsageMeters() {
     await recordKimiUsage({
@@ -593,6 +619,12 @@ export async function POST(request: Request) {
       model: priceModel,
       usage: priceUsage,
     });
+    await recordKimiUsage({
+      userId,
+      route: `${USAGE_ROUTE}-consensus`,
+      model: priceModel,
+      usage: consensusUsage,
+    });
   }
 
   if (priceLookup.priceMxn == null) {
@@ -601,6 +633,13 @@ export async function POST(request: Request) {
       market: market.countryCode,
       error: priceLookup.error,
       notes: priceLookup.notes,
+    });
+  }
+  if (consensusLookup.score == null) {
+    console.warn("[research-wine] market consensus empty", {
+      wine: name,
+      error: consensusLookup.error,
+      notes: consensusLookup.notes,
     });
   }
 
@@ -708,7 +747,16 @@ export async function POST(request: Request) {
         aging: body.aging ?? null,
       })
     : null;
-  const officialParts = partsFromEvidence ?? finalized.ratingParts;
+  const evidenceParts = partsFromEvidence ?? finalized.ratingParts;
+  const marketScore =
+    consensusLookup.score ??
+    finalized.research.kimiVivino ??
+    (body.kimiVivino != null && Number.isFinite(body.kimiVivino)
+      ? body.kimiVivino
+      : body.vivino != null && Number.isFinite(body.vivino)
+        ? body.vivino
+        : null);
+  const officialParts = attachMarketConsensus(evidenceParts, marketScore);
   const officialRating = resolveOfficialCavataleRating({
     existing: existingRating,
     parts: officialParts,
@@ -720,6 +768,11 @@ export async function POST(request: Request) {
   // Prefer geo web-search price (always MXN for storage); keep model price only as fallback.
   const kimiPrice =
     priceLookup.priceMxn ?? finalized.research.kimiPrice ?? null;
+  const kimiVivino =
+    consensusLookup.vivino ??
+    consensusLookup.score ??
+    finalized.research.kimiVivino ??
+    null;
 
   await flushUsageMeters();
 
@@ -728,6 +781,7 @@ export async function POST(request: Request) {
     cavataleRating: officialRating,
     cavataleParts: officialParts,
     cavataleEvidence: ratingEvidence,
+    kimiVivino,
     kimiPrice,
     kimiPriceCurrency: kimiPrice != null ? "MXN" : null,
     kimiCheckedAt: new Date().toISOString(),
@@ -741,8 +795,18 @@ export async function POST(request: Request) {
       countryCode: market.countryCode,
       marketLabel: market.marketLabel,
     },
+    consensus: {
+      score: consensusLookup.score,
+      vivino: consensusLookup.vivino,
+      wineSearcher100: consensusLookup.wineSearcher100,
+      source: consensusLookup.source,
+      confidence: consensusLookup.confidence,
+    },
     ...(priceLookup.priceMxn == null && priceLookup.error
       ? { priceLookupError: priceLookup.error }
+      : {}),
+    ...(consensusLookup.score == null && consensusLookup.error
+      ? { consensusLookupError: consensusLookup.error }
       : {}),
   });
 }

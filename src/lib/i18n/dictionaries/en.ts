@@ -250,9 +250,9 @@ export const en = {
     tellStory: "Tell story",
     retellStory: "Refresh story",
     cavataleRubric:
-      "Official Cavatale v2 · cited evidence → 40% craft · 20% place · 20% people · 20% table (server downgrades uncited enums).",
+      "Official Cavatale v3 · 45% market consensus (Vivino/Wine-Searcher) · 25% craft · 12% place · 10% people · 8% table. No market data: 40/20/20/20.",
     cavataleFooter:
-      "Cavatale is not a tasting consensus like Vivino: it scores how strong a bottle is as a cellar choice to open and tell something true. Craft first; place, people, and table complete it. The AI classifies evidence with cites; the server validates and applies the fixed 40/20/20/20 formula. No concrete cite → no high score.",
+      "Cavatale v3 is a hybrid: it anchors the score to public consensus (Vivino and/or Wine-Searcher) and adds its own DNA — craft, place, people, and table with cited evidence. The server looks up external ratings, validates enums, and applies fixed weights. No freeze: if the market or facts change, the score moves; model noise alone is dampened.",
     cavataleBreakdown: {
       title: "Breakdown",
       composeLabel: "How the total is built",
@@ -260,12 +260,15 @@ export const en = {
         "Each axis (1–5) × its weight adds up to the official total (one decimal).",
       evidenceTitle: "Classified evidence",
       axes: {
+        market: "Market",
         taste: "Craft",
         originality: "Place",
         story: "People",
         table: "Table",
       },
       axisHints: {
+        market:
+          "Public Vivino / Wine-Searcher consensus (live lookup) — real-world stability anchor.",
         taste: "Reputation of the line and aging signal — not personal palate.",
         originality: "How specific the place is and whether it has its own character.",
         story: "Named people and a real human link.",
@@ -480,7 +483,7 @@ export const en = {
       "A hook to tell and, behind it, the full story — no dinner or table required.",
     thinStoryHint: "If it sounds like a shop listing, Refresh often gives another version.",
     cavataleRubric:
-      "Official Cavatale v2 · evidence → fixed 40/20/20/20 formula in code.",
+      "Official Cavatale v3 · 45% market · 25% craft · 12% place · 10% people · 8% table.",
     confirmingMarket: "Confirming market data…",
     confirmingShort: "Confirming data…",
     lowConfidenceReview: "Low confidence — check name and winery",

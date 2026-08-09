@@ -2,12 +2,26 @@
 
 import { useEffect, useState } from "react";
 
+type ProviderSlice = {
+  calls: number;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  estimatedUsd: number;
+};
+
 type UsagePayload = {
   calls: number;
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
   estimatedUsd: number;
+  byProvider?: {
+    kimi?: ProviderSlice;
+    gemini?: ProviderSlice;
+    other?: ProviderSlice;
+  };
+  total?: ProviderSlice;
   error?: string;
 };
 
@@ -22,8 +36,13 @@ function formatTokens(n: number): string {
   return String(n);
 }
 
+function sliceLine(label: string, slice: ProviderSlice | undefined): string | null {
+  if (!slice || slice.calls <= 0) return null;
+  return `${label} ${formatTokens(slice.totalTokens)} · ~${formatUsd(slice.estimatedUsd)}`;
+}
+
 /**
- * Discreet month-to-date Kimi spend for the signed-in user.
+ * Month-to-date AI spend for the signed-in user (Kimi + Gemini + total).
  */
 export function KimiUsageHint() {
   const [data, setData] = useState<UsagePayload | null>(null);
@@ -36,7 +55,6 @@ export function KimiUsageHint() {
         const json = (await res.json()) as UsagePayload & { error?: string };
         if (cancelled) return;
         if (!res.ok) {
-          // Missing migration / not signed in — stay silent.
           setData(null);
           return;
         }
@@ -52,10 +70,45 @@ export function KimiUsageHint() {
 
   if (!data || data.calls <= 0) return null;
 
+  const kimi = data.byProvider?.kimi;
+  const gemini = data.byProvider?.gemini;
+  const totalUsd = data.total?.estimatedUsd ?? data.estimatedUsd;
+  const totalTok = data.total?.totalTokens ?? data.totalTokens;
+
+  const parts = [
+    sliceLine("Kimi", kimi),
+    sliceLine("Gemini", gemini),
+  ].filter(Boolean);
+
+  const title = [
+    "Uso estimado de IA este mes",
+    kimi && kimi.calls > 0
+      ? `Kimi K2.6: ${formatTokens(kimi.totalTokens)} tok · ~${formatUsd(kimi.estimatedUsd)}`
+      : null,
+    gemini && gemini.calls > 0
+      ? `Gemini Flash: ${formatTokens(gemini.totalTokens)} tok · ~${formatUsd(gemini.estimatedUsd)}`
+      : null,
+    `Total: ${formatTokens(totalTok)} tok · ~${formatUsd(totalUsd)}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
   return (
-    <span title="Uso estimado de Kimi este mes (tarifas K2.6)">
-      IA este mes · {formatTokens(data.totalTokens)} tok ·{" "}
-      ~{formatUsd(data.estimatedUsd)} USD
+    <span title={title}>
+      IA este mes
+      {parts.length > 0 ? (
+        <>
+          {" · "}
+          {parts.join(" · ")}
+          {" · "}
+          Total ~{formatUsd(totalUsd)}
+        </>
+      ) : (
+        <>
+          {" · "}
+          {formatTokens(totalTok)} tok · ~{formatUsd(totalUsd)} USD
+        </>
+      )}
     </span>
   );
 }

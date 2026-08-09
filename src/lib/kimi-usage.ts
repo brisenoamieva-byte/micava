@@ -4,6 +4,15 @@ import { createClient } from "@/lib/supabase/server";
 export const KIMI_PRICE_IN_PER_M = 0.95;
 export const KIMI_PRICE_OUT_PER_M = 4.0;
 
+/**
+ * Gemini 3.5 Flash paid tier (USD per 1M tokens).
+ * https://ai.google.dev/gemini-api/docs/pricing
+ */
+export const GEMINI_FLASH_PRICE_IN_PER_M = 1.5;
+export const GEMINI_FLASH_PRICE_OUT_PER_M = 9.0;
+
+export type LlmUsageProvider = "kimi" | "gemini" | "other";
+
 export type KimiTokenUsage = {
   prompt_tokens: number;
   completion_tokens: number;
@@ -19,6 +28,15 @@ export type KimiUsageLike = {
     completionTokens?: number;
     totalTokens?: number;
   } | null;
+};
+
+export type ProviderUsageTotals = {
+  provider: LlmUsageProvider;
+  calls: number;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  estimatedUsd: number;
 };
 
 export function parseKimiUsage(payload: KimiUsageLike | null | undefined): KimiTokenUsage | null {
@@ -47,19 +65,85 @@ export function addKimiUsage(
   };
 }
 
+/** Infer provider from stored model string (no DB migration required). */
+export function providerFromModel(model: string | null | undefined): LlmUsageProvider {
+  const m = (model ?? "").trim().toLowerCase();
+  if (!m) return "other";
+  if (m.includes("gemini")) return "gemini";
+  if (m.includes("kimi") || m.includes("moonshot") || m.startsWith("k2")) {
+    return "kimi";
+  }
+  // Legacy default before Gemini wiring was kimi-k2.6
+  if (m.includes("k2.6") || m.includes("k2-")) return "kimi";
+  return "other";
+}
+
+export function estimateUsdForProvider(
+  provider: LlmUsageProvider,
+  usage: { prompt_tokens: number; completion_tokens: number }
+): number {
+  const inRate =
+    provider === "gemini" ? GEMINI_FLASH_PRICE_IN_PER_M : KIMI_PRICE_IN_PER_M;
+  const outRate =
+    provider === "gemini" ? GEMINI_FLASH_PRICE_OUT_PER_M : KIMI_PRICE_OUT_PER_M;
+  return (
+    (usage.prompt_tokens / 1_000_000) * inRate +
+    (usage.completion_tokens / 1_000_000) * outRate
+  );
+}
+
+/** @deprecated Prefer estimateUsdForProvider — kept for older call sites. */
 export function estimateKimiUsd(usage: {
   prompt_tokens: number;
   completion_tokens: number;
 }): number {
-  return (
-    (usage.prompt_tokens / 1_000_000) * KIMI_PRICE_IN_PER_M +
-    (usage.completion_tokens / 1_000_000) * KIMI_PRICE_OUT_PER_M
+  return estimateUsdForProvider("kimi", usage);
+}
+
+function roundUsd(n: number): number {
+  return Math.round(n * 1_000_000) / 1_000_000;
+}
+
+export function emptyProviderTotals(provider: LlmUsageProvider): ProviderUsageTotals {
+  return {
+    provider,
+    calls: 0,
+    promptTokens: 0,
+    completionTokens: 0,
+    totalTokens: 0,
+    estimatedUsd: 0,
+  };
+}
+
+export function accumulateProviderUsage(
+  into: ProviderUsageTotals,
+  row: {
+    prompt_tokens?: number | null;
+    completion_tokens?: number | null;
+    total_tokens?: number | null;
+  }
+): void {
+  const prompt = Number(row.prompt_tokens) || 0;
+  const completion = Number(row.completion_tokens) || 0;
+  let total = Number(row.total_tokens) || 0;
+  if (total === 0 && (prompt > 0 || completion > 0)) total = prompt + completion;
+  into.calls += 1;
+  into.promptTokens += prompt;
+  into.completionTokens += completion;
+  into.totalTokens += total;
+  into.estimatedUsd = roundUsd(
+    into.estimatedUsd +
+      estimateUsdForProvider(into.provider, {
+        prompt_tokens: prompt,
+        completion_tokens: completion,
+      })
   );
 }
 
 /**
- * Best-effort persist of one successful Kimi call (or aggregated loop).
+ * Best-effort persist of one successful LLM call (or aggregated loop).
  * Never throws; metering must not break the user-facing route.
+ * Store the real model id (gemini-… or kimi-…) so the dashboard can split spend.
  */
 export async function recordKimiUsage(options: {
   userId: string | null | undefined;

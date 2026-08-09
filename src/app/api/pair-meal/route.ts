@@ -221,55 +221,57 @@ export async function POST(request: Request) {
   const userText = buildPairMealUserPrompt(dish, wines, market.marketLabel);
   const allowedIds = new Set(wines.map((w) => w.id));
 
-  let sessionUsage: KimiTokenUsage | null = null;
+  let primaryUsage: KimiTokenUsage | null = null;
+  let fallbackUsage: KimiTokenUsage | null = null;
+  const userId = guard.userId;
+  const primaryModel = llm.model;
+  const kimiModel = process.env.KIMI_MODEL?.trim() || "kimi-k2.6";
+
+  async function flushPairUsage() {
+    await recordKimiUsage({
+      userId,
+      route: USAGE_ROUTE,
+      model: primaryModel,
+      usage: primaryUsage,
+    });
+    if (fallbackUsage) {
+      await recordKimiUsage({
+        userId,
+        route: USAGE_ROUTE,
+        model: kimiModel,
+        usage: fallbackUsage,
+      });
+    }
+  }
+
   let first = await callPairLlm(llm, system, userText);
-  sessionUsage = addKimiUsage(sessionUsage, first.usage);
+  primaryUsage = addKimiUsage(primaryUsage, first.usage);
 
   let content: string | null = first.ok ? first.content : null;
   if (!content && llm.provider === "gemini") {
     const kimi = resolveKimiFallback();
     if (kimi) {
       const fallback = await callPairLlm(kimi, system, userText);
-      sessionUsage = addKimiUsage(sessionUsage, fallback.usage);
+      fallbackUsage = addKimiUsage(fallbackUsage, fallback.usage);
       if (fallback.ok) content = fallback.content;
       else if (!first.ok) {
-        await recordKimiUsage({
-          userId: guard.userId,
-          route: USAGE_ROUTE,
-          model: llm.model,
-          usage: sessionUsage,
-        });
+        await flushPairUsage();
         return NextResponse.json(
           { error: first.error || fallback.error },
           { status: 502 }
         );
       }
     } else if (!first.ok) {
-      await recordKimiUsage({
-        userId: guard.userId,
-        route: USAGE_ROUTE,
-        model: llm.model,
-        usage: sessionUsage,
-      });
+      await flushPairUsage();
       return NextResponse.json({ error: first.error }, { status: 502 });
     }
   } else if (!first.ok) {
-    await recordKimiUsage({
-      userId: guard.userId,
-      route: USAGE_ROUTE,
-      model: llm.model,
-      usage: sessionUsage,
-    });
+    await flushPairUsage();
     return NextResponse.json({ error: first.error }, { status: 502 });
   }
 
   if (!content) {
-    await recordKimiUsage({
-      userId: guard.userId,
-      route: USAGE_ROUTE,
-      model: llm.model,
-      usage: sessionUsage,
-    });
+    await flushPairUsage();
     return NextResponse.json(
       { error: "La IA no devolvió una recomendación." },
       { status: 502 }
@@ -278,12 +280,7 @@ export async function POST(request: Request) {
 
   try {
     const recommendation = parsePairMealFromModelText(content, allowedIds);
-    await recordKimiUsage({
-      userId: guard.userId,
-      route: USAGE_ROUTE,
-      model: llm.model,
-      usage: sessionUsage,
-    });
+    await flushPairUsage();
     return NextResponse.json({
       recommendation,
       dish,
@@ -296,19 +293,14 @@ export async function POST(request: Request) {
       userText +
       `\n\nIMPORTANTE: wineId DEBE ser exactamente uno de los id de la lista. JSON válido únicamente.`;
     const retry = await callPairLlm(llm, system, retryUser);
-    sessionUsage = addKimiUsage(sessionUsage, retry.usage);
+    primaryUsage = addKimiUsage(primaryUsage, retry.usage);
     if (retry.ok) {
       try {
         const recommendation = parsePairMealFromModelText(
           retry.content,
           allowedIds
         );
-        await recordKimiUsage({
-          userId: guard.userId,
-          route: USAGE_ROUTE,
-          model: llm.model,
-          usage: sessionUsage,
-        });
+        await flushPairUsage();
         return NextResponse.json({
           recommendation,
           dish,
@@ -322,12 +314,7 @@ export async function POST(request: Request) {
         /* fall through */
       }
     }
-    await recordKimiUsage({
-      userId: guard.userId,
-      route: USAGE_ROUTE,
-      model: llm.model,
-      usage: sessionUsage,
-    });
+    await flushPairUsage();
     return NextResponse.json(
       {
         error:

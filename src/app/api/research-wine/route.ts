@@ -425,6 +425,9 @@ export async function POST(request: Request) {
   };
 
   const marketBlock = buildMarketPairingsBlock(market);
+  const userId = guard.userId;
+  const storyModel = llm.model;
+  const priceModel = process.env.KIMI_MODEL?.trim() || "kimi-k2.6";
   const [first, priceLookup] = await Promise.all([
     callStoryLlm(llm, userPrompt, locale, marketBlock),
     kimiKeyForPrice
@@ -440,10 +443,34 @@ export async function POST(request: Request) {
           notes: null as string | null,
         }),
   ]);
-  let sessionUsage: KimiTokenUsage | null = addKimiUsage(
-    first.usage,
-    priceLookup.usage
-  );
+
+  /** Keep provider spend separate so the usage hint can split Kimi vs Gemini. */
+  let primaryStoryUsage: KimiTokenUsage | null = first.usage;
+  let fallbackStoryUsage: KimiTokenUsage | null = null;
+  const priceUsage = priceLookup.usage;
+
+  async function flushUsageMeters() {
+    await recordKimiUsage({
+      userId,
+      route: USAGE_ROUTE,
+      model: storyModel,
+      usage: primaryStoryUsage,
+    });
+    if (fallbackStoryUsage) {
+      await recordKimiUsage({
+        userId,
+        route: USAGE_ROUTE,
+        model: priceModel,
+        usage: fallbackStoryUsage,
+      });
+    }
+    await recordKimiUsage({
+      userId,
+      route: `${USAGE_ROUTE}-price`,
+      model: priceModel,
+      usage: priceUsage,
+    });
+  }
 
   if (priceLookup.priceMxn == null) {
     console.warn("[research-wine] price lookup empty", {
@@ -455,12 +482,7 @@ export async function POST(request: Request) {
   }
 
   if (!first.ok) {
-    await recordKimiUsage({
-      userId: guard.userId,
-      route: USAGE_ROUTE,
-      model: llm.model,
-      usage: sessionUsage,
-    });
+    await flushUsageMeters();
     return NextResponse.json(
       { error: first.error, detail: first.detail },
       { status: first.status }
@@ -483,7 +505,7 @@ export async function POST(request: Request) {
         temperature: 0.2,
         maxTokens: 8192,
       });
-      sessionUsage = addKimiUsage(sessionUsage, recovered.usage);
+      primaryStoryUsage = addKimiUsage(primaryStoryUsage, recovered.usage);
       if (recovered.ok) {
         lastDetail = recovered.content;
         try {
@@ -499,19 +521,14 @@ export async function POST(request: Request) {
       const kimi = resolveKimiFallback();
       if (kimi && llm.provider === "gemini") {
         const kimiOut = await callStoryLlm(kimi, retryPrompt, locale, marketBlock);
-        sessionUsage = addKimiUsage(sessionUsage, kimiOut.usage);
+        fallbackStoryUsage = addKimiUsage(fallbackStoryUsage, kimiOut.usage);
         if (kimiOut.ok) {
           lastDetail = kimiOut.content;
           try {
             finalized = finalizeResearch(kimiOut.content);
             storyContent = kimiOut.content;
           } catch (e) {
-            await recordKimiUsage({
-              userId: guard.userId,
-              route: USAGE_ROUTE,
-              model: llm.model,
-              usage: sessionUsage,
-            });
+            await flushUsageMeters();
             return NextResponse.json(
               {
                 error:
@@ -528,12 +545,7 @@ export async function POST(request: Request) {
     }
 
     if (!finalized) {
-      await recordKimiUsage({
-        userId: guard.userId,
-        route: USAGE_ROUTE,
-        model: llm.model,
-        usage: sessionUsage,
-      });
+      await flushUsageMeters();
       return NextResponse.json(
         {
           error:
@@ -563,12 +575,7 @@ export async function POST(request: Request) {
   const kimiPrice =
     priceLookup.priceMxn ?? finalized.research.kimiPrice ?? null;
 
-  await recordKimiUsage({
-    userId: guard.userId,
-    route: USAGE_ROUTE,
-    model: llm.model,
-    usage: sessionUsage,
-  });
+  await flushUsageMeters();
 
   const research = {
     ...finalized.research,

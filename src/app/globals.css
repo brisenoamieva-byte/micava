@@ -838,6 +838,7 @@ select {
     rgba(20, 18, 16, 0.06) 55%,
     rgba(248, 245, 238, 0.9) 100%
   );
+  animation: fadeUp 0.7s var(--ease) both;
 }
 
 .wine-label-hero--sheet {
@@ -847,6 +848,7 @@ select {
 .wine-label-hero--card {
   border-radius: 12px;
   margin-top: 0.25rem;
+  margin-bottom: 1rem;
 }
 
 .wine-label-hero img {

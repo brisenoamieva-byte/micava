@@ -587,7 +587,11 @@ export const es = {
     openTonight: "Abrir hoy",
     openTonightHint:
       "Botellas en su ventana de consumo, con buen score Cavatale e historia/maridaje cuando existen.",
+    openTonightHeroLead: "La mejor elección de tu cava para esta noche.",
     openTonightPairing: "Mesa: {dish}",
+    openTonightAlso: "También esta semana",
+    openTonightCta: "Ver ficha",
+    openTonightNoScore: "Cuenta su historia",
     cellarValue: "Valor de la cava",
     cellarValueHint:
       "Suma de tus precios + referencia de mercado cuando hay estimación IA.",

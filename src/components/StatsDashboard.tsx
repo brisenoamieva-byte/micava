@@ -114,73 +114,136 @@ export function StatsDashboard({
       </div>
 
       {openTonight.length > 0 ? (
-        <section className="panel-focus relative overflow-hidden px-4 py-4 sm:px-5 sm:py-5">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-[var(--wine)]"
-          />
-          <p className="micro-label text-[var(--wine)]">{t("stats.openTonight")}</p>
-          <p className="mt-1 max-w-xl text-sm text-ink-soft">
-            {t("stats.openTonightHint")}
-          </p>
-          <ul className="mt-3 space-y-2">
-            {openTonight.map((pick) => {
-              const w = pick.wine;
-              const pairing = w.kimiPairings?.[0];
-              return (
-                <li key={w.id}>
-                  <button
-                    type="button"
-                    onClick={() => onSelectWine?.(w)}
-                    className="flex w-full items-start justify-between gap-3 rounded-[10px] border border-[rgba(110,31,44,0.14)] bg-[rgba(255,252,247,0.55)] px-3 py-2.5 text-left transition hover:border-[rgba(110,31,44,0.35)]"
-                  >
-                    <span className="min-w-0">
-                      <span className="flex flex-wrap items-center gap-1.5">
-                        <span className="truncate font-medium text-ink">
+        <section className="space-y-3">
+          {(() => {
+            const top = openTonight[0];
+            const w = top.wine;
+            const pairing = w.kimiPairings?.[0];
+            const rest = openTonight.slice(1);
+            return (
+              <>
+                <button
+                  type="button"
+                  onClick={() => onSelectWine?.(w)}
+                  className="panel-focus relative w-full overflow-hidden px-4 py-5 text-left transition hover:border-[rgba(110,31,44,0.35)] sm:px-6 sm:py-6"
+                >
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(110,31,44,0.1)_0%,transparent_45%,rgba(184,129,74,0.06)_100%)]"
+                  />
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-[var(--wine)]"
+                  />
+                  <p className="relative micro-label text-[var(--wine)]">
+                    {t("stats.openTonight")}
+                  </p>
+                  <p className="relative mt-1 max-w-xl text-sm text-ink-soft">
+                    {t("stats.openTonightHeroLead")}
+                  </p>
+                  <div className="relative mt-4 flex flex-wrap items-end justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="display text-3xl leading-none text-ink sm:text-4xl">
                           {w.name}
-                        </span>
-                        <DrinkWindowBadge wine={w} />
-                      </span>
-                      <span className="mt-0.5 block truncate text-xs text-ink-soft">
+                        </h3>
+                        <DrinkWindowBadge wine={w} size="md" />
+                      </div>
+                      <p className="mt-2 text-sm text-ink-soft">
                         {w.winery || t("stats.noWinery")}
                         {w.vintage != null ? ` · ${w.vintage}` : ""}
                         {w.slot ? ` · ${w.slot}` : ""}
-                      </span>
+                      </p>
                       {pairing ? (
-                        <span className="mt-1 block truncate text-xs text-ink">
+                        <p className="mt-3 text-sm leading-snug text-ink">
                           {t("stats.openTonightPairing", { dish: pairing })}
-                        </span>
+                        </p>
+                      ) : w.kimiTalkHook ? (
+                        <p className="mt-3 text-sm leading-snug text-ink line-clamp-2">
+                          {w.kimiTalkHook}
+                        </p>
                       ) : null}
-                    </span>
-                    <span className="shrink-0 text-right">
+                      <span className="mt-4 inline-flex min-h-[40px] items-center text-sm font-medium text-[var(--wine)]">
+                        {t("stats.openTonightCta")} →
+                      </span>
+                    </div>
+                    <div className="shrink-0 text-right">
                       {w.cavataleRating != null ? (
-                        <span className="display block text-xl leading-none text-ink">
-                          {formatCavataleRating(w.cavataleRating)}
-                        </span>
+                        <>
+                          <p className="display text-5xl leading-none text-ink sm:text-6xl">
+                            {formatCavataleRating(w.cavataleRating)}
+                          </p>
+                          <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                            {t("wine.rating")}
+                          </p>
+                        </>
                       ) : (
-                        <span className="text-xs text-ink-soft">—</span>
+                        <p className="text-sm text-ink-soft">
+                          {t("stats.openTonightNoScore")}
+                        </p>
                       )}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+                    </div>
+                  </div>
+                </button>
+
+                {rest.length > 0 ? (
+                  <div className="panel-quiet px-3 py-3 sm:px-4">
+                    <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                      {t("stats.openTonightAlso")}
+                    </p>
+                    <ul className="mt-2 space-y-1.5">
+                      {rest.map((pick) => {
+                        const rw = pick.wine;
+                        const rPair = rw.kimiPairings?.[0];
+                        return (
+                          <li key={rw.id}>
+                            <button
+                              type="button"
+                              onClick={() => onSelectWine?.(rw)}
+                              className="flex w-full items-start justify-between gap-3 rounded-[10px] px-2 py-2 text-left transition hover:bg-[rgba(110,31,44,0.06)]"
+                            >
+                              <span className="min-w-0">
+                                <span className="flex flex-wrap items-center gap-1.5">
+                                  <span className="truncate font-medium text-ink">
+                                    {rw.name}
+                                  </span>
+                                  <DrinkWindowBadge wine={rw} />
+                                </span>
+                                <span className="mt-0.5 block truncate text-xs text-ink-soft">
+                                  {rw.winery || t("stats.noWinery")}
+                                  {rw.vintage != null ? ` · ${rw.vintage}` : ""}
+                                  {rw.slot ? ` · ${rw.slot}` : ""}
+                                  {rPair ? ` · ${rPair}` : ""}
+                                </span>
+                              </span>
+                              <span className="shrink-0 text-right">
+                                {rw.cavataleRating != null ? (
+                                  <span className="display block text-lg leading-none text-ink">
+                                    {formatCavataleRating(rw.cavataleRating)}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-ink-soft">—</span>
+                                )}
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ) : null}
+              </>
+            );
+          })()}
         </section>
       ) : null}
 
-      {/* Hero KPI: Calificación Cavatale — story score first */}
+      {/* Secondary KPIs — after the open recommendation */}
       <section className="space-y-3">
-        <div className="panel-focus relative overflow-hidden px-5 py-5 sm:px-6 sm:py-6">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-[var(--wine)]"
-          />
-          <p className="micro-label text-[var(--wine)]">
-            {t("stats.avgCavatale")}
-          </p>
+        <div className="panel-quiet relative overflow-hidden px-4 py-4 sm:px-5">
+          <p className="micro-label text-ink-soft">{t("stats.avgCavatale")}</p>
           <div className="mt-2 flex flex-wrap items-end gap-x-4 gap-y-1">
-            <p className="display text-5xl leading-none text-ink sm:text-6xl">
+            <p className="display text-4xl leading-none text-ink sm:text-5xl">
               {formatCavataleRating(insights.avgCavatale)}
             </p>
             <p className="mb-1 max-w-sm text-sm text-ink-soft">

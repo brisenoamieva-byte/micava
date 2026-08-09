@@ -599,7 +599,11 @@ export const en = {
     openTonight: "Open tonight",
     openTonightHint:
       "Bottles in their drinking window, with a solid Cavatale score and story/pairings when available.",
+    openTonightHeroLead: "The best pick from your cellar for tonight.",
     openTonightPairing: "Table: {dish}",
+    openTonightAlso: "Also this week",
+    openTonightCta: "Open card",
+    openTonightNoScore: "Tell its story",
     cellarValue: "Cellar value",
     cellarValueHint:
       "Sum of your tagged prices + market reference when an AI estimate exists.",

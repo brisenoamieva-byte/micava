@@ -31,6 +31,17 @@ export function resolvePrimaryLlm(): ResolvedLlm | null {
   return null;
 }
 
+/** Optional Kimi fallback when Gemini is primary but fails. */
+export function resolveKimiFallback(): ResolvedLlm | null {
+  const kimiKey = process.env.KIMI_API_KEY?.trim();
+  if (!kimiKey) return null;
+  return {
+    provider: "kimi",
+    apiKey: kimiKey,
+    model: process.env.KIMI_MODEL?.trim() || "kimi-k2.6",
+  };
+}
+
 type GeminiPart =
   | { text: string }
   | { inlineData: { mimeType: string; data: string } };
@@ -77,6 +88,24 @@ function parseGeminiUsage(payload: GeminiResponse): KimiTokenUsage | null {
   };
 }
 
+function isGemini3Family(model: string): boolean {
+  const m = model.toLowerCase();
+  return (
+    m.includes("gemini-3") ||
+    m.includes("gemini-flash-latest") ||
+    m.includes("gemini-flash-lite-latest") ||
+    m.includes("gemini-omni")
+  );
+}
+
+/** Gemini 3 prefers thinkingLevel; 2.5 uses thinkingBudget. */
+function thinkingConfigForModel(model: string): Record<string, unknown> {
+  if (isGemini3Family(model)) {
+    return { thinkingLevel: "minimal" };
+  }
+  return { thinkingBudget: 0 };
+}
+
 /**
  * Gemini generateContent with JSON mime type.
  * `images` are data:image/...;base64,... URLs (optional).
@@ -89,6 +118,8 @@ export async function geminiGenerateJson(options: {
   images?: string[];
   maxTokens?: number;
   temperature?: number;
+  /** OpenAPI-subset schema; strongly improves JSON validity on Flash models. */
+  responseSchema?: Record<string, unknown>;
 }): Promise<{ content: string; usage: KimiTokenUsage | null }> {
   const model = options.model?.trim() || "gemini-3.5-flash";
   const parts: GeminiPart[] = [];
@@ -97,6 +128,25 @@ export async function geminiGenerateJson(options: {
     parts.push({ inlineData: { mimeType, data } });
   }
   parts.push({ text: options.userText });
+
+  const generationConfig: Record<string, unknown> = {
+    // Thinking tokens share this budget; keep headroom for full JSON payloads.
+    maxOutputTokens: options.maxTokens ?? 4096,
+    responseMimeType: "application/json",
+    thinkingConfig: thinkingConfigForModel(model),
+  };
+
+  // Gemini 3 docs: leave sampling defaults unless you have a reason.
+  if (options.temperature != null && !isGemini3Family(model)) {
+    generationConfig.temperature = options.temperature;
+  } else if (options.temperature != null && isGemini3Family(model)) {
+    // Still allow an explicit override (e.g. retry), but prefer low values.
+    generationConfig.temperature = options.temperature;
+  }
+
+  if (options.responseSchema) {
+    generationConfig.responseSchema = options.responseSchema;
+  }
 
   const url = `${GEMINI_BASE}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(options.apiKey)}`;
   const res = await fetch(url, {
@@ -107,14 +157,7 @@ export async function geminiGenerateJson(options: {
         parts: [{ text: options.system }],
       },
       contents: [{ role: "user", parts }],
-      generationConfig: {
-        temperature: options.temperature ?? 0.6,
-        // Thinking tokens share this budget; keep headroom for full JSON payloads.
-        maxOutputTokens: options.maxTokens ?? 4096,
-        responseMimeType: "application/json",
-        // Disable thinking so scratch tokens don't truncate / corrupt JSON.
-        thinkingConfig: { thinkingBudget: 0 },
-      },
+      generationConfig,
     }),
   });
 
@@ -153,3 +196,69 @@ export async function geminiGenerateJson(options: {
   }
   return { content, usage };
 }
+
+/** Schema for Contar historia / research-wine JSON. */
+export const RESEARCH_WINE_RESPONSE_SCHEMA: Record<string, unknown> = {
+  type: "OBJECT",
+  properties: {
+    ratingEvidence: {
+      type: "OBJECT",
+      properties: {
+        craft: {
+          type: "STRING",
+          enum: ["unknown", "basic", "sound", "fine", "outstanding"],
+        },
+        people: {
+          type: "STRING",
+          enum: ["none", "generic", "named", "rich"],
+        },
+        placeFacts: {
+          type: "STRING",
+          enum: ["none", "regionOnly", "bottleSpecific", "intimate"],
+        },
+        tellability: {
+          type: "STRING",
+          enum: ["none", "mild", "strong", "magnetic"],
+        },
+        distinctiveness: {
+          type: "STRING",
+          enum: ["commodity", "typical", "distinct", "rare"],
+        },
+        agingTier: {
+          type: "STRING",
+          enum: ["none", "entry", "aged", "reservaPlus"],
+        },
+        craftCite: { type: "STRING" },
+        peopleCite: { type: "STRING" },
+        placeCite: { type: "STRING" },
+        tellCite: { type: "STRING" },
+        distinctCite: { type: "STRING" },
+      },
+      required: [
+        "craft",
+        "people",
+        "placeFacts",
+        "tellability",
+        "distinctiveness",
+        "agingTier",
+      ],
+    },
+    vivino: { type: "NUMBER", nullable: true },
+    price: { type: "NUMBER", nullable: true },
+    confidence: { type: "STRING", enum: ["high", "medium", "low"] },
+    summary: { type: "STRING" },
+    curiosity: { type: "STRING" },
+    talkHook: { type: "STRING" },
+    pairings: { type: "ARRAY", items: { type: "STRING" } },
+    pairingNote: { type: "STRING" },
+  },
+  required: [
+    "ratingEvidence",
+    "confidence",
+    "summary",
+    "curiosity",
+    "talkHook",
+    "pairings",
+    "pairingNote",
+  ],
+};

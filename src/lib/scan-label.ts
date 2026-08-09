@@ -65,11 +65,24 @@ function asString(value: unknown): string {
   return typeof value === "string" ? value.trim() : value == null ? "" : String(value).trim();
 }
 
-/** Light repairs for common LLM JSON glitches (trailing commas, BOM). */
+/** Light repairs for common LLM JSON glitches. */
 function repairJsonCandidate(raw: string): string {
-  return raw
-    .replace(/^\uFEFF/, "")
-    .replace(/,\s*([}\]])/g, "$1");
+  let s = raw.replace(/^\uFEFF/, "").trim();
+  // Smart / curly quotes → straight (only outside already-escaped contexts is hard;
+  // converting all curly quotes is usually safe for model output).
+  s = s.replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"');
+  s = s.replace(/[\u2018\u2019\u201A\u201B\u2032\u2035]/g, "'");
+  // Trailing commas before } or ]
+  s = s.replace(/,\s*([}\]])/g, "$1");
+  // Missing commas between a finished value and the next key on a new line.
+  // e.g. "foo": "bar"\n  "baz"  or  "n": 1\n  "m"
+  s = s.replace(
+    /("(?:\\.|[^"\\])*"|true|false|null|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)\s*\r?\n(\s*")/g,
+    "$1,\n$2"
+  );
+  // Missing commas after } or ] when another key follows
+  s = s.replace(/([}\]])\s*\r?\n(\s*")/g, "$1,\n$2");
+  return s;
 }
 
 /** Pull the first JSON object from a model reply (handles ``` fences). */

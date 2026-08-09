@@ -4,7 +4,7 @@ import {
   CAVATALE_RATING_RUBRIC_PROMPT,
   computePartsFromEvidence,
 } from "@/lib/cavatale-rating";
-import { geminiGenerateJson, resolvePrimaryLlm } from "@/lib/gemini";
+import { geminiGenerateJson, resolveKimiFallback, resolvePrimaryLlm, RESEARCH_WINE_RESPONSE_SCHEMA } from "@/lib/gemini";
 import {
   assessKimiStoryQuality,
   buildUserCorrectionPromptBlock,
@@ -87,7 +87,8 @@ NO empieces con variantes de:
 3. Si la ficha es incompleta o la identidad es dudosa: confidence "low" o "medium", ratingEvidence null si hace falta, summary corto y honesto — no rellenes con catálogo.
 4. summary, curiosity, talkHook y pairings NO repiten la misma idea.
 5. No digas que consultaste Vivino/internet en vivo.
-6. Idioma natural (México/LatAm por defecto en es; inglés natural en en). Sin emojis. Sin markdown dentro de los strings.`;
+6. Idioma natural (México/LatAm por defecto en es; inglés natural en en). Sin emojis. Sin markdown dentro de los strings.
+7. JSON estricto: comillas dobles solo para delimitar strings. Dentro de summary/curiosity/talkHook/pairingNote usa «» o ' si necesitas citar; sin saltos de línea literales dentro de strings.`;
 
 
 function buildMarketPairingsBlock(market: {
@@ -237,7 +238,8 @@ async function callStoryLlm(
   llm: { provider: "gemini" | "kimi"; apiKey: string; model: string },
   userContent: string,
   locale: "es" | "en",
-  marketBlock: string
+  marketBlock: string,
+  opts?: { temperature?: number; maxTokens?: number }
 ): Promise<
   | { ok: true; content: string; usage: KimiTokenUsage | null }
   | { ok: false; status: number; error: string; detail?: string; usage: KimiTokenUsage | null }
@@ -252,8 +254,9 @@ async function callStoryLlm(
         model: llm.model,
         system,
         userText: userContent,
-        maxTokens: 8192,
-        temperature: 0.6,
+        maxTokens: opts?.maxTokens ?? 8192,
+        temperature: opts?.temperature ?? 0.6,
+        responseSchema: RESEARCH_WINE_RESPONSE_SCHEMA,
       });
       return { ok: true, content: out.content, usage: out.usage };
     } catch (e) {
@@ -458,26 +461,84 @@ export async function POST(request: Request) {
     );
   }
 
-  let finalized: ReturnType<typeof finalizeResearch>;
+  let finalized: ReturnType<typeof finalizeResearch> | null = null;
+  let storyContent = first.content;
   try {
-    finalized = finalizeResearch(first.content);
-  } catch (e) {
-    await recordKimiUsage({
-      userId: guard.userId,
-      route: USAGE_ROUTE,
-      model: llm.model,
-      usage: sessionUsage,
-    });
-    return NextResponse.json(
-      {
-        error:
-          e instanceof Error
-            ? e.message
-            : "No se pudo interpretar la historia. Reintenta.",
-        detail: first.content.slice(0, 400),
-      },
-      { status: 502 }
-    );
+    finalized = finalizeResearch(storyContent);
+  } catch (firstParseError) {
+    // Gemini Flash sometimes emits invalid JSON; one constrained retry, then Kimi.
+    const retryPrompt =
+      userPrompt +
+      `\n\nIMPORTANTE: Tu JSON anterior era inválido. Responde SOLO con un único objeto JSON válido. En summary/curiosity/talkHook NO uses comillas dobles internas ni saltos de línea; usa frases cortas.`;
+
+    let lastDetail = storyContent;
+    if (llm.provider === "gemini") {
+      const recovered = await callStoryLlm(llm, retryPrompt, locale, marketBlock, {
+        temperature: 0.2,
+        maxTokens: 8192,
+      });
+      sessionUsage = addKimiUsage(sessionUsage, recovered.usage);
+      if (recovered.ok) {
+        lastDetail = recovered.content;
+        try {
+          finalized = finalizeResearch(recovered.content);
+          storyContent = recovered.content;
+        } catch {
+          /* fall through to Kimi */
+        }
+      }
+    }
+
+    if (!finalized) {
+      const kimi = resolveKimiFallback();
+      if (kimi && llm.provider === "gemini") {
+        const kimiOut = await callStoryLlm(kimi, retryPrompt, locale, marketBlock);
+        sessionUsage = addKimiUsage(sessionUsage, kimiOut.usage);
+        if (kimiOut.ok) {
+          lastDetail = kimiOut.content;
+          try {
+            finalized = finalizeResearch(kimiOut.content);
+            storyContent = kimiOut.content;
+          } catch (e) {
+            await recordKimiUsage({
+              userId: guard.userId,
+              route: USAGE_ROUTE,
+              model: llm.model,
+              usage: sessionUsage,
+            });
+            return NextResponse.json(
+              {
+                error:
+                  e instanceof Error
+                    ? e.message
+                    : "No se pudo interpretar la historia. Reintenta.",
+                detail: kimiOut.content.slice(0, 400),
+              },
+              { status: 502 }
+            );
+          }
+        }
+      }
+    }
+
+    if (!finalized) {
+      await recordKimiUsage({
+        userId: guard.userId,
+        route: USAGE_ROUTE,
+        model: llm.model,
+        usage: sessionUsage,
+      });
+      return NextResponse.json(
+        {
+          error:
+            firstParseError instanceof Error
+              ? firstParseError.message
+              : "No se pudo interpretar la historia. Reintenta.",
+          detail: lastDetail.slice(0, 400),
+        },
+        { status: 502 }
+      );
+    }
   }
 
   // Evidence (+ cite sanitization) → axes → weighted total. Always recompute.

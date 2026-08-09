@@ -67,22 +67,47 @@ export const emptyKimiResearch: KimiResearch = {
 /**
  * Prefer a fresh research score when present; keep the stored one only as
  * fallback so a thin/failed pass never wipes an existing rating with null.
+ *
+ * Anti-flicker: small evidence wobbles move the decimal at most `maxStep`.
+ * Large evidence changes (or hard identity anchors) may jump fully.
  */
 export function stabilizeCavataleRating(
   existing: number | null | undefined,
   incoming: number | null | undefined,
-  /** @deprecated Ignored — kept for call-site compatibility. */
-  _opts?: { forceRecalculate?: boolean; maxStep?: number }
+  opts?: {
+    forceRecalculate?: boolean;
+    maxStep?: number;
+    /** Axes changed between prior and next evidence. */
+    evidenceDelta?: number;
+    /** Hard identity rules rewrote enums — trust the new score. */
+    anchored?: boolean;
+  }
 ): number | null {
+  let next: number | null = null;
   if (incoming != null && Number.isFinite(incoming)) {
-    const next = Math.round(incoming * 10) / 10;
-    if (next >= 1 && next <= 5) return next;
+    const n = Math.round(incoming * 10) / 10;
+    if (n >= 1 && n <= 5) next = n;
   }
+  let prev: number | null = null;
   if (existing != null && Number.isFinite(existing)) {
-    const kept = Math.round(existing * 10) / 10;
-    if (kept >= 1 && kept <= 5) return kept;
+    const k = Math.round(existing * 10) / 10;
+    if (k >= 1 && k <= 5) prev = k;
   }
-  return null;
+
+  if (next == null) return prev;
+  if (prev == null) return next;
+
+  const deltaAxes = opts?.evidenceDelta ?? 99;
+  const allowFullJump =
+    opts?.anchored === true ||
+    opts?.forceRecalculate === true ||
+    deltaAxes >= 3;
+  if (allowFullJump) return next;
+
+  const maxStep = opts?.maxStep ?? 0.3;
+  const diff = next - prev;
+  if (Math.abs(diff) <= maxStep) return next;
+  return Math.round((prev + Math.sign(diff) * maxStep) * 10) / 10;
 }
 
 /**
@@ -92,19 +117,25 @@ export function stabilizeCavataleRating(
  */
 export function resolveOfficialCavataleRating(options: {
   existing?: number | null;
-  /** @deprecated Ignored. */
+  /** @deprecated Prefer anchored/evidenceDelta. */
   lockExisting?: boolean;
-  /** @deprecated Ignored. */
   forceRecalculate?: boolean;
   parts?: CavataleRatingParts | null;
   /** @deprecated Ignored — free LLM floats are not official. */
   modelRating?: number | null;
   maxStep?: number;
+  evidenceDelta?: number;
+  anchored?: boolean;
 }): number | null {
   const fromParts = options.parts
     ? computeCavataleRatingFromParts(options.parts)
     : null;
-  return stabilizeCavataleRating(options.existing, fromParts);
+  return stabilizeCavataleRating(options.existing, fromParts, {
+    forceRecalculate: options.forceRecalculate,
+    maxStep: options.maxStep,
+    evidenceDelta: options.evidenceDelta,
+    anchored: options.anchored,
+  });
 }
 
 export function withKimiDefaults<T extends Partial<Wine>>(

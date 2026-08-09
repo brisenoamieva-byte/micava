@@ -4,7 +4,9 @@ import {
   CAVATALE_RATING_RUBRIC_PROMPT,
   CAVATALE_EVIDENCE_CLASSIFY_PROMPT,
   CAVATALE_EVIDENCE_RESPONSE_SCHEMA,
+  applyIdentityEvidenceAnchors,
   computePartsFromEvidence,
+  evidenceAxisDistance,
   mergeEvidenceMajority,
   parseCavataleRatingEvidence,
   type CavataleRatingEvidence,
@@ -346,7 +348,7 @@ async function classifyEvidenceStable(
   const samples = runs
     .map((r) => r.evidence)
     .filter((e): e is CavataleRatingEvidence => e != null);
-  return { evidence: mergeEvidenceMajority(samples), usage };
+  return { evidence: mergeEvidenceMajority(samples, prior), usage };
 }
 
 async function callStoryLlm(
@@ -680,10 +682,27 @@ export async function POST(request: Request) {
     }
   }
 
-  // Evidence from dedicated cold classify (×2 + conservative merge).
+  // Evidence from dedicated cold classify (×3 + majority, prior on ties).
   // Story-pass ratingEvidence is fallback only — narrative variance must not swing the score.
-  const ratingEvidence =
+  let ratingEvidence =
     evidencePass.evidence ?? finalized.ratingEvidence ?? null;
+  let anchored = false;
+  let evidenceDelta = 99;
+  if (ratingEvidence) {
+    const anchoredResult = applyIdentityEvidenceAnchors(
+      {
+        name: body.name,
+        winery: body.winery,
+        region: body.region,
+      },
+      ratingEvidence
+    );
+    ratingEvidence = anchoredResult.evidence;
+    anchored = anchoredResult.anchored;
+    if (priorEvidence) {
+      evidenceDelta = evidenceAxisDistance(priorEvidence, ratingEvidence);
+    }
+  }
   const partsFromEvidence = ratingEvidence
     ? computePartsFromEvidence(ratingEvidence, {
         aging: body.aging ?? null,
@@ -693,6 +712,9 @@ export async function POST(request: Request) {
   const officialRating = resolveOfficialCavataleRating({
     existing: existingRating,
     parts: officialParts,
+    evidenceDelta,
+    anchored,
+    maxStep: 0.3,
   });
 
   // Prefer geo web-search price (always MXN for storage); keep model price only as fallback.

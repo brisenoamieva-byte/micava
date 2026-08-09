@@ -621,30 +621,55 @@ export function mergeEvidenceConservative(
 
 /** Majority vote across independent classifications (precise + stable, no downward bias). */
 export function mergeEvidenceMajority(
-  samples: CavataleRatingEvidence[]
+  samples: CavataleRatingEvidence[],
+  prior?: CavataleRatingEvidence | null
 ): CavataleRatingEvidence | null {
   if (samples.length === 0) return null;
   if (samples.length === 1) return samples[0];
+
+  function majorityPreferPrior<T extends string>(
+    values: T[],
+    rank: Record<T, number>,
+    priorValue: T | undefined
+  ): T {
+    const counts = new Map<T, number>();
+    for (const v of values) counts.set(v, (counts.get(v) ?? 0) + 1);
+    let maxCount = 0;
+    for (const c of counts.values()) maxCount = Math.max(maxCount, c);
+    const tied = [...counts.entries()]
+      .filter(([, c]) => c === maxCount)
+      .map(([k]) => k);
+    if (priorValue && tied.includes(priorValue)) return priorValue;
+    tied.sort((a, b) => rank[a] - rank[b]);
+    // Median of tied ranks (stable, less bias than always-low).
+    return tied[Math.floor((tied.length - 1) / 2)] ?? values[0];
+  }
+
   return {
-    craft: majorityByRank(
+    craft: majorityPreferPrior(
       samples.map((s) => s.craft),
-      CRAFT_RANK
+      CRAFT_RANK,
+      prior?.craft
     ),
-    people: majorityByRank(
+    people: majorityPreferPrior(
       samples.map((s) => s.people),
-      PEOPLE_RANK
+      PEOPLE_RANK,
+      prior?.people
     ),
-    placeFacts: majorityByRank(
+    placeFacts: majorityPreferPrior(
       samples.map((s) => s.placeFacts),
-      PLACE_RANK
+      PLACE_RANK,
+      prior?.placeFacts
     ),
-    tellability: majorityByRank(
+    tellability: majorityPreferPrior(
       samples.map((s) => s.tellability),
-      TELL_RANK
+      TELL_RANK,
+      prior?.tellability
     ),
-    distinctiveness: majorityByRank(
+    distinctiveness: majorityPreferPrior(
       samples.map((s) => s.distinctiveness),
-      DISTINCT_RANK
+      DISTINCT_RANK,
+      prior?.distinctiveness
     ),
     agingTier: samples.reduce(
       (acc, s) => mergeAgingTier(acc, s.agingTier),
@@ -653,28 +678,148 @@ export function mergeEvidenceMajority(
   };
 }
 
+function normId(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function bumpFloor<T extends string>(
+  value: T,
+  floor: T,
+  rank: Record<T, number>
+): T {
+  return rank[value] < rank[floor] ? floor : value;
+}
+
+function clampCeil<T extends string>(
+  value: T,
+  ceil: T,
+  rank: Record<T, number>
+): T {
+  return rank[value] > rank[ceil] ? ceil : value;
+}
+
+/**
+ * Deterministic floors/ceilings for well-known identities.
+ * Stops entry lines of famous houses from oscillating fine↔sound / distinct↔typical.
+ */
+export function applyIdentityEvidenceAnchors(
+  wine: {
+    name?: string | null;
+    winery?: string | null;
+    region?: string | null;
+  },
+  evidence: CavataleRatingEvidence
+): { evidence: CavataleRatingEvidence; anchored: boolean } {
+  const name = normId(wine.name ?? "");
+  const winery = normId(wine.winery ?? "");
+  const region = normId(wine.region ?? "");
+  const blob = `${name} ${winery}`;
+  let e = { ...evidence };
+  let anchored = false;
+
+  const isEmilioMoro =
+    /emilio\s*moro/.test(blob) || /emilio\s*moro/.test(winery);
+  const isResalso = /finca\s*resalso|\bresalso\b/.test(name);
+  const isMalleolus = /malleolus/.test(name);
+
+  if (isEmilioMoro || isResalso || isMalleolus) {
+    anchored = true;
+    e.people = bumpFloor(e.people, "named", PEOPLE_RANK);
+    if (/pesquera/.test(region)) {
+      e.placeFacts = bumpFloor(e.placeFacts, "bottleSpecific", PLACE_RANK);
+    } else {
+      e.placeFacts = bumpFloor(e.placeFacts, "regionOnly", PLACE_RANK);
+    }
+    e.tellability = bumpFloor(e.tellability, "mild", TELL_RANK);
+
+    if (isResalso) {
+      // Entry / joven line of Emilio Moro — solid house, not icon craft.
+      e.craft = bumpFloor(e.craft, "sound", CRAFT_RANK);
+      e.craft = clampCeil(e.craft, "sound", CRAFT_RANK);
+      e.distinctiveness = bumpFloor(e.distinctiveness, "typical", DISTINCT_RANK);
+      e.distinctiveness = clampCeil(
+        e.distinctiveness,
+        "typical",
+        DISTINCT_RANK
+      );
+      e.tellability = clampCeil(e.tellability, "strong", TELL_RANK);
+    } else if (isMalleolus) {
+      e.craft = bumpFloor(e.craft, "fine", CRAFT_RANK);
+      e.craft = clampCeil(e.craft, "fine", CRAFT_RANK);
+      e.distinctiveness = bumpFloor(
+        e.distinctiveness,
+        "distinct",
+        DISTINCT_RANK
+      );
+    } else if (isEmilioMoro) {
+      // Other Emilio Moro lines: at least sound/named; don't gift outstanding.
+      e.craft = bumpFloor(e.craft, "sound", CRAFT_RANK);
+      e.craft = clampCeil(e.craft, "fine", CRAFT_RANK);
+      e.distinctiveness = clampCeil(
+        e.distinctiveness,
+        "distinct",
+        DISTINCT_RANK
+      );
+    }
+  }
+
+  // Broad named-house floor (people only) — reduces none↔named flicker.
+  if (
+    /familia\s*torres|\bmiguel\s*torres\b|\bantinori\b|\bvega\s*sicilia\b|\bpingus\b|\bdominio\s*de\s*pingus\b|\ballegrini\b|\bcodorniu\b|\bfreixenet\b/.test(
+      blob
+    )
+  ) {
+    anchored = true;
+    e.people = bumpFloor(e.people, "named", PEOPLE_RANK);
+  }
+
+  return { evidence: e, anchored };
+}
+
+/** How many evidence axes differ (0–6). */
+export function evidenceAxisDistance(
+  a: CavataleRatingEvidence,
+  b: CavataleRatingEvidence
+): number {
+  let d = 0;
+  if (a.craft !== b.craft) d += 1;
+  if (a.people !== b.people) d += 1;
+  if (a.placeFacts !== b.placeFacts) d += 1;
+  if (a.tellability !== b.tellability) d += 1;
+  if (a.distinctiveness !== b.distinctiveness) d += 1;
+  if (a.agingTier !== b.agingTier) d += 1;
+  return d;
+}
+
 /** Focused classify-only prompt (no narrative). Used for stable scoring. */
 export const CAVATALE_EVIDENCE_CLASSIFY_PROMPT = `Eres el clasificador de evidencia Cavatale v2. NO inventas el decimal: solo enums + citas cortas y VERACES.
 Pregunta del score: ¿qué tan fuerte es esta botella como elección de cava para abrir y contar algo verdadero?
-Misma botella + mismos hechos → MISMOS enums. Sé PRECISO (ni inflar ni castigar).
+Misma botella + mismos hechos → MISMOS enums. Sé PRECISO (ni inflar ni castigar). Estabilidad > creatividad.
 
 Devuelve SOLO JSON:
 ratingEvidence {craft, people, placeFacts, tellability, distinctiveness, agingTier, craftCite, peopleCite, placeCite, tellCite, distinctCite}
 
-### Anclas de calibración
+### Anclas de calibración (OBLIGATORIAS)
 1) Commodity / supermercado sin gente ni lugar propio (Faustino entry, Campo Viejo entry):
    craft=basic|sound, people=none|generic, placeFacts=regionOnly, tellability=mild|none, distinctiveness=commodity|typical.
-2) Casa seria de DO con pueblo/milla de oro / viñedo propio (p.ej. Valbuena de Duero, Pesquera, Gumiel…; Lleiroso en Valbuena; Celeste/Torres con línea reconocida):
-   craft=sound|fine según reputación de ESA línea (alta gama Ribera ≠ commodity).
-   placeFacts=bottleSpecific si citas pueblo, milla de oro, viñedo propio o monasterio/paraje — NO dejes regionOnly solo por ser “Ribera”.
-   people=named si hay fundador/familia/enólogo con nombre (Alberto Cobo, Miguel Torres, etc.).
-   tellability=mild|strong si hay gancho real (lugar emblemático, generaciones, decisión de proyecto).
-   distinctiveness=typical|distinct (distinct si hay ángulo propio claro).
-3) Boutique íntima con parcela + vínculo humano rico: puedes subir a intimate/rich/magnetic solo con citas reales.
-4) Prohibido: outstanding/rare por marketing; también prohibido tratar como commodity anónimo una bodega de Milla de Oro / pueblo concreto con proyecto serio.
+2) Línea de ENTRADA de casa seria (ej. Finca Resalso / Emilio Moro joven-entry; Celeste entry):
+   craft=sound (NO fine). people=named si la casa tiene nombre propio (Emilio Moro, Torres…).
+   placeFacts=bottleSpecific solo con pueblo/viñedo citado (Pesquera…); si solo “Ribera” → regionOnly.
+   tellability=mild|strong. distinctiveness=typical (NO distinct/rare: es la línea accesible).
+3) Casa seria de DO con pueblo/milla de oro / viñedo propio + línea ALTA (Lleiroso Valbuena, Malleolus, iconos):
+   craft=sound|fine según ESA línea. placeFacts=bottleSpecific con pueblo/paraje.
+   people=named con fundador/familia. tellability=mild|strong. distinctiveness=typical|distinct.
+4) Boutique íntima con parcela + vínculo humano rico: intimate/rich/magnetic solo con citas reales.
+5) Prohibido: outstanding/rare por marketing; prohibido tratar Resalso/entry como fine+distinct; prohibido bajar a people=none una casa con nombre público.
 
 ### Consistencia
-- Corrige evidencia previa si omitió nombres o lugar concreto públicos.
+- Si hay evidencia previa y los hechos públicos no cambiaron, REUTILIZA los mismos enums.
+- Corrige evidencia previa SOLO si omitió nombres o lugar concreto públicos, o si infló entry→fine.
 - Citas: frases cortas factuales; "" solo si no hay hecho.`;
 
 export const CAVATALE_EVIDENCE_RESPONSE_SCHEMA: Record<string, unknown> = {
@@ -767,7 +912,8 @@ agingTier: none / entry / aged / reservaPlus
 - Sin cita → el servidor degrada. No inventes citas.
 - Misma evidencia → mismos enums.
 - No regales outstanding/rich/magnetic/rare.
+- Línea de entrada de casa seria (Finca Resalso / Emilio Moro entry): craft=sound, distinctiveness=typical, people=named. NO fine+distinct.
 - No trates como commodity una bodega seria de pueblo/milla de oro con proyecto real.
 - Casa con fundador público → people=named con cita.
-- Recalcula con hechos; no persigas un decimal previo.
+- Si la evidencia previa ya era precisa y los hechos no cambiaron → mismos enums (estabilidad).
 - NUNCA menciones Vivino en summary/curiosity/talkHook/pairingNote.`;

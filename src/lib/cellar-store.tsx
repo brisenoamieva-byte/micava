@@ -74,6 +74,35 @@ function isMissingRelationError(err: { code?: string; message?: string } | null)
   );
 }
 
+type SyncErr = { code?: string; message?: string } | null;
+
+function syncErrorMessage(err: unknown): string {
+  if (err && typeof err === "object" && "message" in err) {
+    const m = (err as { message?: unknown }).message;
+    if (typeof m === "string" && m.trim()) return m;
+  }
+  if (err instanceof Error && err.message) return err.message;
+  return String(err ?? "Error desconocido");
+}
+
+/** Browser/network blips (mobile radios, aborted parallel fetches). */
+function isTransientFetchError(err: unknown): boolean {
+  const msg = syncErrorMessage(err).toLowerCase();
+  return (
+    msg.includes("failed to fetch") ||
+    msg.includes("networkerror") ||
+    msg.includes("network request failed") ||
+    msg.includes("load failed") ||
+    msg.includes("fetch failed") ||
+    msg.includes("the network connection was lost") ||
+    msg.includes("err_network")
+  );
+}
+
+function sleep(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
 type CellarContextValue = {
   wines: Wine[];
   history: CellarLogEntry[];
@@ -310,8 +339,12 @@ export function CellarProvider({ children }: { children: ReactNode }) {
   const multiCellarRef = useRef(false);
   /** False if kimi_* columns are missing in Supabase. */
   const kimiColumnsRef = useRef(true);
+  /** False if cavatale_parts / cavatale_evidence columns are missing. */
+  const cavataleBreakdownColumnsRef = useRef(true);
   /** False if encounters table is missing in Supabase. */
   const encountersTableRef = useRef(true);
+  /** Serialize wine upserts so mobile doesn't drop parallel fetches. */
+  const wineUpsertChainRef = useRef(Promise.resolve());
   const syncOkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Skip success toasts until the initial cloud load finishes. */
   const allowSyncOkRef = useRef(false);
@@ -372,93 +405,151 @@ export function CellarProvider({ children }: { children: ReactNode }) {
   const upsertWineRemote = useCallback(async (wine: Wine, userId: string) => {
     if (!isSupabaseConfigured()) return;
     if (typeof navigator !== "undefined" && !navigator.onLine) return;
-    const supabase = createClient();
-    const tryUpsert = async (
-      includeKimi: boolean,
-      includePairings: boolean,
-      includeUserNote: boolean,
-      includePriceCurrency: boolean
-    ) => {
-      const row = wineToRow(wine, userId, {
-        includeCellarId: multiCellarRef.current,
-        includeKimi,
-      });
-      if (includeKimi && !includePairings) {
-        delete row.kimi_pairings;
-      }
-      if (includeKimi && !includeUserNote) {
-        delete row.kimi_user_note;
-      }
-      if (!includePriceCurrency) {
-        delete row.price_currency;
-        delete row.kimi_price_currency;
-      }
-      return supabase.from("wines").upsert(row, { onConflict: "user_id,id" });
-    };
-    let includePairings = true;
-    let includeUserNote = true;
-    let includePriceCurrency = priceCurrencyColumnsRef.current;
-    let { error } = await tryUpsert(
-      kimiColumnsRef.current,
-      includePairings,
-      includeUserNote,
-      includePriceCurrency
-    );
-    if (
-      error &&
-      includePriceCurrency &&
-      /price_currency|kimi_price_currency/i.test(error.message ?? "")
-    ) {
-      includePriceCurrency = false;
-      priceCurrencyColumnsRef.current = false;
-      ({ error } = await tryUpsert(
+
+    const run = async () => {
+      const supabase = createClient();
+      const tryUpsert = async (
+        includeKimi: boolean,
+        includePairings: boolean,
+        includeUserNote: boolean,
+        includePriceCurrency: boolean,
+        includeCavataleBreakdown: boolean
+      ): Promise<{ error: SyncErr }> => {
+        try {
+          const row = wineToRow(wine, userId, {
+            includeCellarId: multiCellarRef.current,
+            includeKimi,
+            includeCavataleBreakdown,
+          });
+          if (includeKimi && !includePairings) {
+            delete row.kimi_pairings;
+          }
+          if (includeKimi && !includeUserNote) {
+            delete row.kimi_user_note;
+          }
+          if (!includePriceCurrency) {
+            delete row.price_currency;
+            delete row.kimi_price_currency;
+          }
+          const result = await supabase
+            .from("wines")
+            .upsert(row, { onConflict: "user_id,id" });
+          return { error: result.error };
+        } catch (e) {
+          return { error: { message: syncErrorMessage(e) } };
+        }
+      };
+
+      let includePairings = true;
+      let includeUserNote = true;
+      let includePriceCurrency = priceCurrencyColumnsRef.current;
+      let includeCavataleBreakdown = cavataleBreakdownColumnsRef.current;
+      let { error } = await tryUpsert(
         kimiColumnsRef.current,
         includePairings,
         includeUserNote,
-        false
-      ));
-    }
-    if (
-      error &&
-      kimiColumnsRef.current &&
-      /kimi_user_note/i.test(error.message ?? "")
-    ) {
-      includeUserNote = false;
-      ({ error } = await tryUpsert(
-        true,
-        includePairings,
-        false,
-        includePriceCurrency
-      ));
-    }
-    if (
-      error &&
-      kimiColumnsRef.current &&
-      /kimi_pairings/i.test(error.message ?? "")
-    ) {
-      includePairings = false;
-      ({ error } = await tryUpsert(
-        true,
-        false,
-        includeUserNote,
-        includePriceCurrency
-      ));
-    }
-    if (
-      error &&
-      kimiColumnsRef.current &&
-      /kimi_|column|schema|could not find/i.test(error.message ?? "")
-    ) {
-      kimiColumnsRef.current = false;
-      ({ error } = await tryUpsert(false, false, false, includePriceCurrency));
-    }
-    if (error) {
-      reportSyncError(
-        `No se pudo guardar en la nube: ${error.message}. Los cambios pueden perderse al recargar.`
+        includePriceCurrency,
+        includeCavataleBreakdown
       );
-    } else {
-      reportSyncOk();
-    }
+
+      for (let attempt = 1; error && isTransientFetchError(error) && attempt <= 2; attempt++) {
+        await sleep(350 * attempt);
+        ({ error } = await tryUpsert(
+          kimiColumnsRef.current,
+          includePairings,
+          includeUserNote,
+          includePriceCurrency,
+          includeCavataleBreakdown
+        ));
+      }
+
+      if (
+        error &&
+        includeCavataleBreakdown &&
+        /cavatale_parts|cavatale_evidence/i.test(error.message ?? "")
+      ) {
+        includeCavataleBreakdown = false;
+        cavataleBreakdownColumnsRef.current = false;
+        ({ error } = await tryUpsert(
+          kimiColumnsRef.current,
+          includePairings,
+          includeUserNote,
+          includePriceCurrency,
+          false
+        ));
+      }
+      if (
+        error &&
+        includePriceCurrency &&
+        /price_currency|kimi_price_currency/i.test(error.message ?? "")
+      ) {
+        includePriceCurrency = false;
+        priceCurrencyColumnsRef.current = false;
+        ({ error } = await tryUpsert(
+          kimiColumnsRef.current,
+          includePairings,
+          includeUserNote,
+          false,
+          includeCavataleBreakdown
+        ));
+      }
+      if (
+        error &&
+        kimiColumnsRef.current &&
+        /kimi_user_note/i.test(error.message ?? "")
+      ) {
+        includeUserNote = false;
+        ({ error } = await tryUpsert(
+          true,
+          includePairings,
+          false,
+          includePriceCurrency,
+          includeCavataleBreakdown
+        ));
+      }
+      if (
+        error &&
+        kimiColumnsRef.current &&
+        /kimi_pairings/i.test(error.message ?? "")
+      ) {
+        includePairings = false;
+        ({ error } = await tryUpsert(
+          true,
+          false,
+          includeUserNote,
+          includePriceCurrency,
+          includeCavataleBreakdown
+        ));
+      }
+      if (
+        error &&
+        kimiColumnsRef.current &&
+        /kimi_|column|schema|could not find/i.test(error.message ?? "")
+      ) {
+        kimiColumnsRef.current = false;
+        ({ error } = await tryUpsert(
+          false,
+          false,
+          false,
+          includePriceCurrency,
+          includeCavataleBreakdown
+        ));
+      }
+      if (error) {
+        reportSyncError(
+          `No se pudo guardar en la nube: ${syncErrorMessage(error)}. Los cambios pueden perderse al recargar.`
+        );
+      } else {
+        reportSyncOk();
+      }
+    };
+
+    const queued = wineUpsertChainRef.current.then(run, run);
+    wineUpsertChainRef.current = queued.then(
+      () => undefined,
+      () => undefined
+    );
+    await queued;
   }, [reportSyncError, reportSyncOk]);
 
   const deleteWineRemote = useCallback(async (id: string, userId: string) => {
@@ -553,45 +644,102 @@ export function CellarProvider({ children }: { children: ReactNode }) {
     if (!isSupabaseConfigured()) return;
     if (typeof navigator !== "undefined" && !navigator.onLine) return;
     const supabase = createClient();
-    const rows = list.map((w) =>
-      wineToRow(w, userId, {
-        includeCellarId: multiCellarRef.current,
-        includeKimi: kimiColumnsRef.current,
-      })
-    );
-    const { data: existing } = await supabase
-      .from("wines")
-      .select("id")
-      .eq("user_id", userId);
-    const keep = new Set(list.map((w) => w.id));
-    const toDelete = (existing ?? [])
-      .map((r) => r.id as string)
-      .filter((id) => !keep.has(id));
-    if (toDelete.length) {
-      const { error: delErr } = await supabase
-        .from("wines")
-        .delete()
-        .eq("user_id", userId)
-        .in("id", toDelete);
-      if (delErr) {
-        reportSyncError(
-          `No se pudo sincronizar borrados: ${delErr.message}.`
-        );
+    const buildRows = (includeCavataleBreakdown: boolean) =>
+      list.map((w) =>
+        wineToRow(w, userId, {
+          includeCellarId: multiCellarRef.current,
+          includeKimi: kimiColumnsRef.current,
+          includeCavataleBreakdown,
+        })
+      );
+
+    try {
+      let existing: { id: string }[] | null = null;
+      {
+        let { data, error: selectErr } = await supabase
+          .from("wines")
+          .select("id")
+          .eq("user_id", userId);
+        if (selectErr && isTransientFetchError(selectErr)) {
+          await sleep(400);
+          ({ data, error: selectErr } = await supabase
+            .from("wines")
+            .select("id")
+            .eq("user_id", userId));
+        }
+        if (selectErr) {
+          reportSyncError(
+            `No se pudo sincronizar: ${syncErrorMessage(selectErr)}.`
+          );
+          return;
+        }
+        existing = data;
+      }
+
+      const keep = new Set(list.map((w) => w.id));
+      const toDelete = (existing ?? [])
+        .map((r) => r.id as string)
+        .filter((id) => !keep.has(id));
+      if (toDelete.length) {
+        const { error: delErr } = await supabase
+          .from("wines")
+          .delete()
+          .eq("user_id", userId)
+          .in("id", toDelete);
+        if (delErr) {
+          reportSyncError(
+            `No se pudo sincronizar borrados: ${syncErrorMessage(delErr)}.`
+          );
+          return;
+        }
+      }
+
+      if (!list.length) {
+        setSyncError(null);
         return;
       }
-    }
-    if (rows.length) {
-      const { error } = await supabase
+
+      let includeCavataleBreakdown = cavataleBreakdownColumnsRef.current;
+      let rows = buildRows(includeCavataleBreakdown);
+      let { error } = await supabase
         .from("wines")
         .upsert(rows, { onConflict: "user_id,id" });
+
+      for (
+        let attempt = 1;
+        error && isTransientFetchError(error) && attempt <= 2;
+        attempt++
+      ) {
+        await sleep(350 * attempt);
+        ({ error } = await supabase
+          .from("wines")
+          .upsert(rows, { onConflict: "user_id,id" }));
+      }
+
+      if (
+        error &&
+        includeCavataleBreakdown &&
+        /cavatale_parts|cavatale_evidence/i.test(error.message ?? "")
+      ) {
+        cavataleBreakdownColumnsRef.current = false;
+        rows = buildRows(false);
+        ({ error } = await supabase
+          .from("wines")
+          .upsert(rows, { onConflict: "user_id,id" }));
+      }
+
       if (error) {
         reportSyncError(
-          `No se pudo guardar en la nube: ${error.message}. Los cambios pueden perderse al recargar.`
+          `No se pudo guardar en la nube: ${syncErrorMessage(error)}. Los cambios pueden perderse al recargar.`
         );
         return;
       }
+      setSyncError(null);
+    } catch (e) {
+      reportSyncError(
+        `No se pudo guardar en la nube: ${syncErrorMessage(e)}. Los cambios pueden perderse al recargar.`
+      );
     }
-    setSyncError(null);
   }, [reportSyncError]);
 
   const ensureDefaultCellar = useCallback(

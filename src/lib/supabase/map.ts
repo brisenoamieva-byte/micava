@@ -121,9 +121,15 @@ export function wineFromRow(row: WineRow): Wine {
 export function wineToRow(
   wine: Wine,
   userId: string,
-  opts?: { includeCellarId?: boolean; includeKimi?: boolean }
+  opts?: {
+    includeCellarId?: boolean;
+    includeKimi?: boolean;
+    /** Persist axis/evidence breakdown (migration 017). */
+    includeCavataleBreakdown?: boolean;
+  }
 ): Record<string, unknown> {
   const includeKimi = opts?.includeKimi !== false;
+  const includeCavataleBreakdown = opts?.includeCavataleBreakdown !== false;
   const base: Record<string, unknown> = {
     id: wine.id,
     user_id: userId,
@@ -140,8 +146,6 @@ export function wineToRow(
     vintage: wine.vintage,
     vivino: wine.vivino,
     cavatale_rating: wine.cavataleRating,
-    cavatale_parts: wine.cavataleParts,
-    cavatale_evidence: wine.cavataleEvidence,
     price: wine.price,
     price_currency: wine.priceCurrency ?? "MXN",
     external_rating: wine.externalRating,
@@ -149,6 +153,10 @@ export function wineToRow(
     last_checked_at: wine.lastCheckedAt,
     match_confidence: wine.matchConfidence,
   };
+  if (includeCavataleBreakdown) {
+    base.cavatale_parts = wine.cavataleParts;
+    base.cavatale_evidence = wine.cavataleEvidence;
+  }
   if (includeKimi) {
     base.kimi_vivino = wine.kimiVivino;
     base.kimi_price = wine.kimiPrice;

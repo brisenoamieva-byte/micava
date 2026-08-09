@@ -34,7 +34,7 @@ const PROFILES: Record<string, MarketProfile> = {
     retailersHint: "La Europea, Vinoteca, Amazon MX, Liverpool, Sam's Club México",
     searchPriceHint: "precio México MXN",
     pairingCuisineHint:
-      "Cocina mexicana y LatAm / regional (birria, mole, carnitas, antojitos, asados MX). Platillos concretos de México están bien.",
+      "Comida realista de mesa en México: asados y cortes a la parrilla, pollo rostizado, pasta, mariscos, quesos, guisos cotidianos, cena de restaurante o casa. NO te bases solo en platillos típicos/folclóricos (birria, mole, carnitas, antojitos de feria); a lo sumo uno si encaja de verdad con la botella.",
   },
   US: {
     currency: "USD",
@@ -42,7 +42,7 @@ const PROFILES: Record<string, MarketProfile> = {
     retailersHint: "Wine.com, Total Wine, Vivino US, Costco, local wine shops",
     searchPriceHint: "retail price USD",
     pairingCuisineHint:
-      "American / local US table food (steak, BBQ, roast chicken, pasta, burgers, seafood). Do NOT suggest Mexico-specific regional dishes (birria estilo Guadalajara, mole oaxaqueño, etc.) unless the wine itself is Mexican.",
+      "Realistic US table food someone would order or cook: steak, roast chicken, pasta, seafood, burgers, cheese boards — not a postcard of regional specialties. Do NOT suggest Mexico-specific dishes (birria, mole, carnitas) unless the wine itself is Mexican.",
   },
   CA: {
     currency: "CAD",
@@ -50,7 +50,7 @@ const PROFILES: Record<string, MarketProfile> = {
     retailersHint: "LCBO, SAQ, BCL, Vivino Canada",
     searchPriceHint: "retail price CAD",
     pairingCuisineHint:
-      "Canadian / North American table food. Avoid Mexico-only regional dishes unless the wine is Mexican.",
+      "Realistic Canadian / North American everyday table food (grilled meats, roast, pasta, seafood, cheese). Avoid Mexico-only dishes unless the wine is Mexican. Don't fill the list with only folkloric specialties.",
   },
   GB: {
     currency: "GBP",
@@ -58,7 +58,7 @@ const PROFILES: Record<string, MarketProfile> = {
     retailersHint: "Majestic, Waitrose, Tesco, Vivino UK",
     searchPriceHint: "retail price GBP UK",
     pairingCuisineHint:
-      "British / European table food (roast, pies, cheese boards, pub classics, seafood). Avoid Mexico-only regional dishes.",
+      "Realistic British everyday table food (roast, grilled meats, pasta, seafood, cheese boards, pub classics). Avoid Mexico-only dishes. Don't default to only touristy specialties.",
   },
   ES: {
     currency: "EUR",
@@ -66,7 +66,7 @@ const PROFILES: Record<string, MarketProfile> = {
     retailersHint: "El Corte Inglés, Vinissimus, Vivino España, Bodeboca",
     searchPriceHint: "precio España EUR",
     pairingCuisineHint:
-      "Cocina española / mediterránea (asados, tapas, jamón, arroces, quesos). Evita platillos solo-mexicanos regionales salvo que el vino sea mexicano.",
+      "Comida realista de mesa en España: asados, pescado, pasta, arroces, quesos, carne a la parrilla — no solo tapas/jamón de postal. Evita platillos solo-mexicanos salvo que el vino sea mexicano.",
   },
   FR: {
     currency: "EUR",
@@ -74,7 +74,7 @@ const PROFILES: Record<string, MarketProfile> = {
     retailersHint: "Nicolas, Cavea, Vivino France, wine shops",
     searchPriceHint: "prix France EUR",
     pairingCuisineHint:
-      "French / European cuisine. Avoid Mexico-only regional dishes unless the wine is Mexican.",
+      "Realistic French / European everyday table food (roast, grilled meats, pasta, cheese, seafood). Avoid Mexico-only dishes. Don't fill with only postcard specialties.",
   },
   IT: {
     currency: "EUR",
@@ -82,7 +82,7 @@ const PROFILES: Record<string, MarketProfile> = {
     retailersHint: "Tannico, Vivino Italia, enoteche",
     searchPriceHint: "prezzo Italia EUR",
     pairingCuisineHint:
-      "Italian cuisine (pasta, risotto, salumi, grilled meats). Avoid Mexico-only regional dishes.",
+      "Realistic Italian everyday table food (pasta, grilled meats, risotto, antipasti, cheese). Avoid Mexico-only dishes.",
   },
   DE: {
     currency: "EUR",
@@ -90,7 +90,7 @@ const PROFILES: Record<string, MarketProfile> = {
     retailersHint: "Hawesko, Vivino Germany, wine shops",
     searchPriceHint: "Preis Deutschland EUR",
     pairingCuisineHint:
-      "German / Central European cuisine. Avoid Mexico-only regional dishes.",
+      "Realistic German / Central European everyday table food (roast, grilled meats, pasta, cheese). Avoid Mexico-only dishes.",
   },
   AR: {
     currency: "ARS",
@@ -98,7 +98,7 @@ const PROFILES: Record<string, MarketProfile> = {
     retailersHint: "Vivino Argentina, tiendas de vinos locales",
     searchPriceHint: "precio Argentina ARS",
     pairingCuisineHint:
-      "Cocina argentina / Cono Sur (asado, empanadas, provoleta). Evita platillos solo-mexicanos regionales.",
+      "Comida realista de mesa en Argentina: asado/cortes, pasta, pollo, quesos — no solo empanadas/provoleta de postal. Evita platillos solo-mexicanos.",
   },
   CL: {
     currency: "CLP",
@@ -106,7 +106,7 @@ const PROFILES: Record<string, MarketProfile> = {
     retailersHint: "Vivino Chile, tiendas de vinos locales",
     searchPriceHint: "precio Chile CLP",
     pairingCuisineHint:
-      "Cocina chilena / Cono Sur. Evita platillos solo-mexicanos regionales.",
+      "Comida realista de mesa en Chile: asados, pescados/mariscos, pasta, pollo. Evita platillos solo-mexicanos. No bases la lista solo en tipismos.",
   },
   CO: {
     currency: "COP",
@@ -114,7 +114,7 @@ const PROFILES: Record<string, MarketProfile> = {
     retailersHint: "Vivino Colombia, tiendas de vinos locales",
     searchPriceHint: "precio Colombia COP",
     pairingCuisineHint:
-      "Cocina colombiana / andina. Evita platillos solo-mexicanos regionales (birria Guadalajara, etc.).",
+      "Comida realista de mesa en Colombia: carne a la parrilla, pollo, pasta, pescado, quesos. Evita platillos solo-mexicanos. No llenes con tipismos.",
   },
   BR: {
     currency: "BRL",
@@ -122,7 +122,7 @@ const PROFILES: Record<string, MarketProfile> = {
     retailersHint: "Vivino Brasil, Wine.com.br, lojas locais",
     searchPriceHint: "preço Brasil BRL",
     pairingCuisineHint:
-      "Brazilian / local cuisine. Avoid Mexico-only regional dishes.",
+      "Realistic Brazilian everyday table food (grilled meats, pasta, seafood, cheese). Avoid Mexico-only dishes.",
   },
   AU: {
     currency: "AUD",
@@ -130,7 +130,7 @@ const PROFILES: Record<string, MarketProfile> = {
     retailersHint: "Dan Murphy's, Vivino Australia, wine shops",
     searchPriceHint: "retail price AUD",
     pairingCuisineHint:
-      "Australian / local table food. Avoid Mexico-only regional dishes.",
+      "Realistic Australian everyday table food (BBQ, roast lamb, seafood, pasta, cheese). Avoid Mexico-only dishes.",
   },
   NZ: {
     currency: "NZD",
@@ -138,7 +138,7 @@ const PROFILES: Record<string, MarketProfile> = {
     retailersHint: "Vivino NZ, local wine shops",
     searchPriceHint: "retail price NZD",
     pairingCuisineHint:
-      "New Zealand / local table food. Avoid Mexico-only regional dishes.",
+      "Realistic NZ everyday table food (lamb, seafood, pasta, cheese). Avoid Mexico-only dishes.",
   },
   JP: {
     currency: "JPY",
@@ -146,7 +146,7 @@ const PROFILES: Record<string, MarketProfile> = {
     retailersHint: "Vivino Japan, local wine retailers",
     searchPriceHint: "retail price JPY Japan",
     pairingCuisineHint:
-      "Japanese / local cuisine that pairs with wine. Avoid Mexico-only regional dishes.",
+      "Realistic Japanese / local dishes that pair with wine (yakitori, grilled fish, pasta, cheese & nuts) — not only tourist staples. Avoid Mexico-only dishes.",
   },
 };
 
@@ -156,7 +156,7 @@ const FALLBACK: MarketProfile = {
   retailersHint: "Vivino, major online wine retailers in that country",
   searchPriceHint: "retail price wine bottle",
   pairingCuisineHint:
-    "Local or nearby cuisine appropriate to the user's country. Do NOT default to Mexico-specific regional dishes unless the user is in Mexico or the wine is Mexican.",
+    "Realistic everyday table food appropriate to the user's country (grilled meats, roast, pasta, seafood, cheese). Do NOT default to Mexico-specific dishes unless the user is in Mexico or the wine is Mexican. Don't fill the list with only folkloric specialties.",
 };
 
 function normalizeCountryCode(raw: string | null | undefined): string | null {

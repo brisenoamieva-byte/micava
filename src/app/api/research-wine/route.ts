@@ -66,7 +66,7 @@ Los cuatro campos hablan del MISMO vino concreto. Misma bodega, misma gente, mis
 
 - talkHook (string): EL GANCHO DE MESA — 1 frase (máx. 2). Provocación sobre gente/historia humana. Evita preguntas de cata ("¿notas fruta o madera?"). Distinto de summary y curiosity.
 
-- pairings (string[]): 4–6 platillos o momentos CONCRETOS para ESTA botella, anclados al MERCADO del usuario (ver bloque de mercado más abajo). No listas genéricas de uva. No sugieras cocina solo-mexicana regional si el usuario NO está en México.
+- pairings (string[]): 4–6 platillos o momentos CONCRETOS para ESTA botella, anclados al MERCADO del usuario (ver bloque de mercado). Piensa en lo que alguien pediría o cocinaría HOY con esta botella (casa, restaurante, cena informal) — no en un catálogo de platillos típicos/folclóricos del país. No listas genéricas de uva. No sugieras cocina solo-mexicana regional si el usuario NO está en México.
 
 - pairingNote (string): 1 frase con el hilo del maridaje. Sin mencionar Vivino ni Cavatale.
 
@@ -102,11 +102,17 @@ function buildMarketPairingsBlock(market: {
 ## Mercado del usuario (precio + maridaje) — OBLIGATORIO
 
 País/mercado detectado: ${market.marketLabel} (${market.countryCode}).
-Cocina para pairings: ${market.pairingCuisineHint}
+Orientación de cocina: ${market.pairingCuisineHint}
+
+Reglas de pairings (todas obligatorias):
+- Piensa en comidas REALISTAS que alguien pediría o cocinaría en ${market.marketLabel} con ESTA botella: casa, restaurante, carne a la parrilla, pasta, pescado, quesos, asados, cena informal.
+- El geo ancla el mercado (ingredientes y costumbres locales están bien), pero NO llenes la lista solo con platillos típicos/folclóricos del país.
+- Máximo 1 ítem claramente "tradicional/emblemático" del lugar; el resto cotidianos o de carta internacional que sí se come ahí.
+- Evita clichés repetidos de postcard: birria, mole, carnitas, tacos al pastor, chile en nogada, etc. salvo que el vino o el contexto lo pidan de verdad (y aun así, como mucho uno).
 ${
   market.isMexico
-    ? `- pairings: platillos mexicanos/regionales concretos están bien (birria, mole, asados MX, etc.).`
-    : `- pairings: cocina LOCAL o cercana a ${market.marketLabel}. PROHIBIDO sugerir platillos solo-mexicanos regionales (ej. "birria estilo Guadalajara", mole oaxaqueño, carnitas michoacanas) salvo que el vino mismo sea mexicano y encaje de forma natural.
+    ? `- En México: prioriza asados, cortes, pollo, pasta, mariscos, quesos, guisos cotidianos, brunch/cena de ciudad — no un menú de feria gastronómica.`
+    : `- PROHIBIDO sugerir platillos solo-mexicanos regionales (birria, mole oaxaqueño, carnitas michoacanas, etc.) salvo que el vino sea mexicano y encaje de forma natural.
 - Prefiere platos que alguien pediría en ${market.marketLabel} con esta botella.`
 }`;
 }

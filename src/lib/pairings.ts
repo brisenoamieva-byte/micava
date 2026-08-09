@@ -154,21 +154,21 @@ const BY_TYPE: Record<string, string[]> = {
 
 /** Market-local dish seeds prepended when resolving static pairings. */
 const BY_MARKET: Record<string, string[]> = {
-  MX: ["Asados a la parrilla", "Mole suave", "Quesos mexicanos"],
-  US: ["Grilled steak", "BBQ ribs", "Roast chicken"],
+  MX: ["Carne a la parrilla", "Pollo rostizado", "Pasta con salsa"],
+  US: ["Grilled steak", "Roast chicken", "Pasta"],
   CA: ["Grilled steak", "Roast dinner", "Cheese board"],
-  GB: ["Sunday roast", "Shepherd's pie", "Cheddar board"],
-  ES: ["Jamón ibérico", "Cordero asado", "Tapas variadas"],
-  FR: ["Fromages affinés", "Agneau rôti", "Charcuterie"],
-  IT: ["Pasta al ragù", "Risotto", "Antipasti"],
-  DE: ["Schnitzel", "Bratwurst", "Käseplatte"],
-  AR: ["Asado", "Empanadas de carne", "Provoleta"],
-  CL: ["Asado", "Empanadas", "Mariscos"],
-  CO: ["Carne a la parrilla", "Ajiaco suave", "Quesos"],
-  BR: ["Churrasco", "Queijos", "Massas"],
-  AU: ["Barbecue", "Roast lamb", "Cheese platter"],
-  NZ: ["Lamb roast", "Seafood", "Cheese board"],
-  JP: ["Yakitori", "Grilled fish", "Cheese & nuts"],
+  GB: ["Sunday roast", "Grilled lamb", "Cheddar board"],
+  ES: ["Cordero asado", "Pescado a la plancha", "Pasta"],
+  FR: ["Agneau rôti", "Pâtes", "Fromages affinés"],
+  IT: ["Pasta al ragù", "Carne alla griglia", "Antipasti"],
+  DE: ["Braten", "Pasta", "Käseplatte"],
+  AR: ["Asado / bife", "Pasta", "Pollo al horno"],
+  CL: ["Asado", "Pescado a la plancha", "Pasta"],
+  CO: ["Carne a la parrilla", "Pollo", "Pasta"],
+  BR: ["Churrasco", "Massas", "Frango assado"],
+  AU: ["Barbecue steak", "Roast lamb", "Pasta"],
+  NZ: ["Lamb roast", "Seafood", "Pasta"],
+  JP: ["Yakitori", "Grilled fish", "Pasta"],
 };
 
 /** Mexico-specific dishes — drop outside MX unless wine origin is Mexico. */
@@ -223,7 +223,7 @@ function regionHint(region: string, country: string): string[] {
     blob.includes("méxico") ||
     blob.includes("mexico")
   ) {
-    return ["Carnes a la parrilla", "Mole suave", "Quesos mexicanos"];
+    return ["Carnes a la parrilla", "Pollo rostizado", "Quesos"];
   }
   if (blob.includes("napa") || blob.includes("california")) {
     return ["Steak", "BBQ"];

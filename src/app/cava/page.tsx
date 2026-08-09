@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BrandMark } from "@/components/BrandMark";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { BitacoraPanel } from "@/components/BitacoraPanel";
@@ -120,6 +120,11 @@ export default function CavaPage() {
   const [shareCavaOpen, setShareCavaOpen] = useState(false);
   const [shareNudgeDismissed, setShareNudgeDismissed] = useState(true);
   const [clearing, setClearing] = useState(false);
+  const moreMenuRef = useRef<HTMLDetailsElement>(null);
+
+  function closeMoreMenu() {
+    if (moreMenuRef.current) moreMenuRef.current.open = false;
+  }
 
   async function handleVaciarCava() {
     if (clearing) return;
@@ -570,7 +575,7 @@ export default function CavaPage() {
               >
                 {t("cava.pairMeal")}
               </button>
-              <details className="relative">
+              <details ref={moreMenuRef} className="relative">
                 <summary className="flex min-h-[40px] cursor-pointer list-none items-center px-1 text-sm underline-offset-2 hover:text-ink hover:underline [&::-webkit-details-marker]:hidden">
                   {t("common.more")}
                 </summary>
@@ -579,6 +584,7 @@ export default function CavaPage() {
                     type="button"
                     className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
                     onClick={() => {
+                      closeMoreMenu();
                       setMode("stats");
                       window.requestAnimationFrame(() => {
                         document
@@ -593,7 +599,10 @@ export default function CavaPage() {
                     <button
                       type="button"
                       className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
-                      onClick={openShareCava}
+                      onClick={() => {
+                        closeMoreMenu();
+                        openShareCava();
+                      }}
                     >
                       {t("cava.shareCava")}
                     </button>
@@ -601,7 +610,10 @@ export default function CavaPage() {
                   <button
                     type="button"
                     className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
-                    onClick={() => void handleInviteFriend()}
+                    onClick={() => {
+                      closeMoreMenu();
+                      void handleInviteFriend();
+                    }}
                   >
                     {inviteHint ?? t("cava.invite")}
                   </button>
@@ -609,10 +621,8 @@ export default function CavaPage() {
                     type="button"
                     className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
                     onClick={() => {
+                      closeMoreMenu();
                       setShowHowTo(true);
-                      // Close the “Más” details menu if open
-                      const details = document.activeElement?.closest("details");
-                      if (details) details.removeAttribute("open");
                     }}
                   >
                     {t("cava.howItWorks")}
@@ -621,6 +631,7 @@ export default function CavaPage() {
                     type="button"
                     className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
                     onClick={() => {
+                      closeMoreMenu();
                       void signOut().then(() => {
                         window.location.href = "/";
                       });

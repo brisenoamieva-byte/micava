@@ -421,6 +421,9 @@ export default function CavaPage() {
     return updated;
   }
 
+  const immersiveDetail =
+    mode === "cava" && mobilePanel === "detalle";
+
   return (
     <main className="grain relative min-h-screen min-h-[100dvh]">
       {showHowTo ? (
@@ -458,7 +461,14 @@ export default function CavaPage() {
           </div>
         </div>
       ) : null}
-      <div className="relative z-10 mx-auto flex w-full max-w-[1400px] flex-col px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))] md:px-8 xl:pb-6">
+      <div
+        className={[
+          "relative z-10 mx-auto flex w-full max-w-[1400px] flex-col md:px-8 xl:pb-6",
+          immersiveDetail
+            ? "px-3 pb-[calc(4.75rem+env(safe-area-inset-bottom))] pt-[max(0.5rem,env(safe-area-inset-top))]"
+            : "px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))]",
+        ].join(" ")}
+      >
         {!isOnline ? (
           <div
             role="status"
@@ -495,7 +505,12 @@ export default function CavaPage() {
             </button>
           </div>
         ) : null}
-        <header className="flex shrink-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <header
+          className={[
+            "shrink-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between",
+            immersiveDetail ? "hidden xl:flex" : "flex",
+          ].join(" ")}
+        >
           <div className="min-w-0">
             <BrandMark size="md" />
             <DisplayNameEditor />
@@ -632,9 +647,9 @@ export default function CavaPage() {
           </div>
         </header>
 
-        <InstallAppHint />
+        {!immersiveDetail ? <InstallAppHint /> : null}
 
-        {showShareNudge ? (
+        {showShareNudge && !immersiveDetail ? (
           <div className="mt-4 rounded-[12px] border border-[rgba(110,31,44,0.22)] bg-[rgba(110,31,44,0.06)] p-4 text-sm text-ink">
             <p className="font-medium">{t("cava.shareNudgeTitle")}</p>
             <p className="mt-1 text-ink-soft">{t("cava.shareNudgeBody")}</p>
@@ -976,7 +991,7 @@ export default function CavaPage() {
 
           {mobilePanel === "detalle" && (
             <section
-              className="panel-focus mobile-detail-sheet p-0"
+              className="panel-focus mobile-detail-sheet mobile-detail-sheet--immersive p-0"
               aria-label={t("cava.bottleDetail")}
             >
               <div className="mobile-detail-sheet__bar">
@@ -1003,7 +1018,12 @@ export default function CavaPage() {
         </div>
         </div>
 
-        <div className="mt-4 flex shrink-0 flex-wrap items-center gap-3 text-xs text-ink-soft xl:mt-3">
+        <div
+          className={[
+            "mt-4 flex shrink-0 flex-wrap items-center gap-3 text-xs text-ink-soft xl:mt-3",
+            immersiveDetail ? "hidden xl:flex" : "",
+          ].join(" ")}
+        >
           {wines.length > 0 ? (
             <button
               type="button"

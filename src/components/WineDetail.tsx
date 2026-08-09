@@ -452,10 +452,43 @@ export function WineDetail({
           ← {resolvedBackLabel}
         </button>
       ) : null}
+
+      <div
+        className={[
+          "wine-label-hero",
+          embeddedInSheet ? "wine-label-hero--sheet" : "wine-label-hero--card",
+          labelSrc ? "wine-label-hero--contain" : "",
+        ].join(" ")}
+      >
+        {labelSrc ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={labelSrc} alt={t("wine.labelAlt", { name: wine.name })} />
+        ) : (
+          <div className="wine-label-hero__fallback relative">
+            <div className="wine-label-hero__fallback-mark" aria-hidden />
+            <p className="relative text-[11px] uppercase tracking-[0.16em] text-[var(--wine)]">
+              {t("wine.detail")}
+            </p>
+            <p className="relative mt-2 max-w-[16rem] text-sm text-ink-soft">
+              {t("wine.labelHeroEmpty")}
+            </p>
+          </div>
+        )}
+      </div>
+
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="micro-label text-ink-soft">{t("wine.detail")}</p>
-          <h2 className="display mt-2 text-[1.85rem] leading-tight text-ink sm:text-3xl">
+          {!labelSrc ? null : (
+            <p className="micro-label text-ink-soft">{t("wine.detail")}</p>
+          )}
+          <h2
+            className={[
+              "display leading-tight text-ink",
+              labelSrc
+                ? "mt-1.5 text-[1.85rem] sm:text-3xl"
+                : "text-[1.85rem] sm:text-3xl",
+            ].join(" ")}
+          >
             {wine.name}
           </h2>
           <p className="mt-1 text-sm text-ink-soft">
@@ -504,7 +537,7 @@ export function WineDetail({
 
       {onSaveKimiResearch ? (
         <div
-          className="discovery-stage mt-5 sm:mt-6"
+          className="mt-5 sm:mt-6"
           aria-busy={kimiLoading || undefined}
         >
           <div className="flex flex-wrap items-start justify-between gap-2">
@@ -525,21 +558,6 @@ export function WineDetail({
                 </h3>
               )}
             </div>
-            {hasDiscoveryStory ? (
-              <button
-                type="button"
-                className="btn btn-ghost min-h-[40px] shrink-0 px-3 text-sm disabled:opacity-60"
-                disabled={kimiLoading}
-                aria-busy={kimiLoading}
-                onClick={() => void handleKimiResearch()}
-              >
-                {kimiLoading ? (
-                  <ThinkingIndicator tone="wine" size="sm" label={t("wine.telling")} />
-                ) : (
-                  t("common.refresh")
-                )}
-              </button>
-            ) : null}
           </div>
 
           {kimiError ? (
@@ -547,7 +565,7 @@ export function WineDetail({
               <p className="text-sm text-[var(--wine)]">{kimiError}</p>
               <button
                 type="button"
-                className="btn btn-ghost min-h-[40px] px-3 text-sm disabled:opacity-60"
+                className="btn btn-primary min-h-[44px] w-full px-3 text-sm disabled:opacity-60 sm:w-auto"
                 disabled={kimiLoading}
                 onClick={() => void handleKimiResearch()}
               >
@@ -567,8 +585,7 @@ export function WineDetail({
           {!hasDiscoveryStory && !kimiLoading ? (
             <div className="mt-3">
               <p className="max-w-md text-sm leading-relaxed text-ink-soft">
-                Historia, dato curioso, gancho de mesa y calificación Cavatale — lo
-                que hace distinta a esta botella.
+                {t("wine.storyInvite")}
               </p>
               <button
                 type="button"
@@ -578,6 +595,24 @@ export function WineDetail({
               >
                 {t("wine.tellWineStory")}
               </button>
+            </div>
+          ) : null}
+
+          {hasDiscoveryStory && !kimiLoading ? (
+            <button
+              type="button"
+              className="btn btn-primary mt-3 min-h-[44px] w-full px-3 text-sm disabled:opacity-60 sm:w-auto"
+              disabled={kimiLoading}
+              aria-busy={kimiLoading}
+              onClick={() => void handleKimiResearch()}
+            >
+              {t("wine.retellStory")}
+            </button>
+          ) : null}
+
+          {hasDiscoveryStory && kimiLoading ? (
+            <div className="mt-3">
+              <ThinkingIndicator tone="wine" size="sm" label={t("wine.telling")} />
             </div>
           ) : null}
 
@@ -813,17 +848,6 @@ export function WineDetail({
               ) : null}
             </div>
           ) : null}
-        </div>
-      ) : null}
-
-      {labelSrc ? (
-        <div className="mt-5 overflow-hidden rounded-[12px]">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={labelSrc}
-            alt={t("wine.labelAlt", { name: wine.name })}
-            className="max-h-72 w-full object-contain bg-[rgba(20,18,16,0.04)]"
-          />
         </div>
       ) : null}
 

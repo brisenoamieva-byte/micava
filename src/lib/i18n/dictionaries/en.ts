@@ -363,6 +363,9 @@ export const en = {
     noLocation: "No location",
     discovery: "Discovery",
     whatStory: "What does this bottle have to say?",
+    storyInvite:
+      "Story, fun fact, table hook, and Cavatale score — what makes this bottle distinct.",
+    labelHeroEmpty: "No label photo yet — the story is still the center.",
     lastQuery: "Last lookup: {date}",
     telling: "Telling…",
     tellWineStory: "Tell this wine’s story",

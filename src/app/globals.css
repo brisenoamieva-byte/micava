@@ -775,12 +775,19 @@ select {
   touch-action: none;
 }
 
-/* Mobile detalle: sticky back bar aligned with sheet language (MoveWineSheet). */
+/* Mobile detalle: immersive sheet — bottle first, less chrome. */
 .mobile-detail-sheet {
   display: flex;
   flex-direction: column;
-  max-height: min(78dvh, 42rem);
+  max-height: min(88dvh, 52rem);
   overflow: hidden;
+  border-radius: 14px;
+}
+
+.mobile-detail-sheet--immersive {
+  max-height: calc(100dvh - 4.75rem - env(safe-area-inset-bottom, 0px));
+  border-color: rgba(18, 16, 14, 0.12);
+  box-shadow: 0 18px 48px rgba(28, 20, 16, 0.12);
 }
 
 .mobile-detail-sheet__bar {
@@ -790,23 +797,90 @@ select {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  border-bottom: 1px solid var(--line);
-  background: rgba(250, 249, 245, 0.96);
-  backdrop-filter: blur(8px);
-  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid rgba(18, 16, 14, 0.08);
+  background: rgba(250, 249, 245, 0.92);
+  backdrop-filter: blur(10px);
+  padding: 0.55rem 0.75rem;
 }
 
 .mobile-detail-sheet__body {
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  padding: 1rem 0.85rem 1.15rem;
+  padding: 0 0 1.25rem;
+}
+
+.mobile-detail-sheet__body > * {
+  padding-left: 0.85rem;
+  padding-right: 0.85rem;
+}
+
+/* Hero label bleeds to sheet edges */
+.mobile-detail-sheet__body > .wine-label-hero {
+  padding-left: 0;
+  padding-right: 0;
+  margin-bottom: 0.85rem;
 }
 
 @media (min-width: 640px) {
-  .mobile-detail-sheet__body {
-    padding: 1.15rem 1.15rem 1.35rem;
+  .mobile-detail-sheet__body > *:not(.wine-label-hero) {
+    padding-left: 1.15rem;
+    padding-right: 1.15rem;
   }
+}
+
+.wine-label-hero {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(
+    165deg,
+    rgba(110, 31, 44, 0.14) 0%,
+    rgba(20, 18, 16, 0.06) 55%,
+    rgba(248, 245, 238, 0.9) 100%
+  );
+}
+
+.wine-label-hero--sheet {
+  border-radius: 0;
+}
+
+.wine-label-hero--card {
+  border-radius: 12px;
+  margin-top: 0.25rem;
+}
+
+.wine-label-hero img {
+  display: block;
+  width: 100%;
+  max-height: min(42dvh, 22rem);
+  object-fit: cover;
+  object-position: center;
+  background: rgba(20, 18, 16, 0.04);
+}
+
+.wine-label-hero--contain img {
+  object-fit: contain;
+  max-height: min(38dvh, 20rem);
+  padding: 0.75rem 0;
+}
+
+.wine-label-hero__fallback {
+  display: flex;
+  min-height: min(28dvh, 11rem);
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 1.25rem 1rem 1.1rem;
+}
+
+.wine-label-hero__fallback-mark {
+  position: absolute;
+  inset: 0;
+  opacity: 0.35;
+  background:
+    radial-gradient(ellipse at 70% 20%, rgba(160, 77, 86, 0.45), transparent 55%),
+    radial-gradient(ellipse at 20% 80%, rgba(63, 15, 24, 0.25), transparent 50%);
+  pointer-events: none;
 }
 
 .desktop-only {

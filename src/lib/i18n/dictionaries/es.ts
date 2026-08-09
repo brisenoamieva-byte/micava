@@ -351,6 +351,9 @@ export const es = {
     noLocation: "Sin ubicación",
     discovery: "Descubrimiento",
     whatStory: "¿Qué cuenta esta botella?",
+    storyInvite:
+      "Historia, dato curioso, gancho de mesa y calificación Cavatale — lo que hace distinta a esta botella.",
+    labelHeroEmpty: "Sin foto de etiqueta aún — la historia sigue siendo el centro.",
     lastQuery: "Última consulta: {date}",
     telling: "Contando…",
     tellWineStory: "Contar la historia de este vino",

@@ -17,7 +17,7 @@ export function resolvePrimaryLlm(): ResolvedLlm | null {
     return {
       provider: "gemini",
       apiKey: geminiKey,
-      model: process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash",
+      model: process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash",
     };
   }
   const kimiKey = process.env.KIMI_API_KEY?.trim();
@@ -83,7 +83,7 @@ export async function geminiGenerateJson(options: {
   maxTokens?: number;
   temperature?: number;
 }): Promise<{ content: string; usage: KimiTokenUsage | null }> {
-  const model = options.model?.trim() || "gemini-2.5-flash";
+  const model = options.model?.trim() || "gemini-3.5-flash";
   const parts: GeminiPart[] = [];
   for (const url of options.images ?? []) {
     const { mimeType, data } = parseDataUrl(url);

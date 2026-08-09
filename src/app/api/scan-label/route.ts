@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { guardKimiApi } from "@/lib/api-guard";
+import { geminiGenerateJson, resolvePrimaryLlm } from "@/lib/gemini";
 import {
   addKimiUsage,
   parseKimiUsage,
@@ -21,7 +22,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const KIMI_BASE = "https://api.moonshot.ai/v1";
-const MODEL = process.env.KIMI_MODEL?.trim() || "kimi-k2.6";
+const KIMI_MODEL = process.env.KIMI_MODEL?.trim() || "kimi-k2.6";
 const USAGE_ROUTE = "scan-label";
 const MAX_BYTES = 6 * 1024 * 1024;
 
@@ -173,68 +174,82 @@ function applyMethodNote(
 }
 
 async function visionIdentify(
-  apiKey: string,
+  llm: { provider: "gemini" | "kimi"; apiKey: string; model: string },
   imageDataUrls: string[]
 ): Promise<{
   fields: ScanLabelFields;
   extras: EnrichHint;
   usage: KimiTokenUsage | null;
 }> {
-  const imageParts = imageDataUrls.map((url) => ({
-    type: "image_url" as const,
-    image_url: { url },
-  }));
   const multi = imageDataUrls.length > 1;
-  const kimiRes = await fetch(`${KIMI_BASE}/chat/completions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      thinking: { type: "disabled" },
+  const userText = multi
+    ? "Hay 2 fotos de la misma botella: la primera es el FRENTE (etiqueta) y la segunda el REVERSO (contraetiqueta). Combina ambas. Si casi no hay texto en el frente, usa la huella visual y lee la contraetiqueta. Completa el JSON incluyendo matchMethod, searchQuery, y vivino/price solo si estás seguro; si no, null."
+    : "Identifica este vino. Si casi no hay texto, usa la huella visual (arte, colores, logo). Completa el JSON incluyendo matchMethod, searchQuery, y vivino/price solo si estás seguro; si no, null.";
+
+  let content: string;
+  let usage: KimiTokenUsage | null;
+
+  if (llm.provider === "gemini") {
+    const out = await geminiGenerateJson({
+      apiKey: llm.apiKey,
+      model: llm.model,
+      system: VISION_SYSTEM,
+      userText,
+      images: imageDataUrls,
+      maxTokens: 2048,
       temperature: 0.6,
-      response_format: { type: "json_object" },
-      max_tokens: 2048,
-      messages: [
-        { role: "system", content: VISION_SYSTEM },
-        {
-          role: "user",
-          content: [
-            ...imageParts,
-            {
-              type: "text",
-              text: multi
-                ? "Hay 2 fotos de la misma botella: la primera es el FRENTE (etiqueta) y la segunda el REVERSO (contraetiqueta). Combina ambas. Si casi no hay texto en el frente, usa la huella visual y lee la contraetiqueta. Completa el JSON incluyendo matchMethod, searchQuery, y vivino/price solo si estás seguro; si no, null."
-                : "Identifica este vino. Si casi no hay texto, usa la huella visual (arte, colores, logo). Completa el JSON incluyendo matchMethod, searchQuery, y vivino/price solo si estás seguro; si no, null.",
-            },
-          ],
-        },
-      ],
-    }),
-  });
-
-  const rawText = await kimiRes.text();
-  let payload: KimiChatResponse;
-  try {
-    payload = JSON.parse(rawText) as KimiChatResponse;
-  } catch {
-    throw new Error("Respuesta inválida de Kimi (visión).");
-  }
-  const usage = parseKimiUsage(payload);
-  if (!kimiRes.ok) {
-    throw Object.assign(
-      new Error(payload.error?.message || `Kimi visión ${kimiRes.status}.`),
-      { usage }
-    );
-  }
-
-  const content = payload.choices?.[0]?.message?.content?.trim();
-  if (!content) {
-    throw Object.assign(new Error("Kimi no devolvió contenido (visión)."), {
-      usage,
     });
+    content = out.content;
+    usage = out.usage;
+  } else {
+    const imageParts = imageDataUrls.map((url) => ({
+      type: "image_url" as const,
+      image_url: { url },
+    }));
+    const kimiRes = await fetch(`${KIMI_BASE}/chat/completions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${llm.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: llm.model || KIMI_MODEL,
+        thinking: { type: "disabled" },
+        temperature: 0.6,
+        response_format: { type: "json_object" },
+        max_tokens: 2048,
+        messages: [
+          { role: "system", content: VISION_SYSTEM },
+          {
+            role: "user",
+            content: [...imageParts, { type: "text", text: userText }],
+          },
+        ],
+      }),
+    });
+
+    const rawText = await kimiRes.text();
+    let payload: KimiChatResponse;
+    try {
+      payload = JSON.parse(rawText) as KimiChatResponse;
+    } catch {
+      throw new Error("Respuesta inválida de Kimi (visión).");
+    }
+    usage = parseKimiUsage(payload);
+    if (!kimiRes.ok) {
+      throw Object.assign(
+        new Error(payload.error?.message || `Kimi visión ${kimiRes.status}.`),
+        { usage }
+      );
+    }
+
+    const kimiContent = payload.choices?.[0]?.message?.content?.trim();
+    if (!kimiContent) {
+      throw Object.assign(new Error("Kimi no devolvió contenido (visión)."), {
+        usage,
+      });
+    }
+    content = kimiContent;
   }
 
   const raw = extractJsonObject(content);
@@ -247,10 +262,10 @@ export async function POST(request: Request) {
   const guard = await guardKimiApi(request);
   if (!guard.ok) return guard.response;
 
-  const apiKey = process.env.KIMI_API_KEY?.trim();
-  if (!apiKey) {
+  const llm = resolvePrimaryLlm();
+  if (!llm) {
     return badRequest(
-      "Falta KIMI_API_KEY en el servidor. Agrégala en .env.local y reinicia.",
+      "Falta GEMINI_API_KEY o KIMI_API_KEY en el servidor. Agrégala en .env.local y reinicia.",
       503
     );
   }
@@ -269,7 +284,7 @@ export async function POST(request: Request) {
     usage: KimiTokenUsage | null;
   };
   try {
-    vision = await visionIdentify(apiKey, imageDataUrls);
+    vision = await visionIdentify(llm, imageDataUrls);
     sessionUsage = addKimiUsage(sessionUsage, vision.usage);
   } catch (e) {
     const errUsage =
@@ -280,7 +295,7 @@ export async function POST(request: Request) {
     await recordKimiUsage({
       userId: guard.userId,
       route: USAGE_ROUTE,
-      model: MODEL,
+      model: llm.model,
       usage: sessionUsage,
     });
     return NextResponse.json(
@@ -299,7 +314,7 @@ export async function POST(request: Request) {
   await recordKimiUsage({
     userId: guard.userId,
     route: USAGE_ROUTE,
-    model: MODEL,
+    model: llm.model,
     usage: sessionUsage,
   });
 

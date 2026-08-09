@@ -4,6 +4,7 @@ import {
   CAVATALE_RATING_RUBRIC_PROMPT,
   computePartsFromEvidence,
 } from "@/lib/cavatale-rating";
+import { geminiGenerateJson, resolvePrimaryLlm } from "@/lib/gemini";
 import {
   assessKimiStoryQuality,
   buildUserCorrectionPromptBlock,
@@ -27,7 +28,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const KIMI_BASE = "https://api.moonshot.ai/v1";
-const MODEL = process.env.KIMI_MODEL?.trim() || "kimi-k2.6";
+const KIMI_MODEL = process.env.KIMI_MODEL?.trim() || "kimi-k2.6";
 const USAGE_ROUTE = "research-wine";
 
 const SYSTEM = `Eres el narrador y crítico de Cavatale: conviertes una botella de una cava personal en algo que la gente QUIERE escuchar y contar, y clasificas evidencia para el Rating Cavatale oficial.
@@ -232,8 +233,8 @@ function finalizeResearch(content: string): {
   };
 }
 
-async function callKimi(
-  apiKey: string,
+async function callStoryLlm(
+  llm: { provider: "gemini" | "kimi"; apiKey: string; model: string },
   userContent: string,
   locale: "es" | "en",
   marketBlock: string
@@ -241,29 +242,53 @@ async function callKimi(
   | { ok: true; content: string; usage: KimiTokenUsage | null }
   | { ok: false; status: number; error: string; detail?: string; usage: KimiTokenUsage | null }
 > {
+  const system =
+    SYSTEM + marketBlock + (locale === "en" ? LANG_EN : LANG_ES);
+
+  if (llm.provider === "gemini") {
+    try {
+      const out = await geminiGenerateJson({
+        apiKey: llm.apiKey,
+        model: llm.model,
+        system,
+        userText: userContent,
+        maxTokens: 2048,
+        temperature: 0.6,
+      });
+      return { ok: true, content: out.content, usage: out.usage };
+    } catch (e) {
+      const usage =
+        e && typeof e === "object" && "usage" in e
+          ? ((e as { usage?: KimiTokenUsage | null }).usage ?? null)
+          : null;
+      return {
+        ok: false,
+        status: 502,
+        error:
+          e instanceof Error
+            ? e.message
+            : "No se pudo contactar a la IA. Revisa la conexión e intenta de nuevo.",
+        usage,
+      };
+    }
+  }
+
   let kimiRes: Response;
   try {
     kimiRes = await fetch(`${KIMI_BASE}/chat/completions`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${apiKey}`,
+        Authorization: `Bearer ${llm.apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: MODEL,
-        // Instant mode: thinking defaults ON and often exceeds mobile/proxy timeouts.
+        model: llm.model || KIMI_MODEL,
         thinking: { type: "disabled" },
         temperature: 0.6,
         response_format: { type: "json_object" },
         max_tokens: 2048,
         messages: [
-          {
-            role: "system",
-            content:
-              SYSTEM +
-              marketBlock +
-              (locale === "en" ? LANG_EN : LANG_ES),
-          },
+          { role: "system", content: system },
           { role: "user", content: userContent },
         ],
       }),
@@ -320,13 +345,14 @@ export async function POST(request: Request) {
   const guard = await guardKimiApi(request);
   if (!guard.ok) return guard.response;
 
-  const apiKey = process.env.KIMI_API_KEY?.trim();
-  if (!apiKey) {
+  const llm = resolvePrimaryLlm();
+  if (!llm) {
     return NextResponse.json(
-      { error: "Falta KIMI_API_KEY en el servidor." },
+      { error: "Falta GEMINI_API_KEY o KIMI_API_KEY en el servidor." },
       { status: 503 }
     );
   }
+  const kimiKeyForPrice = process.env.KIMI_API_KEY?.trim() || null;
 
   let body: Body;
   try {
@@ -391,12 +417,19 @@ export async function POST(request: Request) {
 
   const marketBlock = buildMarketPairingsBlock(market);
   const [first, priceLookup] = await Promise.all([
-    callKimi(apiKey, userPrompt, locale, marketBlock),
-    researchWineRetailPrice({
-      apiKey,
-      wine: wineForPrice,
-      market,
-    }),
+    callStoryLlm(llm, userPrompt, locale, marketBlock),
+    kimiKeyForPrice
+      ? researchWineRetailPrice({
+          apiKey: kimiKeyForPrice,
+          wine: wineForPrice,
+          market,
+        })
+      : Promise.resolve({
+          priceMxn: null as number | null,
+          usage: null as KimiTokenUsage | null,
+          error: "Sin KIMI_API_KEY para precio",
+          notes: null as string | null,
+        }),
   ]);
   let sessionUsage: KimiTokenUsage | null = addKimiUsage(
     first.usage,
@@ -416,7 +449,7 @@ export async function POST(request: Request) {
     await recordKimiUsage({
       userId: guard.userId,
       route: USAGE_ROUTE,
-      model: MODEL,
+      model: llm.model,
       usage: sessionUsage,
     });
     return NextResponse.json(
@@ -432,7 +465,7 @@ export async function POST(request: Request) {
     await recordKimiUsage({
       userId: guard.userId,
       route: USAGE_ROUTE,
-      model: MODEL,
+      model: llm.model,
       usage: sessionUsage,
     });
     return NextResponse.json(
@@ -466,7 +499,7 @@ export async function POST(request: Request) {
   await recordKimiUsage({
     userId: guard.userId,
     route: USAGE_ROUTE,
-    model: MODEL,
+    model: llm.model,
     usage: sessionUsage,
   });
 
@@ -483,6 +516,7 @@ export async function POST(request: Request) {
     research,
     thinStory: finalized.thinStory,
     ratingLocked: false,
+    provider: llm.provider,
     market: {
       countryCode: market.countryCode,
       marketLabel: market.marketLabel,

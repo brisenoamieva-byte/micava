@@ -43,6 +43,7 @@ import {
   formatCavataleRating,
   getEmptySlots,
 } from "@/lib/wines";
+import { clientCountryCodeHint } from "@/lib/market-geo";
 
 const initialFilters: Filters = {
   query: "",
@@ -134,6 +135,26 @@ export default function CavaPage() {
       setClearing(false);
     }
   }
+
+  useEffect(() => {
+    try {
+      if (typeof window === "undefined") return;
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("mode") === "stats") setMode("stats");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      if (typeof window === "undefined") return;
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("mode") === "stats") setMode("stats");
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   useEffect(() => {
     try {
@@ -362,6 +383,43 @@ export default function CavaPage() {
     ) => saveVerifiedPrice(w.id, result),
     onMove: (w: Wine) => setMoveSheetWine(w),
   };
+
+  async function refreshCellarPrices(targets: Wine[]): Promise<number> {
+    const countryCode = clientCountryCodeHint();
+    let updated = 0;
+    for (const wine of targets) {
+      try {
+        const res = await fetch("/api/verify-wine-price", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: wine.name,
+            winery: wine.winery,
+            country: wine.country,
+            region: wine.region,
+            type: wine.type,
+            grape: wine.grape,
+            vintage: wine.vintage,
+            ...(countryCode ? { countryCode } : {}),
+          }),
+        });
+        if (!res.ok) continue;
+        const payload = (await res.json()) as {
+          amount?: number | null;
+          currency?: string | null;
+        };
+        if (payload.amount == null || !payload.currency) continue;
+        saveVerifiedPrice(wine.id, {
+          amount: payload.amount,
+          currency: payload.currency,
+        });
+        updated += 1;
+      } catch {
+        /* continue batch */
+      }
+    }
+    return updated;
+  }
 
   return (
     <main className="grain relative min-h-screen min-h-[100dvh]">
@@ -652,6 +710,7 @@ export default function CavaPage() {
               cellars={cellars}
               history={history}
               onSelectWine={(w) => selectWine(w, true, "lista")}
+              onRefreshPrices={refreshCellarPrices}
             />
           </div>
         ) : !ready ? (

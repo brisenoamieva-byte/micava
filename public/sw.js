@@ -1,5 +1,5 @@
-/* Cavatale — minimal service worker for installability */
-const CACHE = "cavatale-shell-v4";
+/* Cavatale — minimal service worker for installability + local notifications */
+const CACHE = "cavatale-shell-v5";
 const PRECACHE = [
   "/",
   "/cava",
@@ -43,4 +43,23 @@ self.addEventListener("fetch", (event) => {
     );
     return;
   }
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target =
+    (event.notification.data && event.notification.data.url) || "/cava?mode=stats";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ("focus" in client) {
+          if ("navigate" in client && typeof client.navigate === "function") {
+            return client.navigate(target).then(() => client.focus());
+          }
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(target);
+    })
+  );
 });

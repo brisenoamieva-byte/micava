@@ -13,6 +13,8 @@ import { resolveLabelImageUrl } from "@/lib/label-image";
 import { resolvePairingsForWine } from "@/lib/pairings";
 import { confidenceLabel, formatCheckedAt } from "@/lib/rating-verify";
 import { formatCavataleRating, formatPrice, resolvePriceCurrency, typeAccent } from "@/lib/wines";
+import { DrinkWindowBadge } from "@/components/DrinkWindowBadge";
+import { computeDrinkWindow } from "@/lib/drink-window";
 import { buildWineShareText, shareOrCopyText } from "@/lib/share-wine";
 import { useLocale, useT, wineTypeLabel } from "@/lib/i18n";
 import { clientCountryCodeHint } from "@/lib/market-geo";
@@ -484,7 +486,21 @@ export function WineDetail({
             {formatPrice(wine.price, wine.priceCurrency)}
           </span>
         ) : null}
+        <DrinkWindowBadge wine={wine} size="md" />
       </div>
+      {(() => {
+        const win = computeDrinkWindow(wine);
+        if (!win) return null;
+        return (
+          <p className="mt-1.5 text-xs text-ink-soft">
+            {t("drinkWindow.range", {
+              from: win.drinkFrom,
+              peak: win.drinkPeak,
+              by: win.drinkBy,
+            })}
+          </p>
+        );
+      })()}
 
       {onSaveKimiResearch ? (
         <div

@@ -142,6 +142,7 @@ export function FirstRunGuide({
           </button>
         )}
       </div>
+      <p className="mt-2 text-xs text-ink-soft">{t("guide.compactLabel")}</p>
 
       <p className="mt-5 max-w-lg text-sm leading-relaxed text-ink-soft">
         {t("guide.furnitureHint")}

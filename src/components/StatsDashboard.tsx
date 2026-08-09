@@ -3,8 +3,16 @@
 import { useMemo, useState, type ReactNode } from "react";
 import type { CellarLogEntry, CellarUnit, Wine } from "@/lib/types";
 import { CountryFlag } from "@/components/CountryFlag";
+import { DrinkWindowBadge } from "@/components/DrinkWindowBadge";
+import { DrinkWindowNotifyOptIn } from "@/components/DrinkWindowNotifyOptIn";
+import { CavatalePlusCard } from "@/components/CavatalePlusCard";
 import { buildInsights, qualityScore, type ReplenishItem } from "@/lib/analytics";
 import { useLocale, useT, wineTypeLabel } from "@/lib/i18n";
+import {
+  cellarValueSnapshot,
+  rankOpenTonight,
+  winesNeedingPriceRefresh,
+} from "@/lib/open-tonight";
 import {
   countryDisplayName,
   formatCavataleRating,
@@ -16,6 +24,8 @@ type Props = {
   cellars?: CellarUnit[];
   history?: CellarLogEntry[];
   onSelectWine?: (wine: Wine) => void;
+  /** Refresh reference prices for up to N stale bottles (AI). */
+  onRefreshPrices?: (wines: Wine[]) => Promise<number> | number;
 };
 
 export function StatsDashboard({
@@ -23,6 +33,7 @@ export function StatsDashboard({
   cellars = [],
   history = [],
   onSelectWine,
+  onRefreshPrices,
 }: Props) {
   const t = useT();
   const { locale } = useLocale();
@@ -30,6 +41,14 @@ export function StatsDashboard({
     () => buildInsights(wines, cellars, history),
     [wines, cellars, history]
   );
+  const openTonight = useMemo(() => rankOpenTonight(wines, 5), [wines]);
+  const valueSnap = useMemo(() => cellarValueSnapshot(wines), [wines]);
+  const priceTargets = useMemo(
+    () => winesNeedingPriceRefresh(wines, 5),
+    [wines]
+  );
+  const [priceBusy, setPriceBusy] = useState(false);
+  const [priceHint, setPriceHint] = useState<string | null>(null);
   const maxCountry = Math.max(...insights.byCountry.map((c) => c.count), 1);
   const maxVintage = Math.max(...insights.vintages.map((v) => v.count), 1);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
@@ -69,6 +88,20 @@ export function StatsDashboard({
       );
   }, [wines, selectedCountry]);
 
+  async function handleRefreshPrices() {
+    if (!onRefreshPrices || priceBusy || priceTargets.length === 0) return;
+    setPriceBusy(true);
+    setPriceHint(null);
+    try {
+      const n = await onRefreshPrices(priceTargets);
+      setPriceHint(t("stats.priceRefreshDone", { count: n }));
+    } catch {
+      setPriceHint(t("stats.priceRefreshFailed"));
+    } finally {
+      setPriceBusy(false);
+    }
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -79,6 +112,62 @@ export function StatsDashboard({
           </p>
         </div>
       </div>
+
+      {openTonight.length > 0 ? (
+        <section className="panel-focus relative overflow-hidden px-4 py-4 sm:px-5 sm:py-5">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-[var(--wine)]"
+          />
+          <p className="micro-label text-[var(--wine)]">{t("stats.openTonight")}</p>
+          <p className="mt-1 max-w-xl text-sm text-ink-soft">
+            {t("stats.openTonightHint")}
+          </p>
+          <ul className="mt-3 space-y-2">
+            {openTonight.map((pick) => {
+              const w = pick.wine;
+              const pairing = w.kimiPairings?.[0];
+              return (
+                <li key={w.id}>
+                  <button
+                    type="button"
+                    onClick={() => onSelectWine?.(w)}
+                    className="flex w-full items-start justify-between gap-3 rounded-[10px] border border-[rgba(110,31,44,0.14)] bg-[rgba(255,252,247,0.55)] px-3 py-2.5 text-left transition hover:border-[rgba(110,31,44,0.35)]"
+                  >
+                    <span className="min-w-0">
+                      <span className="flex flex-wrap items-center gap-1.5">
+                        <span className="truncate font-medium text-ink">
+                          {w.name}
+                        </span>
+                        <DrinkWindowBadge wine={w} />
+                      </span>
+                      <span className="mt-0.5 block truncate text-xs text-ink-soft">
+                        {w.winery || t("stats.noWinery")}
+                        {w.vintage != null ? ` · ${w.vintage}` : ""}
+                        {w.slot ? ` · ${w.slot}` : ""}
+                      </span>
+                      {pairing ? (
+                        <span className="mt-1 block truncate text-xs text-ink">
+                          {t("stats.openTonightPairing", { dish: pairing })}
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="shrink-0 text-right">
+                      {w.cavataleRating != null ? (
+                        <span className="display block text-xl leading-none text-ink">
+                          {formatCavataleRating(w.cavataleRating)}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-ink-soft">—</span>
+                      )}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
 
       {/* Hero KPI: Calificación Cavatale — story score first */}
       <section className="space-y-3">
@@ -110,11 +199,11 @@ export function StatsDashboard({
           />
           <KpiQuiet
             label={t("stats.refValue")}
-            value={formatPrice(insights.value)}
+            value={formatPrice(valueSnap.inventoryValue)}
             hint={
-              insights.avgPrice != null
-                ? t("stats.avgShort", { value: formatPrice(insights.avgPrice) })
-                : "—"
+              valueSnap.pricedCount > 0
+                ? t("stats.valuePriced", { count: valueSnap.pricedCount })
+                : t("stats.valueEmpty")
             }
           />
           <div className="panel-quiet col-span-2 flex items-center gap-3 px-3 py-3 sm:col-span-2">
@@ -140,6 +229,68 @@ export function StatsDashboard({
           </div>
         </div>
       </section>
+
+      <section className="panel-quiet px-4 py-4 sm:px-5">
+        <Header title={t("stats.cellarValue")} subtitle={t("stats.cellarValueHint")} />
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.14em] text-ink-soft">
+              {t("stats.inventoryValue")}
+            </p>
+            <p className="display mt-1 text-2xl text-ink">
+              {formatPrice(valueSnap.inventoryValue)}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.14em] text-ink-soft">
+              {t("stats.marketRef")}
+            </p>
+            <p className="display mt-1 text-2xl text-ink">
+              {valueSnap.kimiPricedCount > 0
+                ? formatPrice(valueSnap.kimiRefValue)
+                : "—"}
+            </p>
+          </div>
+          <div className="col-span-2 sm:col-span-1">
+            <p className="text-[10px] uppercase tracking-[0.14em] text-ink-soft">
+              {t("stats.vsMarket")}
+            </p>
+            <p className="display mt-1 text-2xl text-ink">
+              {valueSnap.vsMarketCount > 0
+                ? formatPrice(valueSnap.vsMarketDelta)
+                : "—"}
+            </p>
+            {valueSnap.vsMarketCount > 0 ? (
+              <p className="mt-0.5 text-[11px] text-ink-soft">
+                {t("stats.vsMarketHint", { count: valueSnap.vsMarketCount })}
+              </p>
+            ) : null}
+          </div>
+        </div>
+        {onRefreshPrices ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              className="btn btn-ghost min-h-[40px] border border-[var(--line)] px-3 text-sm"
+              disabled={priceBusy || priceTargets.length === 0}
+              onClick={() => void handleRefreshPrices()}
+            >
+              {priceBusy
+                ? t("stats.priceRefreshing")
+                : t("stats.priceRefreshCta", { count: priceTargets.length })}
+            </button>
+            {priceHint ? (
+              <p className="text-xs text-ink-soft">{priceHint}</p>
+            ) : priceTargets.length === 0 ? (
+              <p className="text-xs text-ink-soft">{t("stats.priceRefreshNone")}</p>
+            ) : null}
+          </div>
+        ) : null}
+      </section>
+
+      <DrinkWindowNotifyOptIn wines={wines} />
+
+      <CavatalePlusCard />
 
       {insights.toReplenish.length > 0 ? (
         <ReplenishBlock items={insights.toReplenish} />

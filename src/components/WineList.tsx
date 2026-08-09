@@ -2,6 +2,7 @@
 
 import type { Wine } from "@/lib/types";
 import { CountryFlag } from "@/components/CountryFlag";
+import { DrinkWindowBadge } from "@/components/DrinkWindowBadge";
 import { useLocale, useT } from "@/lib/i18n";
 import {
   countryDisplayName,
@@ -73,6 +74,7 @@ export function WineList({
                   title={wine.type}
                 />
                 <span className="truncate font-medium text-ink">{wine.name}</span>
+                <DrinkWindowBadge wine={wine} />
               </span>
               <span className="mt-0.5 block truncate text-xs text-ink-soft">
                 {countryDisplayName(wine.country, locale)} · {wine.region} ·{" "}

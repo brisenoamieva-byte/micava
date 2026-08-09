@@ -19,6 +19,7 @@ import {
   typeAccent,
 } from "@/lib/wines";
 import { CountryFlag } from "@/components/CountryFlag";
+import { drinkStatus } from "@/lib/drink-window";
 
 type Props = {
   wines: Wine[];
@@ -1315,6 +1316,11 @@ function Row({
           wine.cavataleRating != null
             ? `Cavatale ${formatCavataleRating(wine.cavataleRating)}`
             : "",
+          (() => {
+            const s = drinkStatus(wine);
+            if (s === "unknown") return "";
+            return t(`drinkWindow.status.${s}`);
+          })(),
           countryDisplayName(wine.country, locale),
           wine.type,
           slot,

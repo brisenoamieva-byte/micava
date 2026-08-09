@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   buildCavataleAxisBreakdown,
   CAVATALE_EVIDENCE_KEYS,
@@ -29,7 +30,7 @@ const AXIS_FILL: Record<CavataleAxisKey, string> = {
 };
 
 /**
- * Official Cavatale score + optional axis/evidence breakdown for auditability.
+ * Official Cavatale score — compact by default; methodology behind one toggle.
  */
 export function CavataleRatingCard({
   rating,
@@ -38,9 +39,11 @@ export function CavataleRatingCard({
   rubric,
 }: Props) {
   const t = useT();
+  const [open, setOpen] = useState(false);
   const rows = parts ? buildCavataleAxisBreakdown(parts) : null;
   const contributionTotal =
     rows?.reduce((sum, row) => sum + Math.max(0, row.contribution), 0) ?? 0;
+  const hasDetails = Boolean(rows || evidence);
 
   return (
     <div className="rounded-[10px] border border-[rgba(110,31,44,0.28)] bg-[rgba(110,31,44,0.08)] px-3 py-3">
@@ -54,12 +57,21 @@ export function CavataleRatingCard({
         {rubric ?? t("wine.cavataleRubric")}
       </p>
 
-      {rows ? (
-        <div className="mt-3 space-y-3 border-t border-[rgba(110,31,44,0.16)] pt-3">
-          <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-            {t("wine.cavataleBreakdown.title")}
-          </p>
+      {hasDetails ? (
+        <button
+          type="button"
+          className="mt-3 text-xs text-ink-soft underline-offset-2 hover:text-ink hover:underline"
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+        >
+          {open
+            ? t("wine.cavataleBreakdown.hideHow")
+            : t("wine.cavataleBreakdown.howWeScore")}
+        </button>
+      ) : null}
 
+      {open && rows ? (
+        <div className="mt-3 space-y-3 border-t border-[rgba(110,31,44,0.16)] pt-3">
           <CompositionStrip
             rows={rows}
             contributionTotal={contributionTotal}
@@ -67,7 +79,7 @@ export function CavataleRatingCard({
             axisLabel={(key) => t(`wine.cavataleBreakdown.axes.${key}`)}
           />
 
-          <ul className="space-y-3">
+          <ul className="space-y-2.5">
             {rows.map((row) => (
               <li key={row.key}>
                 <div className="flex items-baseline justify-between gap-2 text-sm text-ink">
@@ -84,10 +96,6 @@ export function CavataleRatingCard({
                   </span>
                   <span className="tabular-nums text-ink">
                     {formatCavataleRating(row.score)}
-                    <span className="text-ink-soft">
-                      {" "}
-                      → {formatCavataleRating(row.contribution)}
-                    </span>
                   </span>
                 </div>
                 <div
@@ -106,19 +114,13 @@ export function CavataleRatingCard({
                     }}
                   />
                 </div>
-                <p className="mt-1 text-xs leading-snug text-ink-soft">
-                  {t(`wine.cavataleBreakdown.axisHints.${row.key}`)}
-                </p>
               </li>
             ))}
           </ul>
-          <p className="text-xs text-ink-soft">
-            {t("wine.cavataleBreakdown.formulaNote")}
-          </p>
         </div>
       ) : null}
 
-      {evidence ? (
+      {open && evidence ? (
         <div className="mt-3 space-y-1.5 border-t border-[rgba(110,31,44,0.16)] pt-3">
           <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
             {t("wine.cavataleBreakdown.evidenceTitle")}

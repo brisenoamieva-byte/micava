@@ -116,7 +116,6 @@ export default function CavaPage() {
   const [movingWineId, setMovingWineId] = useState<string | null>(null);
   const [moveSheetWine, setMoveSheetWine] = useState<Wine | null>(null);
   const [inviteHint, setInviteHint] = useState<string | null>(null);
-  const [guideDismissed, setGuideDismissed] = useState(false);
   const [storyHintDismissed, setStoryHintDismissed] = useState(false);
   const [showHowTo, setShowHowTo] = useState(false);
   const [shareCavaOpen, setShareCavaOpen] = useState(false);
@@ -158,7 +157,6 @@ export default function CavaPage() {
 
   useEffect(() => {
     try {
-      setGuideDismissed(localStorage.getItem("micava.guide.dismissed.v1") === "1");
       setStoryHintDismissed(
         localStorage.getItem("micava.story.hint.v1") === "1"
       );
@@ -169,16 +167,6 @@ export default function CavaPage() {
       /* ignore */
     }
   }, []);
-
-  function dismissGuide() {
-    setGuideDismissed(true);
-    setShowHowTo(false);
-    try {
-      localStorage.setItem("micava.guide.dismissed.v1", "1");
-    } catch {
-      /* ignore */
-    }
-  }
 
   function dismissStoryHint() {
     setStoryHintDismissed(true);
@@ -804,14 +792,6 @@ export default function CavaPage() {
                 }
               }}
               onDismiss={dismissStoryHint}
-            />
-          </div>
-        ) : !guideDismissed && wines.length > 0 ? (
-          <div className="shrink-0">
-            <FirstRunGuide
-              variant="compact"
-              onScan={() => openAdd()}
-              onDismiss={dismissGuide}
             />
           </div>
         ) : null}

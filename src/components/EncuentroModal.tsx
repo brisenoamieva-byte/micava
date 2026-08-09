@@ -556,15 +556,12 @@ export function EncuentroModal({
               </button>
             </div>
 
-            <div className="discovery-stage">
+            <div className={hasStory ? "discovery-stage" : undefined}>
               {!hasStory && !kimiLoading ? (
                 <div>
                   <h3 className="display text-[1.65rem] leading-tight text-ink">
                     {t("wine.whatStory")}
                   </h3>
-                  <p className="mt-2 max-w-md text-sm leading-relaxed text-ink-soft">
-                    {t("scan.storyHookLead")}
-                  </p>
                   <button
                     type="button"
                     className="btn btn-primary mt-4 min-h-[48px] w-full text-base disabled:opacity-60"

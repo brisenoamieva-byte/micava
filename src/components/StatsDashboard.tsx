@@ -5,7 +5,6 @@ import type { CellarLogEntry, CellarUnit, Wine } from "@/lib/types";
 import { CountryFlag } from "@/components/CountryFlag";
 import { DrinkWindowBadge } from "@/components/DrinkWindowBadge";
 import { DrinkWindowNotifyOptIn } from "@/components/DrinkWindowNotifyOptIn";
-import { CavatalePlusCard } from "@/components/CavatalePlusCard";
 import { buildInsights, qualityScore, type ReplenishItem } from "@/lib/analytics";
 import { useLocale, useT, wineTypeLabel } from "@/lib/i18n";
 import {
@@ -107,9 +106,6 @@ export function StatsDashboard({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="display text-3xl text-ink md:text-4xl">{t("stats.pulseTitle")}</h2>
-          <p className="mt-1 max-w-xl text-sm text-ink-soft md:text-base">
-            {t("stats.pulseLead")}
-          </p>
         </div>
       </div>
 
@@ -137,9 +133,6 @@ export function StatsDashboard({
                   />
                   <p className="relative micro-label text-[var(--wine)]">
                     {t("stats.openTonight")}
-                  </p>
-                  <p className="relative mt-1 max-w-xl text-sm text-ink-soft">
-                    {t("stats.openTonightHeroLead")}
                   </p>
                   <div className="relative mt-4 flex flex-wrap items-end justify-between gap-3">
                     <div className="min-w-0">
@@ -248,7 +241,7 @@ export function StatsDashboard({
             </p>
             <p className="mb-1 max-w-sm text-sm text-ink-soft">
               {insights.avgCavatale != null
-                ? t("stats.avgCavataleHint")
+                ? t("stats.avgCavataleHint") || null
                 : t("stats.avgCavataleEmpty")}
             </p>
           </div>
@@ -323,7 +316,7 @@ export function StatsDashboard({
                 ? formatPrice(valueSnap.vsMarketDelta)
                 : "—"}
             </p>
-            {valueSnap.vsMarketCount > 0 ? (
+            {valueSnap.vsMarketCount > 0 && t("stats.vsMarketHint") ? (
               <p className="mt-0.5 text-[11px] text-ink-soft">
                 {t("stats.vsMarketHint", { count: valueSnap.vsMarketCount })}
               </p>
@@ -352,8 +345,6 @@ export function StatsDashboard({
       </section>
 
       <DrinkWindowNotifyOptIn wines={wines} />
-
-      <CavatalePlusCard />
 
       {insights.toReplenish.length > 0 ? (
         <ReplenishBlock items={insights.toReplenish} />
@@ -605,11 +596,13 @@ export function StatsDashboard({
   );
 }
 
-function Header({ title, subtitle }: { title: string; subtitle: string }) {
+function Header({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div>
       <h3 className="display text-2xl text-ink">{title}</h3>
-      <p className="mt-0.5 text-sm text-ink-soft">{subtitle}</p>
+      {subtitle ? (
+        <p className="mt-0.5 text-sm text-ink-soft">{subtitle}</p>
+      ) : null}
     </div>
   );
 }

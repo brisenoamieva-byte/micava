@@ -586,12 +586,9 @@ export function WineDetail({
 
           {!hasDiscoveryStory && !kimiLoading ? (
             <div className="mt-3">
-              <p className="max-w-md text-sm leading-relaxed text-ink-soft">
-                {t("wine.storyInvite")}
-              </p>
               <button
                 type="button"
-                className="btn btn-primary mt-4 min-h-[48px] w-full text-base disabled:opacity-60"
+                className="btn btn-primary mt-1 min-h-[48px] w-full text-base disabled:opacity-60"
                 disabled={kimiLoading}
                 onClick={() => void handleKimiResearch()}
               >
@@ -739,13 +736,6 @@ export function WineDetail({
                 </div>
               ) : null}
 
-              <button
-                type="button"
-                className="btn btn-primary min-h-[48px] w-full text-base"
-                onClick={() => void handleShare()}
-              >
-                {shareHint ?? t("wine.shareStory")}
-              </button>
             </div>
           ) : null}
 
@@ -792,15 +782,6 @@ export function WineDetail({
                               })}
                         </span>
                       </p>
-                      {onApplyKimiResearch ? (
-                        <button
-                          type="button"
-                          className="mt-2 text-xs text-ink-soft underline-offset-2 hover:text-ink hover:underline"
-                          onClick={() => applyKimiToFicha({ price: true })}
-                        >
-                          {t("wine.useThisPrice")}
-                        </button>
-                      ) : null}
                     </>
                   ) : (
                     <p className="text-sm text-ink-soft">
@@ -942,10 +923,6 @@ export function WineDetail({
           )}
         </div>
       )}
-
-      <p className="mt-6 text-xs leading-relaxed text-ink-soft sm:mt-8">
-        {t("wine.cavataleFooter")}
-      </p>
     </div>
   );
 }

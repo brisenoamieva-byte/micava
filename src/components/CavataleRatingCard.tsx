@@ -22,9 +22,9 @@ type Props = {
 /** Wine-toned fills for the four axes (monochrome progression, not a rainbow). */
 const AXIS_FILL: Record<CavataleAxisKey, string> = {
   taste: "var(--wine-deep)",
-  story: "var(--wine)",
-  table: "var(--wine-soft)",
-  originality: "rgba(106, 26, 40, 0.38)",
+  originality: "var(--wine)",
+  story: "var(--wine-soft)",
+  table: "rgba(106, 26, 40, 0.38)",
 };
 
 /**

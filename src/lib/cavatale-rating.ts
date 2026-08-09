@@ -1,10 +1,18 @@
 /**
- * Cavatale official score methodology.
+ * Cavatale official score methodology (v2).
  *
- * Consistency comes from a fixed evidence checklist + deterministic mapping
- * in code — not from clamping to a previous score. Same evidence → same axes
- * → same weighted total. The LLM classifies facts into enums; it does not
- * invent the final decimal.
+ * Question answered: “¿Qué tan fuerte es esta botella como elección de cava
+ * para abrir y contar algo verdadero?”
+ *
+ * Not Vivino (crowd palate). Not folklore-only.
+ * LLM classifies evidence enums + cites; the server sanitizes and applies a
+ * fixed weighted formula. Same evidence → same score.
+ *
+ * Weights (v2 — craft-first, still story-aware):
+ *   Oficio (taste)  40% — craft of the line + aging signal
+ *   Lugar (originality) 20% — place specificity + character
+ *   Gente (story)   20% — named humans / human link
+ *   Mesa (table)    20% — tellability at dinner
  */
 
 /** Four judged axes; final score is a fixed weighted formula (not a free LLM decimal). */
@@ -15,11 +23,12 @@ export type CavataleRatingParts = {
   originality: number;
 };
 
+/** v2 weights: oficio-led so serious bottles aren't crushed by thin people-data. */
 export const CAVATALE_RATING_WEIGHTS = {
-  taste: 0.3,
-  story: 0.3,
-  table: 0.25,
-  originality: 0.15,
+  taste: 0.4,
+  originality: 0.2,
+  story: 0.2,
+  table: 0.2,
 } as const;
 
 /** Snap to half-points 1.0–5.0 so component scores stay comparable across runs. */
@@ -398,7 +407,7 @@ function clampHalf(n: number): number {
   return snapHalfPoint(Math.min(5, Math.max(1, n))) ?? 1;
 }
 
-/** taste = craft reputation/style clarity + aging signal (not palate fantasy). */
+/** Oficio = craft reputation/style clarity + aging signal (not palate fantasy). */
 export function mapTasteAxis(e: CavataleRatingEvidence): number {
   const base: Record<CraftLevel, number> = {
     unknown: 2.5,
@@ -411,27 +420,22 @@ export function mapTasteAxis(e: CavataleRatingEvidence): number {
   if (e.craft === "sound" || e.craft === "fine" || e.craft === "outstanding") {
     if (e.agingTier === "aged" || e.agingTier === "reservaPlus") score += 0.5;
   }
+  if (e.craft === "fine" && e.agingTier === "reservaPlus") score += 0.5;
   return clampHalf(score);
 }
 
-/** story = named humans + bottle-specific place facts. */
+/** Gente = named humans / human link only (place lives in Lugar). */
 export function mapStoryAxis(e: CavataleRatingEvidence): number {
   const people: Record<PeopleLevel, number> = {
-    none: 1.5,
+    none: 2.0,
     generic: 2.5,
     named: 3.5,
     rich: 4.5,
   };
-  const placeAdj: Record<PlaceFactsLevel, number> = {
-    none: -0.5,
-    regionOnly: 0,
-    bottleSpecific: 0.5,
-    intimate: 1.0,
-  };
-  return clampHalf(people[e.people] + placeAdj[e.placeFacts]);
+  return clampHalf(people[e.people]);
 }
 
-/** table = how tellable the real facts are at dinner. */
+/** Mesa = how tellable the real facts are at dinner (+ character lift). */
 export function mapTableAxis(e: CavataleRatingEvidence): number {
   const base: Record<TellabilityLevel, number> = {
     none: 2.0,
@@ -440,31 +444,31 @@ export function mapTableAxis(e: CavataleRatingEvidence): number {
     magnetic: 4.5,
   };
   let score = base[e.tellability];
-  if (
+  const peopleLift =
     (e.people === "named" || e.people === "rich") &&
-    e.tellability !== "none"
-  ) {
-    score += 0.5;
-  }
+    e.tellability !== "none";
+  const characterLift =
+    e.distinctiveness === "distinct" || e.distinctiveness === "rare";
+  // One lift max — strong+named+distinct must not auto-cap at 5.0.
+  if (peopleLift || characterLift) score += 0.5;
   return clampHalf(score);
 }
 
-/** originality = distinctiveness vs commodity, with place specificity boost. */
+/** Lugar = place specificity + distinctiveness vs commodity DO filler. */
 export function mapOriginalityAxis(e: CavataleRatingEvidence): number {
-  const base: Record<DistinctivenessLevel, number> = {
-    commodity: 1.5,
-    typical: 2.5,
-    distinct: 3.5,
-    rare: 4.5,
+  const place: Record<PlaceFactsLevel, number> = {
+    none: 1.5,
+    regionOnly: 2.5,
+    bottleSpecific: 3.5,
+    intimate: 4.5,
   };
-  let score = base[e.distinctiveness];
-  if (
-    e.distinctiveness !== "commodity" &&
-    (e.placeFacts === "bottleSpecific" || e.placeFacts === "intimate")
-  ) {
-    score += 0.5;
-  }
-  return clampHalf(score);
+  const characterAdj: Record<DistinctivenessLevel, number> = {
+    commodity: -0.5,
+    typical: 0,
+    distinct: 0.5,
+    rare: 1.0,
+  };
+  return clampHalf(place[e.placeFacts] + characterAdj[e.distinctiveness]);
 }
 
 /**
@@ -510,7 +514,12 @@ export type CavataleAxisBreakdownRow = {
 export function buildCavataleAxisBreakdown(
   parts: CavataleRatingParts
 ): CavataleAxisBreakdownRow[] {
-  const keys: CavataleAxisKey[] = ["taste", "story", "table", "originality"];
+  const keys: CavataleAxisKey[] = [
+    "taste",
+    "originality",
+    "story",
+    "table",
+  ];
   return keys.map((key) => {
     const weight = CAVATALE_RATING_WEIGHTS[key];
     const score = parts[key];
@@ -645,26 +654,27 @@ export function mergeEvidenceMajority(
 }
 
 /** Focused classify-only prompt (no narrative). Used for stable scoring. */
-export const CAVATALE_EVIDENCE_CLASSIFY_PROMPT = `Eres el clasificador de evidencia Cavatale. NO inventas el decimal: solo enums + citas cortas y VERACES.
+export const CAVATALE_EVIDENCE_CLASSIFY_PROMPT = `Eres el clasificador de evidencia Cavatale v2. NO inventas el decimal: solo enums + citas cortas y VERACES.
+Pregunta del score: ¿qué tan fuerte es esta botella como elección de cava para abrir y contar algo verdadero?
 Misma botella + mismos hechos → MISMOS enums. Sé PRECISO (ni inflar ni castigar).
 
 Devuelve SOLO JSON:
 ratingEvidence {craft, people, placeFacts, tellability, distinctiveness, agingTier, craftCite, peopleCite, placeCite, tellCite, distinctCite}
 
-### Anclas de calibración (obligatorias)
-1) Commodity / supermercado sin gente propia (Faustino entry, Campo Viejo entry, genéricos de DO):
-   craft=sound|basic, people=none|generic, placeFacts=regionOnly, tellability=mild|none, distinctiveness=commodity|typical, agingTier según etiqueta.
-2) Casa comercial CON familia/fundador NOMBRABLE y reputación de línea (Familia Torres / Miguel Torres, Antinori, Mondavi, etc.):
-   people=named (mínimo) si conoces el nombre propio — cítalo en peopleCite. NUNCA people=none solo por ser "marca grande".
-   craft=sound o fine según reputación REAL de ESA línea (Celeste Torres ≈ sound–fine con crianza; no outstanding).
-   tellability=mild|strong si hay gancho real (nombre de la línea, generaciones, decisión de familia).
-   distinctiveness=typical|distinct según si la línea tiene ángulo propio (p.ej. Celeste / estrellas) vs tipicidad pura de DO.
-3) Boutique con persona + viñedo/parcela concreta: sube people/place/tell solo con citas reales.
-4) Prohibido: subir a outstanding/rich/magnetic/rare por marketing; también prohibido bajar a people=none / commodity una casa con historia pública conocida.
+### Anclas de calibración
+1) Commodity / supermercado sin gente ni lugar propio (Faustino entry, Campo Viejo entry):
+   craft=basic|sound, people=none|generic, placeFacts=regionOnly, tellability=mild|none, distinctiveness=commodity|typical.
+2) Casa seria de DO con pueblo/milla de oro / viñedo propio (p.ej. Valbuena de Duero, Pesquera, Gumiel…; Lleiroso en Valbuena; Celeste/Torres con línea reconocida):
+   craft=sound|fine según reputación de ESA línea (alta gama Ribera ≠ commodity).
+   placeFacts=bottleSpecific si citas pueblo, milla de oro, viñedo propio o monasterio/paraje — NO dejes regionOnly solo por ser “Ribera”.
+   people=named si hay fundador/familia/enólogo con nombre (Alberto Cobo, Miguel Torres, etc.).
+   tellability=mild|strong si hay gancho real (lugar emblemático, generaciones, decisión de proyecto).
+   distinctiveness=typical|distinct (distinct si hay ángulo propio claro).
+3) Boutique íntima con parcela + vínculo humano rico: puedes subir a intimate/rich/magnetic solo con citas reales.
+4) Prohibido: outstanding/rare por marketing; también prohibido tratar como commodity anónimo una bodega de Milla de Oro / pueblo concreto con proyecto serio.
 
 ### Consistencia
-- Si te pasan evidencia previa y omite un hecho público claro (p.ej. nombre de familia Torres), CORRÍGELO.
-- Si los hechos no cambiaron y la previa ya era precisa, reutilízala.
+- Corrige evidencia previa si omitió nombres o lugar concreto públicos.
 - Citas: frases cortas factuales; "" solo si no hay hecho.`;
 
 export const CAVATALE_EVIDENCE_RESPONSE_SCHEMA: Record<string, unknown> = {
@@ -722,50 +732,42 @@ export const CAVATALE_EVIDENCE_RESPONSE_SCHEMA: Record<string, unknown> = {
 };
 
 /** Prompt block: explicit rubric + enum checklist (shared by research-wine). */
-export const CAVATALE_RATING_RUBRIC_PROMPT = `## Rating Cavatale — metodología fija (reproducible)
+export const CAVATALE_RATING_RUBRIC_PROMPT = `## Rating Cavatale v2 — metodología fija (reproducible)
 
-El score oficial NO es un decimal inventado. Clasifica EVIDENCIA en enums + CITAS; el SERVIDOR:
+Pregunta: ¿qué tan fuerte es esta botella como elección de cava para abrir y contar algo verdadero?
+NO es Vivino (consenso de catas). NO es solo folklore.
+
+El SERVIDOR:
 1) baja enums sin cita suficiente,
-2) calcula ejes y el total con pesos fijos 0.30*taste + 0.30*story + 0.25*table + 0.15*originality.
+2) calcula ejes con pesos fijos:
+   40% Oficio (craft+crianza) · 20% Lugar (place+carácter) · 20% Gente (people) · 20% Mesa (tellability).
 
-Devuelve OBLIGATORIAMENTE ratingEvidence (objeto) si la identidad es clara.
-ratingParts es opcional (legado). NUNCA uses cavataleRating libre como fuente de verdad: el servidor lo ignora si hay evidencia.
+Devuelve OBLIGATORIAMENTE ratingEvidence si la identidad es clara.
+NUNCA uses cavataleRating libre como fuente de verdad.
 
-### ratingEvidence — enums + citas (citas OBLIGATORIAS para niveles altos)
+### ratingEvidence — enums + citas
 
-Incluye SIEMPRE estas claves de cita (string; "" si no hay hecho):
-craftCite, peopleCite, placeCite, tellCite, distinctCite.
+Incluye SIEMPRE: craftCite, peopleCite, placeCite, tellCite, distinctCite ("" si no hay hecho).
 
-craft (calidad/reputación de ESTA botella/línea — no tu gusto):
-- unknown / basic / sound / fine / outstanding
-- fine exige craftCite con señal concreta (≥~15 chars). outstanding casi nunca; exige señal de icono/referencia.
+craft: unknown / basic / sound / fine / outstanding
+- fine = reputación clara de calidad de ESA línea (alta gama Ribera/Valbuena cuenta).
+- outstanding casi nunca (icono de categoría).
 
-people:
-- none / generic / named / rich
-- named exige peopleCite con NOMBRE PROPIO real. rich exige además vínculo humano (padre/hijo, herencia, fundación…).
+people: none / generic / named / rich
+- named exige nombre propio real (fundador, familia, enólogo).
 
-placeFacts:
-- none / regionOnly / bottleSpecific / intimate
-- bottleSpecific/intimate exigen placeCite con viñedo/pueblo/parcela/sitio — NO basta “Ribera del Duero” / DO genérica.
+placeFacts: none / regionOnly / bottleSpecific / intimate
+- bottleSpecific si hay pueblo (Valbuena), milla de oro, viñedo propio, paraje — NO basta “Ribera del Duero” genérica.
 
-tellability:
-- none / mild / strong / magnetic
-- strong/magnetic exigen tellCite con el hecho contable (no marketing vacío).
+tellability: none / mild / strong / magnetic
+distinctiveness: commodity / typical / distinct / rare
+agingTier: none / entry / aged / reservaPlus
 
-distinctiveness:
-- commodity / typical / distinct / rare
-- distinct/rare exigen distinctCite con el ángulo propio. Un Reserva tipico de DO → typical (no distinct).
-
-agingTier:
-- none / entry / aged / reservaPlus
-
-### Reglas anti-inflado (críticas)
-- Sin cita suficiente el SERVIDOR degrada el enum. No inventes citas.
-- Misma evidencia factual → MISMOS enums y MISMAS citas entre Actualizar.
-- No regales fine/outstanding, rich, magnetic o rare.
-- Un Reserva comercial tipico de Ribera/Rioja con poca gente nombrable suele ser: craft=sound, people=none|generic, placeFacts=regionOnly, tellability=mild, distinctiveness=typical, agingTier=aged.
-- Casa con familia/fundador público (p.ej. Familia Torres): people=named con peopleCite del nombre; no la trates como commodity anónimo.
-- Gran marca commodity SIN persona propia: distinctiveness=typical|commodity; nunca rare/distinct sin ángulo real.
-- Si identity dudosa → ratingEvidence null.
-- Rating guardado en ficha = contexto histórico; NO sesgues enums hacia un decimal previo. Recalcula con hechos.
-- NUNCA menciones Vivino ni el score comunitario en summary/curiosity/talkHook/pairingNote.`;
+### Anti-inflado y anti-castigo
+- Sin cita → el servidor degrada. No inventes citas.
+- Misma evidencia → mismos enums.
+- No regales outstanding/rich/magnetic/rare.
+- No trates como commodity una bodega seria de pueblo/milla de oro con proyecto real.
+- Casa con fundador público → people=named con cita.
+- Recalcula con hechos; no persigas un decimal previo.
+- NUNCA menciones Vivino en summary/curiosity/talkHook/pairingNote.`;

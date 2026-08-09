@@ -239,9 +239,9 @@ export const es = {
     tellStory: "Contar historia",
     retellStory: "Actualizar historia",
     cavataleRubric:
-      "Oficial Cavatale · evidencia citada → 30% sabor · 30% historia · 25% mesa · 15% originalidad (el servidor baja enums sin cita).",
+      "Oficial Cavatale v2 · evidencia citada → 40% oficio · 20% lugar · 20% gente · 20% mesa (el servidor baja enums sin cita).",
     cavataleFooter:
-      "Cavatale no es un consenso de catas como Vivino: mide qué tanto hay para contar en la mesa. La IA propone evidencia con citas; el servidor valida y aplica la fórmula fija 30/30/25/15. Sin cita concreta, no hay score alto. Actualizar historia vuelve a calcular. El precio es referencia de mercado.",
+      "Cavatale no es un consenso de catas como Vivino: mide qué tan fuerte es la botella como elección de cava para abrir y contar algo verdadero. Oficio primero; lugar, gente y mesa completan. La IA clasifica evidencia con citas; el servidor valida y aplica la fórmula fija 40/20/20/20. Sin cita concreta, no hay score alto.",
     cavataleBreakdown: {
       title: "Desglose",
       composeLabel: "Cómo se arma el total",
@@ -249,16 +249,16 @@ export const es = {
         "Cada eje (1–5) × su peso suma el total oficial (un decimal).",
       evidenceTitle: "Evidencia clasificada",
       axes: {
-        taste: "Sabor",
-        story: "Historia",
+        taste: "Oficio",
+        originality: "Lugar",
+        story: "Gente",
         table: "Mesa",
-        originality: "Originalidad",
       },
       axisHints: {
-        taste: "Oficio de la línea y señal de crianza — no es tu gusto personal.",
-        story: "Personas con nombre y hechos de lugar de esta botella.",
+        taste: "Reputación de la línea y señal de crianza — no es tu gusto personal.",
+        originality: "Qué tan concreto es el lugar y si tiene carácter propio.",
+        story: "Personas con nombre y vínculo humano real.",
         table: "Qué tan contable es en la mesa con hechos reales.",
-        originality: "Ángulo propio vs tipicidad intercambiable de la DO.",
       },
       evidence: {
         craft: "Oficio",
@@ -465,7 +465,7 @@ export const es = {
       "Un gancho para contar y, detrás, la historia completa — sin necesidad de cena ni mesa.",
     thinStoryHint: "Si suena a ficha de tienda, Actualizar suele dar otra versión.",
     cavataleRubric:
-      "Oficial Cavatale · evidencia → fórmula fija 30/30/25/15 en servidor.",
+      "Oficial Cavatale v2 · evidencia → fórmula fija 40/20/20/20 en servidor.",
     confirmingMarket: "Confirmando datos de mercado…",
     confirmingShort: "Confirmando datos…",
     lowConfidenceReview: "Baja confianza — revisa el nombre y la bodega",

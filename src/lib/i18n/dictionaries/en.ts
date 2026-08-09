@@ -250,9 +250,9 @@ export const en = {
     tellStory: "Tell story",
     retellStory: "Refresh story",
     cavataleRubric:
-      "Official Cavatale · cited evidence → 30% taste · 30% story · 25% table · 15% originality (server downgrades uncited enums).",
+      "Official Cavatale v2 · cited evidence → 40% craft · 20% place · 20% people · 20% table (server downgrades uncited enums).",
     cavataleFooter:
-      "Cavatale is not a tasting consensus like Vivino: it measures how much there is to tell at the table. The AI proposes evidence with citations; the server validates and applies the fixed 30/30/25/15 formula. No concrete cite → no high score. Refreshing the story recalculates. Price is a market reference.",
+      "Cavatale is not a tasting consensus like Vivino: it scores how strong a bottle is as a cellar choice to open and tell something true. Craft first; place, people, and table complete it. The AI classifies evidence with cites; the server validates and applies the fixed 40/20/20/20 formula. No concrete cite → no high score.",
     cavataleBreakdown: {
       title: "Breakdown",
       composeLabel: "How the total is built",
@@ -260,16 +260,16 @@ export const en = {
         "Each axis (1–5) × its weight adds up to the official total (one decimal).",
       evidenceTitle: "Classified evidence",
       axes: {
-        taste: "Taste",
-        story: "Story",
+        taste: "Craft",
+        originality: "Place",
+        story: "People",
         table: "Table",
-        originality: "Originality",
       },
       axisHints: {
-        taste: "Craft of the line and aging signal — not personal palate.",
-        story: "Named people and bottle-specific place facts.",
+        taste: "Reputation of the line and aging signal — not personal palate.",
+        originality: "How specific the place is and whether it has its own character.",
+        story: "Named people and a real human link.",
         table: "How tellable it is at dinner with real facts.",
-        originality: "Own angle vs interchangeable DO typicity.",
       },
       evidence: {
         craft: "Craft",
@@ -477,7 +477,7 @@ export const en = {
       "A hook to tell and, behind it, the full story — no dinner or table required.",
     thinStoryHint: "If it sounds like a shop listing, Refresh often gives another version.",
     cavataleRubric:
-      "Official Cavatale · evidence → fixed 30/30/25/15 formula in code.",
+      "Official Cavatale v2 · evidence → fixed 40/20/20/20 formula in code.",
     confirmingMarket: "Confirming market data…",
     confirmingShort: "Confirming data…",
     lowConfidenceReview: "Low confidence — check name and winery",

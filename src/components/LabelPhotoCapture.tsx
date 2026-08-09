@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ThinkingIndicator } from "@/components/ThinkingIndicator";
 import { useT } from "@/lib/i18n";
 import {
@@ -24,6 +24,7 @@ type Props = {
 
 /**
  * Stage up to 2 label photos (front + optional back) before identifying.
+ * Prefer rear camera via getUserMedia (facingMode environment).
  */
 export function LabelPhotoCapture({
   images,
@@ -37,8 +38,145 @@ export function LabelPhotoCapture({
   const t = useT();
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [targetSlot, setTargetSlot] = useState<0 | 1 | "next">("next");
   const [staging, setStaging] = useState(false);
+  const [liveOpen, setLiveOpen] = useState(false);
+  const [liveError, setLiveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      stopLiveStream();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!liveOpen || !videoRef.current || !streamRef.current) return;
+    videoRef.current.srcObject = streamRef.current;
+    void videoRef.current.play().catch(() => {
+      /* autoplay may need a gesture — already in gesture path */
+    });
+  }, [liveOpen]);
+
+  function stopLiveStream() {
+    const stream = streamRef.current;
+    streamRef.current = null;
+    if (stream) {
+      for (const track of stream.getTracks()) track.stop();
+    }
+    if (videoRef.current) videoRef.current.srcObject = null;
+  }
+
+  function closeLiveCamera() {
+    stopLiveStream();
+    setLiveOpen(false);
+    setLiveError(null);
+  }
+
+  async function openRearCamera(slot: 0 | 1 | "next") {
+    if (scanning || staging || liveOpen) return;
+    setTargetSlot(slot);
+    setLiveError(null);
+
+    if (
+      typeof navigator === "undefined" ||
+      !navigator.mediaDevices?.getUserMedia
+    ) {
+      openFileCameraFallback();
+      return;
+    }
+
+    try {
+      // Prefer rear camera for bottle labels.
+      let stream: MediaStream | null = null;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+          },
+        });
+      } catch {
+        stream = null;
+      }
+
+      // After permission, labels are available — pick an explicit rear device if listed.
+      if (stream) {
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const rear = devices.find(
+            (d) =>
+              d.kind === "videoinput" &&
+              /back|rear|environment|trasera|posterior|world/i.test(
+                d.label || ""
+              )
+          );
+          const currentId = stream.getVideoTracks()[0]?.getSettings().deviceId;
+          if (rear?.deviceId && rear.deviceId !== currentId) {
+            for (const track of stream.getTracks()) track.stop();
+            stream = await navigator.mediaDevices.getUserMedia({
+              audio: false,
+              video: {
+                deviceId: { exact: rear.deviceId },
+                width: { ideal: 1920 },
+                height: { ideal: 1080 },
+              },
+            });
+          }
+        } catch {
+          /* keep first stream */
+        }
+      }
+
+      if (!stream) {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: { facingMode: "environment" },
+        });
+      }
+
+      streamRef.current = stream;
+      setLiveOpen(true);
+    } catch {
+      openFileCameraFallback();
+    }
+  }
+
+  /** Last-resort: OS camera via file input (capture=environment). */
+  function openFileCameraFallback() {
+    const input = cameraInputRef.current;
+    if (!input) return;
+    input.setAttribute("capture", "environment");
+    input.setAttribute("accept", "image/*");
+    input.click();
+  }
+
+  async function snapLivePhoto() {
+    const video = videoRef.current;
+    if (!video || scanning || staging) return;
+    const w = video.videoWidth;
+    const h = video.videoHeight;
+    if (!w || !h) return;
+
+    setStaging(true);
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.drawImage(video, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
+      onImagesChange(placeImage(images, dataUrl, targetSlot));
+      setTargetSlot("next");
+      closeLiveCamera();
+    } finally {
+      setStaging(false);
+    }
+  }
 
   async function addFile(file: File | undefined) {
     if (!file || scanning || staging) return;
@@ -59,7 +197,7 @@ export function LabelPhotoCapture({
     setTargetSlot("next");
   }
 
-  const canIdentify = images.length > 0 && !scanning && !staging;
+  const canIdentify = images.length > 0 && !scanning && !staging && !liveOpen;
   const busy = scanning || staging;
 
   return (
@@ -115,18 +253,15 @@ export function LabelPhotoCapture({
                     type="button"
                     className="absolute right-1.5 top-1.5 rounded-md bg-[rgba(20,18,16,0.72)] px-2 py-1 text-[11px] text-[var(--cream)]"
                     onClick={() => removeAt(slot)}
-                    disabled={busy}
+                    disabled={busy || liveOpen}
                   >
                     {t("common.delete")}
                   </button>
                   <button
                     type="button"
                     className="absolute bottom-1.5 left-1.5 rounded-md bg-[rgba(20,18,16,0.72)] px-2 py-1 text-[11px] text-[var(--cream)]"
-                    onClick={() => {
-                      setTargetSlot(slot);
-                      cameraInputRef.current?.click();
-                    }}
-                    disabled={busy}
+                    onClick={() => void openRearCamera(slot)}
+                    disabled={busy || liveOpen}
                   >
                     {t("scan.retake")}
                   </button>
@@ -139,11 +274,8 @@ export function LabelPhotoCapture({
                       ? "border-[rgba(110,31,44,0.55)] bg-[rgba(110,31,44,0.06)]"
                       : "border-[var(--line)] bg-[rgba(255,252,247,0.35)]"
                   }`}
-                  disabled={busy}
-                  onClick={() => {
-                    setTargetSlot(slot);
-                    cameraInputRef.current?.click();
-                  }}
+                  disabled={busy || liveOpen}
+                  onClick={() => void openRearCamera(slot)}
                 >
                   <span>{label}</span>
                   <span className="text-[11px] opacity-80">
@@ -155,6 +287,45 @@ export function LabelPhotoCapture({
           );
         })}
       </div>
+
+      {liveOpen ? (
+        <div className="overflow-hidden rounded-[12px] border border-[var(--line)] bg-[rgba(20,18,16,0.92)]">
+          <div className="relative aspect-[3/4] w-full bg-black sm:aspect-video">
+            <video
+              ref={videoRef}
+              playsInline
+              muted
+              autoPlay
+              className="h-full w-full object-cover"
+              // Mirror off — labels must read normally (rear camera).
+              style={{ transform: "none" }}
+            />
+          </div>
+          {liveError ? (
+            <p className="px-3 py-2 text-xs text-[var(--cream)]" role="alert">
+              {liveError}
+            </p>
+          ) : null}
+          <div className="flex gap-2 p-3">
+            <button
+              type="button"
+              className="btn btn-ghost min-h-[44px] flex-1 border border-[rgba(255,252,247,0.25)] text-[var(--cream)]"
+              onClick={closeLiveCamera}
+              disabled={staging}
+            >
+              {t("common.cancel")}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary min-h-[44px] flex-1 disabled:opacity-60"
+              onClick={() => void snapLivePhoto()}
+              disabled={staging}
+            >
+              {staging ? t("scan.scanning") : t("scan.takePhoto")}
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {busy && scanning ? (
         <div
@@ -181,18 +352,15 @@ export function LabelPhotoCapture({
             <button
               type="button"
               className="btn btn-ghost flex min-h-[44px] w-full items-center justify-center border border-[var(--line)] disabled:opacity-60"
-              disabled={busy}
-              onClick={() => {
-                setTargetSlot("next");
-                cameraInputRef.current?.click();
-              }}
+              disabled={busy || liveOpen}
+              onClick={() => void openRearCamera("next")}
             >
               {t("scan.takePhoto")}
             </button>
             <button
               type="button"
               className="btn btn-ghost flex min-h-[44px] w-full items-center justify-center border border-[var(--line)] disabled:opacity-60"
-              disabled={busy}
+              disabled={busy || liveOpen}
               onClick={() => {
                 setTargetSlot("next");
                 galleryInputRef.current?.click();
@@ -224,7 +392,9 @@ function placeImage(
   target: 0 | 1 | "next"
 ): string[] {
   if (target === 0) {
-    return current.length === 0 ? [dataUrl] : [dataUrl, ...current.slice(1)].slice(0, 2);
+    return current.length === 0
+      ? [dataUrl]
+      : [dataUrl, ...current.slice(1)].slice(0, 2);
   }
   if (target === 1) {
     if (current.length === 0) return [dataUrl];

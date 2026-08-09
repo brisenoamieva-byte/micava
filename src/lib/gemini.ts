@@ -35,9 +35,16 @@ type GeminiPart =
   | { text: string }
   | { inlineData: { mimeType: string; data: string } };
 
+type GeminiResponsePart = {
+  text?: string;
+  /** Present on thinking-model scratch parts — must not be parsed as JSON. */
+  thought?: boolean;
+};
+
 type GeminiResponse = {
   candidates?: Array<{
-    content?: { parts?: Array<{ text?: string }> };
+    content?: { parts?: GeminiResponsePart[] };
+    finishReason?: string;
   }>;
   usageMetadata?: {
     promptTokenCount?: number;
@@ -102,8 +109,11 @@ export async function geminiGenerateJson(options: {
       contents: [{ role: "user", parts }],
       generationConfig: {
         temperature: options.temperature ?? 0.6,
-        maxOutputTokens: options.maxTokens ?? 2048,
+        // Thinking tokens share this budget; keep headroom for full JSON payloads.
+        maxOutputTokens: options.maxTokens ?? 4096,
         responseMimeType: "application/json",
+        // Disable thinking so scratch tokens don't truncate / corrupt JSON.
+        thinkingConfig: { thinkingBudget: 0 },
       },
     }),
   });
@@ -126,12 +136,20 @@ export async function geminiGenerateJson(options: {
     );
   }
 
-  const content = payload.candidates?.[0]?.content?.parts
-    ?.map((p) => p.text ?? "")
+  const candidate = payload.candidates?.[0];
+  const content = candidate?.content?.parts
+    ?.filter((p) => !p.thought)
+    .map((p) => p.text ?? "")
     .join("")
     .trim();
   if (!content) {
     throw Object.assign(new Error("Gemini no devolvió contenido."), { usage });
+  }
+  if (candidate?.finishReason === "MAX_TOKENS") {
+    throw Object.assign(
+      new Error("Gemini cortó la respuesta (límite de tokens). Intenta de nuevo."),
+      { usage }
+    );
   }
   return { content, usage };
 }

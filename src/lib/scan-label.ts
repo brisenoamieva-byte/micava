@@ -65,21 +65,38 @@ function asString(value: unknown): string {
   return typeof value === "string" ? value.trim() : value == null ? "" : String(value).trim();
 }
 
+/** Light repairs for common LLM JSON glitches (trailing commas, BOM). */
+function repairJsonCandidate(raw: string): string {
+  return raw
+    .replace(/^\uFEFF/, "")
+    .replace(/,\s*([}\]])/g, "$1");
+}
+
 /** Pull the first JSON object from a model reply (handles ``` fences). */
 export function extractJsonObject(text: string): unknown {
   const trimmed = text.trim();
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const candidate = fenced ? fenced[1].trim() : trimmed;
-  try {
-    return JSON.parse(candidate);
-  } catch {
-    const start = candidate.indexOf("{");
-    const end = candidate.lastIndexOf("}");
-    if (start >= 0 && end > start) {
-      return JSON.parse(candidate.slice(start, end + 1));
-    }
-    throw new Error("La IA no devolvió JSON válido.");
+  const attempts = [candidate];
+  const start = candidate.indexOf("{");
+  const end = candidate.lastIndexOf("}");
+  if (start >= 0 && end > start) {
+    attempts.push(candidate.slice(start, end + 1));
   }
+  let lastError: unknown;
+  for (const attempt of attempts) {
+    for (const variant of [attempt, repairJsonCandidate(attempt)]) {
+      try {
+        return JSON.parse(variant);
+      } catch (e) {
+        lastError = e;
+      }
+    }
+  }
+  if (lastError instanceof SyntaxError) {
+    throw new Error(`La IA no devolvió JSON válido: ${lastError.message}`);
+  }
+  throw new Error("La IA no devolvió JSON válido.");
 }
 
 export function parseScanLabelResult(raw: unknown): ScanLabelFields {

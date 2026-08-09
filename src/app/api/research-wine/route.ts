@@ -252,7 +252,7 @@ async function callStoryLlm(
         model: llm.model,
         system,
         userText: userContent,
-        maxTokens: 2048,
+        maxTokens: 8192,
         temperature: 0.6,
       });
       return { ok: true, content: out.content, usage: out.usage };

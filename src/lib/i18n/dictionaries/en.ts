@@ -607,6 +607,8 @@ export const en = {
     byMoment: "By moment",
     byMomentEmpty: "Add vintage and type to estimate the drinking window.",
     byMomentCount: "{count}",
+    byMomentShowMore: "Show {count} more",
+    byMomentShowLess: "Show less",
     cellarValue: "Cellar value",
     cellarValueHint: "",
     inventoryValue: "On file",

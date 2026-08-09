@@ -595,6 +595,8 @@ export const es = {
     byMoment: "Por momento",
     byMomentEmpty: "Añade añada y tipo para estimar la ventana de consumo.",
     byMomentCount: "{count}",
+    byMomentShowMore: "Ver {count} más",
+    byMomentShowLess: "Ver menos",
     cellarValue: "Valor de la cava",
     cellarValueHint: "",
     inventoryValue: "En ficha",

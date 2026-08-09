@@ -644,8 +644,15 @@ function MomentGroup({
   onSelectWine?: (wine: Wine) => void;
 }) {
   const t = useT();
+  const [showAll, setShowAll] = useState(false);
   if (status === "unknown") return null;
   const accent = MOMENT_ACCENT[status];
+  const previewLimit = 8;
+  const visible =
+    showAll || wines.length <= previewLimit
+      ? wines
+      : wines.slice(0, previewLimit);
+  const hidden = wines.length - visible.length;
 
   return (
     <div>
@@ -655,16 +662,13 @@ function MomentGroup({
           style={{ color: accent }}
         >
           {t(`drinkWindow.status.${status}`)}
-        </p>
-        <p className="text-xs tabular-nums text-ink-soft">
-          {t("stats.byMomentCount", { count: wines.length })}
+          <span className="ml-2 font-normal tabular-nums text-ink-soft">
+            {wines.length}
+          </span>
         </p>
       </div>
-      <p className="mt-0.5 text-xs text-ink-soft">
-        {t(`drinkWindow.hint.${status}`)}
-      </p>
       <ul className="mt-2 space-y-1">
-        {wines.map((w) => {
+        {visible.map((w) => {
           const win = computeDrinkWindow(w);
           return (
             <li key={w.id}>
@@ -674,17 +678,12 @@ function MomentGroup({
                 className="flex w-full items-start justify-between gap-3 rounded-[10px] px-2 py-2 text-left transition hover:bg-[rgba(110,31,44,0.06)]"
               >
                 <span className="min-w-0">
-                  <span className="flex flex-wrap items-center gap-1.5">
-                    <span className="truncate font-medium text-ink">{w.name}</span>
-                    <DrinkWindowBadge wine={w} />
-                  </span>
+                  <span className="truncate font-medium text-ink">{w.name}</span>
                   <span className="mt-0.5 block truncate text-xs text-ink-soft">
                     {w.winery || t("stats.noWinery")}
                     {w.vintage != null ? ` · ${w.vintage}` : ""}
                     {w.slot ? ` · ${w.slot}` : ""}
-                    {win
-                      ? ` · ${win.drinkFrom}–${win.drinkBy}`
-                      : ""}
+                    {win ? ` · ${win.drinkFrom}–${win.drinkBy}` : ""}
                   </span>
                 </span>
                 <span className="shrink-0 text-right">
@@ -701,6 +700,24 @@ function MomentGroup({
           );
         })}
       </ul>
+      {hidden > 0 ? (
+        <button
+          type="button"
+          className="mt-1 min-h-[36px] px-2 text-xs text-ink-soft underline-offset-2 hover:text-ink hover:underline"
+          onClick={() => setShowAll(true)}
+        >
+          {t("stats.byMomentShowMore", { count: hidden })}
+        </button>
+      ) : null}
+      {showAll && wines.length > previewLimit ? (
+        <button
+          type="button"
+          className="mt-1 min-h-[36px] px-2 text-xs text-ink-soft underline-offset-2 hover:text-ink hover:underline"
+          onClick={() => setShowAll(false)}
+        >
+          {t("stats.byMomentShowLess")}
+        </button>
+      ) : null}
     </div>
   );
 }

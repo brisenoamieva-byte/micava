@@ -5,9 +5,12 @@ export const KIMI_PRICE_IN_PER_M = 0.95;
 export const KIMI_PRICE_OUT_PER_M = 4.0;
 
 /**
- * Gemini 3.5 Flash paid tier (USD per 1M tokens).
+ * Gemini paid-tier list prices (USD per 1M tokens).
  * https://ai.google.dev/gemini-api/docs/pricing
+ * Default app model is Flash-Lite (cheap); keep full Flash rates for legacy events.
  */
+export const GEMINI_FLASH_LITE_PRICE_IN_PER_M = 0.25;
+export const GEMINI_FLASH_LITE_PRICE_OUT_PER_M = 1.5;
 export const GEMINI_FLASH_PRICE_IN_PER_M = 1.5;
 export const GEMINI_FLASH_PRICE_OUT_PER_M = 9.0;
 
@@ -78,21 +81,56 @@ export function providerFromModel(model: string | null | undefined): LlmUsagePro
   return "other";
 }
 
+/** Per-1M USD rates for a concrete model id. */
+export function ratesForModel(model: string | null | undefined): {
+  inputPerMillionUsd: number;
+  outputPerMillionUsd: number;
+} {
+  const m = (model ?? "").trim().toLowerCase();
+  if (m.includes("gemini")) {
+    if (m.includes("flash-lite") || m.includes("lite")) {
+      // 3.5 Flash-Lite is $0.30/$2.50; 3.1 Flash-Lite (app default) is $0.25/$1.50
+      if (m.includes("3.5-flash-lite")) {
+        return { inputPerMillionUsd: 0.3, outputPerMillionUsd: 2.5 };
+      }
+      return {
+        inputPerMillionUsd: GEMINI_FLASH_LITE_PRICE_IN_PER_M,
+        outputPerMillionUsd: GEMINI_FLASH_LITE_PRICE_OUT_PER_M,
+      };
+    }
+    return {
+      inputPerMillionUsd: GEMINI_FLASH_PRICE_IN_PER_M,
+      outputPerMillionUsd: GEMINI_FLASH_PRICE_OUT_PER_M,
+    };
+  }
+  return {
+    inputPerMillionUsd: KIMI_PRICE_IN_PER_M,
+    outputPerMillionUsd: KIMI_PRICE_OUT_PER_M,
+  };
+}
+
+export function estimateUsdForModel(
+  model: string | null | undefined,
+  usage: { prompt_tokens: number; completion_tokens: number }
+): number {
+  const rates = ratesForModel(model);
+  return (
+    (usage.prompt_tokens / 1_000_000) * rates.inputPerMillionUsd +
+    (usage.completion_tokens / 1_000_000) * rates.outputPerMillionUsd
+  );
+}
+
 export function estimateUsdForProvider(
   provider: LlmUsageProvider,
   usage: { prompt_tokens: number; completion_tokens: number }
 ): number {
-  const inRate =
-    provider === "gemini" ? GEMINI_FLASH_PRICE_IN_PER_M : KIMI_PRICE_IN_PER_M;
-  const outRate =
-    provider === "gemini" ? GEMINI_FLASH_PRICE_OUT_PER_M : KIMI_PRICE_OUT_PER_M;
-  return (
-    (usage.prompt_tokens / 1_000_000) * inRate +
-    (usage.completion_tokens / 1_000_000) * outRate
-  );
+  // Provider-level estimate uses current defaults (Lite for Gemini, K2.6 for Kimi).
+  const model =
+    provider === "gemini" ? "gemini-3.1-flash-lite" : "kimi-k2.6";
+  return estimateUsdForModel(model, usage);
 }
 
-/** @deprecated Prefer estimateUsdForProvider — kept for older call sites. */
+/** @deprecated Prefer estimateUsdForModel — kept for older call sites. */
 export function estimateKimiUsd(usage: {
   prompt_tokens: number;
   completion_tokens: number;
@@ -118,6 +156,7 @@ export function emptyProviderTotals(provider: LlmUsageProvider): ProviderUsageTo
 export function accumulateProviderUsage(
   into: ProviderUsageTotals,
   row: {
+    model?: string | null;
     prompt_tokens?: number | null;
     completion_tokens?: number | null;
     total_tokens?: number | null;
@@ -133,7 +172,7 @@ export function accumulateProviderUsage(
   into.totalTokens += total;
   into.estimatedUsd = roundUsd(
     into.estimatedUsd +
-      estimateUsdForProvider(into.provider, {
+      estimateUsdForModel(row.model ?? null, {
         prompt_tokens: prompt,
         completion_tokens: completion,
       })

@@ -3,8 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import {
   accumulateProviderUsage,
   emptyProviderTotals,
-  GEMINI_FLASH_PRICE_IN_PER_M,
-  GEMINI_FLASH_PRICE_OUT_PER_M,
+  GEMINI_FLASH_LITE_PRICE_IN_PER_M,
+  GEMINI_FLASH_LITE_PRICE_OUT_PER_M,
   KIMI_PRICE_IN_PER_M,
   KIMI_PRICE_OUT_PER_M,
   providerFromModel,
@@ -73,7 +73,12 @@ export async function GET() {
     );
     const bucket =
       provider === "gemini" ? gemini : provider === "kimi" ? kimi : other;
-    accumulateProviderUsage(bucket, row);
+    accumulateProviderUsage(bucket, {
+      model: typeof row.model === "string" ? row.model : null,
+      prompt_tokens: row.prompt_tokens,
+      completion_tokens: row.completion_tokens,
+      total_tokens: row.total_tokens,
+    });
     const route = typeof row.route === "string" ? row.route : "other";
     byRoute[route] = (byRoute[route] ?? 0) + 1;
   }
@@ -141,9 +146,9 @@ export async function GET() {
         model: "kimi-k2.6",
       },
       gemini: {
-        inputPerMillionUsd: GEMINI_FLASH_PRICE_IN_PER_M,
-        outputPerMillionUsd: GEMINI_FLASH_PRICE_OUT_PER_M,
-        model: "gemini-3.5-flash",
+        inputPerMillionUsd: GEMINI_FLASH_LITE_PRICE_IN_PER_M,
+        outputPerMillionUsd: GEMINI_FLASH_LITE_PRICE_OUT_PER_M,
+        model: "gemini-3.1-flash-lite",
       },
     },
   });

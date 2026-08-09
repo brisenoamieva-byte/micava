@@ -86,7 +86,7 @@ export function KimiUsageHint() {
       ? `Kimi K2.6: ${formatTokens(kimi.totalTokens)} tok · ~${formatUsd(kimi.estimatedUsd)}`
       : null,
     gemini && gemini.calls > 0
-      ? `Gemini Flash: ${formatTokens(gemini.totalTokens)} tok · ~${formatUsd(gemini.estimatedUsd)}`
+      ? `Gemini Flash-Lite: ${formatTokens(gemini.totalTokens)} tok · ~${formatUsd(gemini.estimatedUsd)}`
       : null,
     `Total: ${formatTokens(totalTok)} tok · ~${formatUsd(totalUsd)}`,
   ]

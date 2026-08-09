@@ -19,7 +19,7 @@ export function DisplayNameEditor() {
   if (!user) {
     return (
       <p className="mt-1 text-sm text-ink-soft md:text-base">
-        {t("auth.inventoryLead")}
+        {t("auth.loginSubtitle")}
       </p>
     );
   }

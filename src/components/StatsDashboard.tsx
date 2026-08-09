@@ -239,11 +239,15 @@ export function StatsDashboard({
             <p className="display text-4xl leading-none text-ink sm:text-5xl">
               {formatCavataleRating(insights.avgCavatale)}
             </p>
-            <p className="mb-1 max-w-sm text-sm text-ink-soft">
-              {insights.avgCavatale != null
-                ? t("stats.avgCavataleHint") || null
-                : t("stats.avgCavataleEmpty")}
-            </p>
+            {insights.avgCavatale == null ? (
+              <p className="mb-1 max-w-sm text-sm text-ink-soft">
+                {t("stats.avgCavataleEmpty")}
+              </p>
+            ) : t("stats.avgCavataleHint") ? (
+              <p className="mb-1 max-w-sm text-sm text-ink-soft">
+                {t("stats.avgCavataleHint")}
+              </p>
+            ) : null}
           </div>
         </div>
 
@@ -287,7 +291,7 @@ export function StatsDashboard({
       </section>
 
       <section className="panel-quiet px-4 py-4 sm:px-5">
-        <Header title={t("stats.cellarValue")} subtitle={t("stats.cellarValueHint")} />
+        <Header title={t("stats.cellarValue")} />
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.14em] text-ink-soft">
@@ -353,10 +357,7 @@ export function StatsDashboard({
       <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
         {/* País */}
         <section className="panel-quiet p-4 sm:p-5">
-          <Header
-            title={t("stats.byCountry")}
-            subtitle={t("stats.byCountryHint")}
-          />
+          <Header title={t("stats.byCountry")} />
           <div className="mt-4 space-y-1.5">
             {insights.byCountry.map((c, i) => {
               const active = selectedCountry === c.name;
@@ -431,7 +432,7 @@ export function StatsDashboard({
 
         {/* Tipo donut + bands */}
         <section className="panel-quiet p-4 sm:p-5">
-          <Header title={t("stats.profile")} subtitle={t("stats.profileHint")} />
+          <Header title={t("stats.profile")} />
           <div className="mt-5 flex flex-col items-center gap-6 sm:flex-row sm:items-start">
             <TypeDonut items={insights.byType} total={insights.bottles} />
             <div className="w-full flex-1 space-y-5">
@@ -449,7 +450,7 @@ export function StatsDashboard({
 
       {/* Vintages */}
       <section className="panel-quiet p-4 sm:p-5">
-        <Header title={t("stats.vintagesTitle")} subtitle={t("stats.vintagesHint")} />
+        <Header title={t("stats.vintagesTitle")} />
         {insights.vintages.length === 0 ? (
           <p className="mt-4 text-sm text-ink-soft">{t("stats.noVintages")}</p>
         ) : (
@@ -521,7 +522,6 @@ export function StatsDashboard({
       <div className="grid gap-5 lg:grid-cols-2">
         <RankList
           title={t("stats.topRated")}
-          subtitle={t("stats.topRatedHint")}
           wines={insights.topByCavatale}
           metric={(w) =>
             w.cavataleRating != null
@@ -532,7 +532,6 @@ export function StatsDashboard({
         />
         <RankList
           title={t("stats.topValue")}
-          subtitle={t("stats.topValueHint")}
           wines={insights.topByPrice}
           metric={(w) => formatPrice(w.price, w.priceCurrency)}
           onSelect={onSelectWine}
@@ -541,10 +540,7 @@ export function StatsDashboard({
 
       {/* Regiones */}
       <section className="panel-quiet p-4 sm:p-5">
-        <Header
-          title={t("stats.regionsTitle")}
-          subtitle={t("stats.regionsHint")}
-        />
+        <Header title={t("stats.regionsTitle")} />
         <div className="mt-4 flex flex-wrap gap-2">
           {insights.byRegion.map((r) => {
             const active = selectedRegion === r.name;
@@ -615,10 +611,7 @@ function ReplenishBlock({ items }: { items: ReplenishItem[] }) {
   const t = useT();
   return (
     <section className="panel-quiet p-4 sm:p-5">
-      <Header
-        title={t("stats.replenish")}
-        subtitle={t("stats.replenishHint")}
-      />
+      <Header title={t("stats.replenish")} />
       <ul className="mt-4 space-y-2">
         {items.map((item) => (
           <li
@@ -924,7 +917,7 @@ function RankList({
   onSelect,
 }: {
   title: string;
-  subtitle: string;
+  subtitle?: string;
   wines: Wine[];
   metric: (w: Wine) => string;
   onSelect?: (wine: Wine) => void;

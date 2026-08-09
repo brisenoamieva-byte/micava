@@ -509,11 +509,13 @@ export function WineDetail({
           {wineTypeLabel(dict, wine.type)}
         </span>
         {wine.cavataleRating != null ? (
-          <span className="display text-2xl leading-none text-ink sm:text-[1.75rem]">
+          <span className="display text-2xl leading-none text-ink sm:text-[1.75rem] tabular-nums">
             {formatCavataleRating(wine.cavataleRating)}
-            <span className="ml-1.5 align-middle font-sans text-[11px] font-normal uppercase tracking-[0.14em] text-ink-soft">
-              {t("wine.rating")}
-            </span>
+            {!(onSaveKimiResearch && hasKimi) ? (
+              <span className="ml-1.5 align-middle font-sans text-[11px] font-normal uppercase tracking-[0.14em] text-ink-soft">
+                {t("wine.rating")}
+              </span>
+            ) : null}
           </span>
         ) : null}
         {wine.price != null ? (
@@ -544,18 +546,20 @@ export function WineDetail({
         >
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="micro-label text-[var(--wine)]">{t("wine.discovery")}</p>
               {hasDiscoveryStory ? (
-                <p className="mt-1 text-xs text-ink-soft">
-                  {t("wine.lastQuery", {
-                    date: formatCheckedAt(wine.kimiCheckedAt),
-                  })}
-                  {wine.kimiConfidence
-                    ? ` · ${confidenceLabel[wine.kimiConfidence]}`
-                    : ""}
-                </p>
+                <>
+                  <p className="micro-label text-[var(--wine)]">{t("wine.story")}</p>
+                  <p className="mt-1 text-xs text-ink-soft">
+                    {t("wine.lastQuery", {
+                      date: formatCheckedAt(wine.kimiCheckedAt),
+                    })}
+                    {wine.kimiConfidence
+                      ? ` · ${confidenceLabel[wine.kimiConfidence]}`
+                      : ""}
+                  </p>
+                </>
               ) : (
-                <h3 className="display mt-1.5 text-[1.65rem] leading-tight text-ink sm:text-2xl">
+                <h3 className="display text-[1.65rem] leading-tight text-ink sm:text-2xl">
                   {t("wine.whatStory")}
                 </h3>
               )}

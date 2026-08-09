@@ -6,6 +6,11 @@ import { CountryFlag } from "@/components/CountryFlag";
 import { DrinkWindowBadge } from "@/components/DrinkWindowBadge";
 import { DrinkWindowNotifyOptIn } from "@/components/DrinkWindowNotifyOptIn";
 import { buildInsights, qualityScore, type ReplenishItem } from "@/lib/analytics";
+import {
+  computeDrinkWindow,
+  groupWinesByDrinkStatus,
+  type DrinkStatus,
+} from "@/lib/drink-window";
 import { useLocale, useT, wineTypeLabel } from "@/lib/i18n";
 import {
   cellarValueSnapshot,
@@ -41,6 +46,7 @@ export function StatsDashboard({
     [wines, cellars, history]
   );
   const openTonight = useMemo(() => rankOpenTonight(wines, 5), [wines]);
+  const byMoment = useMemo(() => groupWinesByDrinkStatus(wines), [wines]);
   const valueSnap = useMemo(() => cellarValueSnapshot(wines), [wines]);
   const priceTargets = useMemo(
     () => winesNeedingPriceRefresh(wines, 5),
@@ -230,6 +236,24 @@ export function StatsDashboard({
           })()}
         </section>
       ) : null}
+
+      <section className="panel-quiet space-y-4 px-4 py-4 sm:px-5">
+        <Header title={t("stats.byMoment")} />
+        {byMoment.length === 0 ? (
+          <p className="text-sm text-ink-soft">{t("stats.byMomentEmpty")}</p>
+        ) : (
+          <div className="space-y-4">
+            {byMoment.map((group) => (
+              <MomentGroup
+                key={group.status}
+                status={group.status}
+                wines={group.wines}
+                onSelectWine={onSelectWine}
+              />
+            ))}
+          </div>
+        )}
+      </section>
 
       {/* Secondary KPIs — after the open recommendation */}
       <section className="space-y-3">
@@ -599,6 +623,84 @@ function Header({ title, subtitle }: { title: string; subtitle?: string }) {
       {subtitle ? (
         <p className="mt-0.5 text-sm text-ink-soft">{subtitle}</p>
       ) : null}
+    </div>
+  );
+}
+
+const MOMENT_ACCENT: Record<Exclude<DrinkStatus, "unknown">, string> = {
+  peak: "var(--wine-deep)",
+  ready: "var(--wine)",
+  late: "var(--oak)",
+  young: "var(--ink-soft)",
+};
+
+function MomentGroup({
+  status,
+  wines,
+  onSelectWine,
+}: {
+  status: DrinkStatus;
+  wines: Wine[];
+  onSelectWine?: (wine: Wine) => void;
+}) {
+  const t = useT();
+  if (status === "unknown") return null;
+  const accent = MOMENT_ACCENT[status];
+
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-2">
+        <p
+          className="text-[11px] font-medium uppercase tracking-[0.14em]"
+          style={{ color: accent }}
+        >
+          {t(`drinkWindow.status.${status}`)}
+        </p>
+        <p className="text-xs tabular-nums text-ink-soft">
+          {t("stats.byMomentCount", { count: wines.length })}
+        </p>
+      </div>
+      <p className="mt-0.5 text-xs text-ink-soft">
+        {t(`drinkWindow.hint.${status}`)}
+      </p>
+      <ul className="mt-2 space-y-1">
+        {wines.map((w) => {
+          const win = computeDrinkWindow(w);
+          return (
+            <li key={w.id}>
+              <button
+                type="button"
+                onClick={() => onSelectWine?.(w)}
+                className="flex w-full items-start justify-between gap-3 rounded-[10px] px-2 py-2 text-left transition hover:bg-[rgba(110,31,44,0.06)]"
+              >
+                <span className="min-w-0">
+                  <span className="flex flex-wrap items-center gap-1.5">
+                    <span className="truncate font-medium text-ink">{w.name}</span>
+                    <DrinkWindowBadge wine={w} />
+                  </span>
+                  <span className="mt-0.5 block truncate text-xs text-ink-soft">
+                    {w.winery || t("stats.noWinery")}
+                    {w.vintage != null ? ` · ${w.vintage}` : ""}
+                    {w.slot ? ` · ${w.slot}` : ""}
+                    {win
+                      ? ` · ${win.drinkFrom}–${win.drinkBy}`
+                      : ""}
+                  </span>
+                </span>
+                <span className="shrink-0 text-right">
+                  {w.cavataleRating != null ? (
+                    <span className="display block text-lg leading-none text-ink">
+                      {formatCavataleRating(w.cavataleRating)}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-ink-soft">—</span>
+                  )}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

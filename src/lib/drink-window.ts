@@ -85,3 +85,44 @@ export function isInDrinkWindow(
   const s = drinkStatus(wine, year);
   return s === "ready" || s === "peak";
 }
+
+/** Display order for Pulse: most actionable first. */
+export const DRINK_STATUS_ORDER: DrinkStatus[] = [
+  "peak",
+  "ready",
+  "late",
+  "young",
+];
+
+export type DrinkStatusGroup = {
+  status: DrinkStatus;
+  wines: Wine[];
+};
+
+/** Group cellar bottles by drink-window moment (skips unknown). */
+export function groupWinesByDrinkStatus(
+  wines: Wine[],
+  year = CURRENT_YEAR()
+): DrinkStatusGroup[] {
+  const buckets: Record<DrinkStatus, Wine[]> = {
+    peak: [],
+    ready: [],
+    late: [],
+    young: [],
+    unknown: [],
+  };
+  for (const wine of wines) {
+    buckets[drinkStatus(wine, year)].push(wine);
+  }
+  for (const status of DRINK_STATUS_ORDER) {
+    buckets[status].sort((a, b) => {
+      const ra = a.cavataleRating ?? 0;
+      const rb = b.cavataleRating ?? 0;
+      if (rb !== ra) return rb - ra;
+      return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+    });
+  }
+  return DRINK_STATUS_ORDER.filter((s) => buckets[s].length > 0).map(
+    (status) => ({ status, wines: buckets[status] })
+  );
+}

@@ -5,7 +5,7 @@ import {
   CAVATALE_EVIDENCE_CLASSIFY_PROMPT,
   CAVATALE_EVIDENCE_RESPONSE_SCHEMA,
   computePartsFromEvidence,
-  mergeEvidenceConservative,
+  mergeEvidenceMajority,
   parseCavataleRatingEvidence,
   type CavataleRatingEvidence,
 } from "@/lib/cavatale-rating";
@@ -259,9 +259,9 @@ async function classifyEvidenceOnce(
   usage: KimiTokenUsage | null;
 }> {
   const priorBlock = prior
-    ? `\n\nEvidencia previa (reutiliza enums si los hechos no cambiaron):\n${JSON.stringify(prior)}`
+    ? `\n\nEvidencia previa (úsalá solo si era precisa; corrige si omitió nombres propios o hechos públicos claros):\n${JSON.stringify(prior)}`
     : "";
-  const userText = `Clasifica evidencia Cavatale para esta ficha.${priorBlock}\n\nFicha:\n${identity}`;
+  const userText = `Clasifica evidencia Cavatale con precisión (ni inflar ni castigar).${priorBlock}\n\nFicha:\n${identity}`;
   const system =
     CAVATALE_EVIDENCE_CLASSIFY_PROMPT + "\n\n" + CAVATALE_RATING_RUBRIC_PROMPT;
 
@@ -323,8 +323,8 @@ async function classifyEvidenceOnce(
 }
 
 /**
- * Two cold classifications + conservative merge → stable evidence → stable score.
- * Does not freeze a prior decimal; it stabilizes the enum checklist.
+ * Three cold classifications + majority vote → precise, stable evidence.
+ * No decimal freeze; no systematic downward bias.
  */
 async function classifyEvidenceStable(
   llm: { provider: "gemini" | "kimi"; apiKey: string; model: string },
@@ -334,18 +334,19 @@ async function classifyEvidenceStable(
   evidence: CavataleRatingEvidence | null;
   usage: KimiTokenUsage | null;
 }> {
-  const [a, b] = await Promise.all([
+  const runs = await Promise.all([
     classifyEvidenceOnce(llm, identity, prior, 42),
-    classifyEvidenceOnce(llm, identity, prior, 42),
+    classifyEvidenceOnce(llm, identity, prior, 43),
+    classifyEvidenceOnce(llm, identity, prior, 44),
   ]);
-  const usage = addKimiUsage(a.usage, b.usage);
-  if (a.evidence && b.evidence) {
-    return {
-      evidence: mergeEvidenceConservative(a.evidence, b.evidence),
-      usage,
-    };
-  }
-  return { evidence: a.evidence ?? b.evidence, usage };
+  const usage = runs.reduce(
+    (acc, r) => addKimiUsage(acc, r.usage),
+    null as KimiTokenUsage | null
+  );
+  const samples = runs
+    .map((r) => r.evidence)
+    .filter((e): e is CavataleRatingEvidence => e != null);
+  return { evidence: mergeEvidenceMajority(samples), usage };
 }
 
 async function callStoryLlm(

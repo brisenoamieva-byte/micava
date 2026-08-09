@@ -574,9 +574,23 @@ function pickLowerByRank<T extends string>(
   return rank[a] <= rank[b] ? a : b;
 }
 
+function majorityByRank<T extends string>(
+  values: T[],
+  rank: Record<T, number>
+): T {
+  const counts = new Map<T, number>();
+  for (const v of values) counts.set(v, (counts.get(v) ?? 0) + 1);
+  let maxCount = 0;
+  for (const c of counts.values()) maxCount = Math.max(maxCount, c);
+  const tied = [...counts.entries()]
+    .filter(([, c]) => c === maxCount)
+    .map(([k]) => k)
+    .sort((a, b) => rank[a] - rank[b]);
+  return tied[Math.floor((tied.length - 1) / 2)] ?? values[0];
+}
+
 /**
- * When two independent classifications disagree, keep the more conservative
- * enum (anti-inflation). Same facts → same score; disagreement → stable low.
+ * @deprecated Prefer mergeEvidenceMajority — always-low merge systematically underrates.
  */
 export function mergeEvidenceConservative(
   a: CavataleRatingEvidence,
@@ -596,22 +610,62 @@ export function mergeEvidenceConservative(
   };
 }
 
+/** Majority vote across independent classifications (precise + stable, no downward bias). */
+export function mergeEvidenceMajority(
+  samples: CavataleRatingEvidence[]
+): CavataleRatingEvidence | null {
+  if (samples.length === 0) return null;
+  if (samples.length === 1) return samples[0];
+  return {
+    craft: majorityByRank(
+      samples.map((s) => s.craft),
+      CRAFT_RANK
+    ),
+    people: majorityByRank(
+      samples.map((s) => s.people),
+      PEOPLE_RANK
+    ),
+    placeFacts: majorityByRank(
+      samples.map((s) => s.placeFacts),
+      PLACE_RANK
+    ),
+    tellability: majorityByRank(
+      samples.map((s) => s.tellability),
+      TELL_RANK
+    ),
+    distinctiveness: majorityByRank(
+      samples.map((s) => s.distinctiveness),
+      DISTINCT_RANK
+    ),
+    agingTier: samples.reduce(
+      (acc, s) => mergeAgingTier(acc, s.agingTier),
+      samples[0].agingTier
+    ),
+  };
+}
+
 /** Focused classify-only prompt (no narrative). Used for stable scoring. */
-export const CAVATALE_EVIDENCE_CLASSIFY_PROMPT = `Eres el clasificador de evidencia Cavatale. NO inventas el decimal: solo enums + citas cortas.
-Misma botella + mismos hechos → MISMOS enums SIEMPRE. Sé conservador.
+export const CAVATALE_EVIDENCE_CLASSIFY_PROMPT = `Eres el clasificador de evidencia Cavatale. NO inventas el decimal: solo enums + citas cortas y VERACES.
+Misma botella + mismos hechos → MISMOS enums. Sé PRECISO (ni inflar ni castigar).
 
 Devuelve SOLO JSON:
 ratingEvidence {craft, people, placeFacts, tellability, distinctiveness, agingTier, craftCite, peopleCite, placeCite, tellCite, distinctCite}
 
-### Anclas de calibración (obligatorias — no improvises arriba de ellas)
-- Gran marca comercial Rioja/Ribera/Valdepeñas (Faustino, Campo Viejo, Marqués de Cáceres entry, etc.) Reserva/Crianza SIN fundador/enólogo con nombre propio conocido: craft=sound, people=none|generic, placeFacts=regionOnly, tellability=mild, distinctiveness=typical o commodity, agingTier=aged|entry.
-- No subas a fine/outstanding/rich/magnetic/rare solo por ser Reserva o por marketing.
-- Boutique con persona nombrable + viñedo/parcela concreta: puedes subir people/place/tell según citas reales.
+### Anclas de calibración (obligatorias)
+1) Commodity / supermercado sin gente propia (Faustino entry, Campo Viejo entry, genéricos de DO):
+   craft=sound|basic, people=none|generic, placeFacts=regionOnly, tellability=mild|none, distinctiveness=commodity|typical, agingTier según etiqueta.
+2) Casa comercial CON familia/fundador NOMBRABLE y reputación de línea (Familia Torres / Miguel Torres, Antinori, Mondavi, etc.):
+   people=named (mínimo) si conoces el nombre propio — cítalo en peopleCite. NUNCA people=none solo por ser "marca grande".
+   craft=sound o fine según reputación REAL de ESA línea (Celeste Torres ≈ sound–fine con crianza; no outstanding).
+   tellability=mild|strong si hay gancho real (nombre de la línea, generaciones, decisión de familia).
+   distinctiveness=typical|distinct según si la línea tiene ángulo propio (p.ej. Celeste / estrellas) vs tipicidad pura de DO.
+3) Boutique con persona + viñedo/parcela concreta: sube people/place/tell solo con citas reales.
+4) Prohibido: subir a outstanding/rich/magnetic/rare por marketing; también prohibido bajar a people=none / commodity una casa con historia pública conocida.
 
 ### Consistencia
-- Si te pasan evidencia previa y los hechos NO cambiaron, REUTILIZA esos enums.
-- Solo cambia un enum si hay un hecho nuevo concreto (y cítalo).
-- Citas: frases cortas factuales; "" si no hay hecho.`;
+- Si te pasan evidencia previa y omite un hecho público claro (p.ej. nombre de familia Torres), CORRÍGELO.
+- Si los hechos no cambiaron y la previa ya era precisa, reutilízala.
+- Citas: frases cortas factuales; "" solo si no hay hecho.`;
 
 export const CAVATALE_EVIDENCE_RESPONSE_SCHEMA: Record<string, unknown> = {
   type: "OBJECT",
@@ -710,7 +764,8 @@ agingTier:
 - Misma evidencia factual → MISMOS enums y MISMAS citas entre Actualizar.
 - No regales fine/outstanding, rich, magnetic o rare.
 - Un Reserva comercial tipico de Ribera/Rioja con poca gente nombrable suele ser: craft=sound, people=none|generic, placeFacts=regionOnly, tellability=mild, distinctiveness=typical, agingTier=aged.
-- Gran marca comercial (Faustino, Campo Viejo y similares) sin persona propia: distinctiveness=typical|commodity; nunca rare/distinct sin ángulo real.
+- Casa con familia/fundador público (p.ej. Familia Torres): people=named con peopleCite del nombre; no la trates como commodity anónimo.
+- Gran marca commodity SIN persona propia: distinctiveness=typical|commodity; nunca rare/distinct sin ángulo real.
 - Si identity dudosa → ratingEvidence null.
-- Rating guardado en ficha = contexto histórico; NO sesgues enums hacia él. Recalcula solo con hechos actuales.
+- Rating guardado en ficha = contexto histórico; NO sesgues enums hacia un decimal previo. Recalcula con hechos.
 - NUNCA menciones Vivino ni el score comunitario en summary/curiosity/talkHook/pairingNote.`;

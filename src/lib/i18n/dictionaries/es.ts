@@ -242,6 +242,7 @@ export const es = {
       "Cavatale no es un consenso de catas como Vivino: mide qué tanto hay para contar en la mesa. La IA propone evidencia con citas; el servidor valida y aplica la fórmula fija 30/30/25/15. Sin cita concreta, no hay score alto. Actualizar historia vuelve a calcular. El precio es referencia de mercado.",
     cavataleBreakdown: {
       title: "Desglose",
+      composeLabel: "Cómo se arma el total",
       formulaNote:
         "Cada eje (1–5) × su peso suma el total oficial (un decimal).",
       evidenceTitle: "Evidencia clasificada",

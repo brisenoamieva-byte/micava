@@ -912,6 +912,46 @@ select {
   }
 }
 
+.cavatale-compose {
+  display: flex;
+  width: 100%;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgba(26, 23, 20, 0.08);
+}
+
+.cavatale-compose-seg {
+  min-width: 2px;
+  height: 100%;
+  transition: flex-grow 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cavatale-axis-track {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: rgba(26, 23, 20, 0.1);
+}
+
+.cavatale-axis-fill {
+  height: 100%;
+  border-radius: 2px;
+  transform-origin: left center;
+  animation: cavatale-bar-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes cavatale-bar-in {
+  from {
+    transform: scaleX(0);
+    opacity: 0.55;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .fade-up,
   .fade-up-delay,
@@ -924,7 +964,9 @@ select {
   .btn,
   .thinking-mark,
   .thinking-spark,
-  .thinking-dot {
+  .thinking-dot,
+  .cavatale-axis-fill,
+  .cavatale-compose-seg {
     animation: none !important;
     transition: none !important;
   }

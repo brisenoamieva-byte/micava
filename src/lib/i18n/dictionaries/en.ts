@@ -253,6 +253,7 @@ export const en = {
       "Cavatale is not a tasting consensus like Vivino: it measures how much there is to tell at the table. The AI proposes evidence with citations; the server validates and applies the fixed 30/30/25/15 formula. No concrete cite → no high score. Refreshing the story recalculates. Price is a market reference.",
     cavataleBreakdown: {
       title: "Breakdown",
+      composeLabel: "How the total is built",
       formulaNote:
         "Each axis (1–5) × its weight adds up to the official total (one decimal).",
       evidenceTitle: "Classified evidence",

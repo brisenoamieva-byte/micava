@@ -274,6 +274,7 @@ export function EncuentroModal({
           aging: identity.aging.trim(),
           vintage: identity.vintage,
           cavataleRating: research.cavataleRating,
+          cavataleEvidence: research.cavataleEvidence,
           locale,
           ...(countryCode ? { countryCode } : {}),
         }),

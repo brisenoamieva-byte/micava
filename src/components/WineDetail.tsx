@@ -319,6 +319,7 @@ export function WineDetail({
           aging: wine.aging,
           vintage: wine.vintage,
           cavataleRating: wine.cavataleRating,
+          cavataleEvidence: wine.cavataleEvidence,
           price: wine.price,
           ...(userCorrection ? { userCorrection } : {}),
           locale,

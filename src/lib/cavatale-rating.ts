@@ -534,6 +534,139 @@ export const CAVATALE_EVIDENCE_KEYS: CavataleEvidenceKey[] = [
   "agingTier",
 ];
 
+const CRAFT_RANK: Record<CraftLevel, number> = {
+  unknown: 0,
+  basic: 1,
+  sound: 2,
+  fine: 3,
+  outstanding: 4,
+};
+const PEOPLE_RANK: Record<PeopleLevel, number> = {
+  none: 0,
+  generic: 1,
+  named: 2,
+  rich: 3,
+};
+const PLACE_RANK: Record<PlaceFactsLevel, number> = {
+  none: 0,
+  regionOnly: 1,
+  bottleSpecific: 2,
+  intimate: 3,
+};
+const TELL_RANK: Record<TellabilityLevel, number> = {
+  none: 0,
+  mild: 1,
+  strong: 2,
+  magnetic: 3,
+};
+const DISTINCT_RANK: Record<DistinctivenessLevel, number> = {
+  commodity: 0,
+  typical: 1,
+  distinct: 2,
+  rare: 3,
+};
+
+function pickLowerByRank<T extends string>(
+  a: T,
+  b: T,
+  rank: Record<T, number>
+): T {
+  return rank[a] <= rank[b] ? a : b;
+}
+
+/**
+ * When two independent classifications disagree, keep the more conservative
+ * enum (anti-inflation). Same facts → same score; disagreement → stable low.
+ */
+export function mergeEvidenceConservative(
+  a: CavataleRatingEvidence,
+  b: CavataleRatingEvidence
+): CavataleRatingEvidence {
+  return {
+    craft: pickLowerByRank(a.craft, b.craft, CRAFT_RANK),
+    people: pickLowerByRank(a.people, b.people, PEOPLE_RANK),
+    placeFacts: pickLowerByRank(a.placeFacts, b.placeFacts, PLACE_RANK),
+    tellability: pickLowerByRank(a.tellability, b.tellability, TELL_RANK),
+    distinctiveness: pickLowerByRank(
+      a.distinctiveness,
+      b.distinctiveness,
+      DISTINCT_RANK
+    ),
+    agingTier: mergeAgingTier(a.agingTier, b.agingTier),
+  };
+}
+
+/** Focused classify-only prompt (no narrative). Used for stable scoring. */
+export const CAVATALE_EVIDENCE_CLASSIFY_PROMPT = `Eres el clasificador de evidencia Cavatale. NO inventas el decimal: solo enums + citas cortas.
+Misma botella + mismos hechos → MISMOS enums SIEMPRE. Sé conservador.
+
+Devuelve SOLO JSON:
+ratingEvidence {craft, people, placeFacts, tellability, distinctiveness, agingTier, craftCite, peopleCite, placeCite, tellCite, distinctCite}
+
+### Anclas de calibración (obligatorias — no improvises arriba de ellas)
+- Gran marca comercial Rioja/Ribera/Valdepeñas (Faustino, Campo Viejo, Marqués de Cáceres entry, etc.) Reserva/Crianza SIN fundador/enólogo con nombre propio conocido: craft=sound, people=none|generic, placeFacts=regionOnly, tellability=mild, distinctiveness=typical o commodity, agingTier=aged|entry.
+- No subas a fine/outstanding/rich/magnetic/rare solo por ser Reserva o por marketing.
+- Boutique con persona nombrable + viñedo/parcela concreta: puedes subir people/place/tell según citas reales.
+
+### Consistencia
+- Si te pasan evidencia previa y los hechos NO cambiaron, REUTILIZA esos enums.
+- Solo cambia un enum si hay un hecho nuevo concreto (y cítalo).
+- Citas: frases cortas factuales; "" si no hay hecho.`;
+
+export const CAVATALE_EVIDENCE_RESPONSE_SCHEMA: Record<string, unknown> = {
+  type: "OBJECT",
+  properties: {
+    ratingEvidence: {
+      type: "OBJECT",
+      properties: {
+        craft: {
+          type: "STRING",
+          enum: ["unknown", "basic", "sound", "fine", "outstanding"],
+        },
+        people: {
+          type: "STRING",
+          enum: ["none", "generic", "named", "rich"],
+        },
+        placeFacts: {
+          type: "STRING",
+          enum: ["none", "regionOnly", "bottleSpecific", "intimate"],
+        },
+        tellability: {
+          type: "STRING",
+          enum: ["none", "mild", "strong", "magnetic"],
+        },
+        distinctiveness: {
+          type: "STRING",
+          enum: ["commodity", "typical", "distinct", "rare"],
+        },
+        agingTier: {
+          type: "STRING",
+          enum: ["none", "entry", "aged", "reservaPlus"],
+        },
+        craftCite: { type: "STRING" },
+        peopleCite: { type: "STRING" },
+        placeCite: { type: "STRING" },
+        tellCite: { type: "STRING" },
+        distinctCite: { type: "STRING" },
+      },
+      required: [
+        "craft",
+        "people",
+        "placeFacts",
+        "tellability",
+        "distinctiveness",
+        "agingTier",
+        "craftCite",
+        "peopleCite",
+        "placeCite",
+        "tellCite",
+        "distinctCite",
+      ],
+    },
+  },
+  required: ["ratingEvidence"],
+};
+
 /** Prompt block: explicit rubric + enum checklist (shared by research-wine). */
 export const CAVATALE_RATING_RUBRIC_PROMPT = `## Rating Cavatale — metodología fija (reproducible)
 
@@ -577,6 +710,7 @@ agingTier:
 - Misma evidencia factual → MISMOS enums y MISMAS citas entre Actualizar.
 - No regales fine/outstanding, rich, magnetic o rare.
 - Un Reserva comercial tipico de Ribera/Rioja con poca gente nombrable suele ser: craft=sound, people=none|generic, placeFacts=regionOnly, tellability=mild, distinctiveness=typical, agingTier=aged.
+- Gran marca comercial (Faustino, Campo Viejo y similares) sin persona propia: distinctiveness=typical|commodity; nunca rare/distinct sin ángulo real.
 - Si identity dudosa → ratingEvidence null.
 - Rating guardado en ficha = contexto histórico; NO sesgues enums hacia él. Recalcula solo con hechos actuales.
 - NUNCA menciones Vivino ni el score comunitario en summary/curiosity/talkHook/pairingNote.`;

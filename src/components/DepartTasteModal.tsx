@@ -110,6 +110,7 @@ export function DepartTasteModal({
             vintage: wineSnapshot.vintage,
             vivino: wineSnapshot.vivino,
             cavataleRating: wineSnapshot.cavataleRating,
+            cavataleEvidence: wineSnapshot.cavataleEvidence,
             price: wineSnapshot.price,
             locale,
             ...(countryCode ? { countryCode } : {}),

@@ -160,6 +160,8 @@ export async function geminiGenerateJson(options: {
   images?: string[];
   maxTokens?: number;
   temperature?: number;
+  /** Optional deterministic seed when the model supports it. */
+  seed?: number;
   /** OpenAPI-subset schema; strongly improves JSON validity on Flash models. */
   responseSchema?: Record<string, unknown>;
 }): Promise<{ content: string; usage: KimiTokenUsage | null }> {
@@ -182,8 +184,12 @@ export async function geminiGenerateJson(options: {
   if (options.temperature != null && !isGemini3Family(model)) {
     generationConfig.temperature = options.temperature;
   } else if (options.temperature != null && isGemini3Family(model)) {
-    // Still allow an explicit override (e.g. retry), but prefer low values.
+    // Still allow an explicit override (e.g. evidence classify at 0).
     generationConfig.temperature = options.temperature;
+  }
+
+  if (options.seed != null && Number.isFinite(options.seed)) {
+    generationConfig.seed = Math.floor(options.seed);
   }
 
   if (options.responseSchema) {

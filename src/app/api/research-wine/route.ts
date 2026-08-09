@@ -2,7 +2,12 @@ import { NextResponse } from "next/server";
 import { guardKimiApi } from "@/lib/api-guard";
 import {
   CAVATALE_RATING_RUBRIC_PROMPT,
+  CAVATALE_EVIDENCE_CLASSIFY_PROMPT,
+  CAVATALE_EVIDENCE_RESPONSE_SCHEMA,
   computePartsFromEvidence,
+  mergeEvidenceConservative,
+  parseCavataleRatingEvidence,
+  type CavataleRatingEvidence,
 } from "@/lib/cavatale-rating";
 import { geminiGenerateJson, resolveKimiFallback, resolvePrimaryLlm, RESEARCH_WINE_RESPONSE_SCHEMA } from "@/lib/gemini";
 import {
@@ -15,6 +20,7 @@ import {
   wineIdentityForResearch,
   type KimiResearch,
 } from "@/lib/kimi-research";
+import { extractJsonObject } from "@/lib/scan-label";
 import {
   addKimiUsage,
   parseKimiUsage,
@@ -169,6 +175,9 @@ type Body = {
   countryCode?: string | null;
   /** Alias of countryCode. */
   marketCountry?: string | null;
+  /** Prior sanitized evidence (soft consistency anchor — not a score lock). */
+  priorEvidence?: CavataleRatingEvidence | null;
+  cavataleEvidence?: CavataleRatingEvidence | null;
 };
 
 const ENCOUNTER_TALKHOOK_BIAS = `
@@ -210,8 +219,8 @@ function buildUserPrompt(identity: string, mode: ResearchMode): string {
   return `${opener}
 
 Dame JSON con:
-1) ratingEvidence {craft, people, placeFacts, tellability, distinctiveness, agingTier, craftCite, peopleCite, placeCite, tellCite, distinctCite} — enums + citas; el servidor degrada enums sin cita.
-2) ratingParts opcional; cavataleRating libre lo IGNORA el servidor (solo cuenta evidencia→fórmula).
+1) ratingEvidence puede ir, pero el SERVIDOR clasifica evidencia en un paso aparte (tú prioriza el relato).
+2) ratingParts opcional; cavataleRating libre lo IGNORA el servidor.
 3) summary (historia íntima; NUNCA abrir con denominación/región genérica), curiosity, ${talkHookHint}, pairings + pairingNote.
 4) vivino solo si lo conoces bien; price siempre null (precio lo busca el servidor con web search).
 No metas Vivino en los textos narrativos.
@@ -238,6 +247,105 @@ function finalizeResearch(content: string): {
     ratingParts,
     ratingEvidence,
   };
+}
+
+async function classifyEvidenceOnce(
+  llm: { provider: "gemini" | "kimi"; apiKey: string; model: string },
+  identity: string,
+  prior: CavataleRatingEvidence | null,
+  seed: number
+): Promise<{
+  evidence: CavataleRatingEvidence | null;
+  usage: KimiTokenUsage | null;
+}> {
+  const priorBlock = prior
+    ? `\n\nEvidencia previa (reutiliza enums si los hechos no cambiaron):\n${JSON.stringify(prior)}`
+    : "";
+  const userText = `Clasifica evidencia Cavatale para esta ficha.${priorBlock}\n\nFicha:\n${identity}`;
+  const system =
+    CAVATALE_EVIDENCE_CLASSIFY_PROMPT + "\n\n" + CAVATALE_RATING_RUBRIC_PROMPT;
+
+  if (llm.provider === "gemini") {
+    try {
+      const out = await geminiGenerateJson({
+        apiKey: llm.apiKey,
+        model: llm.model,
+        system,
+        userText,
+        maxTokens: 1024,
+        temperature: 0,
+        seed,
+        responseSchema: CAVATALE_EVIDENCE_RESPONSE_SCHEMA,
+      });
+      const raw = extractJsonObject(out.content) as Record<string, unknown>;
+      const evidence = parseCavataleRatingEvidence(
+        raw.ratingEvidence ?? raw.evidence ?? raw
+      );
+      return { evidence, usage: out.usage };
+    } catch {
+      return { evidence: null, usage: null };
+    }
+  }
+
+  // Kimi path (fallback / primary without Gemini)
+  try {
+    const kimiRes = await fetch(`${KIMI_BASE}/chat/completions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${llm.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: llm.model || KIMI_MODEL,
+        thinking: { type: "disabled" },
+        temperature: 0,
+        response_format: { type: "json_object" },
+        max_tokens: 1024,
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: userText },
+        ],
+      }),
+    });
+    const rawText = await kimiRes.text();
+    const payload = JSON.parse(rawText) as KimiChatResponse;
+    const usage = parseKimiUsage(payload);
+    const content = payload.choices?.[0]?.message?.content?.trim();
+    if (!kimiRes.ok || !content) return { evidence: null, usage };
+    const raw = extractJsonObject(content) as Record<string, unknown>;
+    const evidence = parseCavataleRatingEvidence(
+      raw.ratingEvidence ?? raw.evidence ?? raw
+    );
+    return { evidence, usage };
+  } catch {
+    return { evidence: null, usage: null };
+  }
+}
+
+/**
+ * Two cold classifications + conservative merge → stable evidence → stable score.
+ * Does not freeze a prior decimal; it stabilizes the enum checklist.
+ */
+async function classifyEvidenceStable(
+  llm: { provider: "gemini" | "kimi"; apiKey: string; model: string },
+  identity: string,
+  prior: CavataleRatingEvidence | null
+): Promise<{
+  evidence: CavataleRatingEvidence | null;
+  usage: KimiTokenUsage | null;
+}> {
+  const [a, b] = await Promise.all([
+    classifyEvidenceOnce(llm, identity, prior, 42),
+    classifyEvidenceOnce(llm, identity, prior, 42),
+  ]);
+  const usage = addKimiUsage(a.usage, b.usage);
+  if (a.evidence && b.evidence) {
+    return {
+      evidence: mergeEvidenceConservative(a.evidence, b.evidence),
+      usage,
+    };
+  }
+  return { evidence: a.evidence ?? b.evidence, usage };
 }
 
 async function callStoryLlm(
@@ -428,7 +536,11 @@ export async function POST(request: Request) {
   const userId = guard.userId;
   const storyModel = llm.model;
   const priceModel = process.env.KIMI_MODEL?.trim() || "kimi-k2.6";
-  const [first, priceLookup] = await Promise.all([
+  const priorEvidence =
+    parseCavataleRatingEvidence(body.priorEvidence ?? body.cavataleEvidence) ??
+    null;
+
+  const [first, priceLookup, evidencePass] = await Promise.all([
     callStoryLlm(llm, userPrompt, locale, marketBlock),
     kimiKeyForPrice
       ? researchWineRetailPrice({
@@ -442,11 +554,13 @@ export async function POST(request: Request) {
           error: "Sin KIMI_API_KEY para precio",
           notes: null as string | null,
         }),
+    classifyEvidenceStable(llm, identity, priorEvidence),
   ]);
 
   /** Keep provider spend separate so the usage hint can split Kimi vs Gemini. */
   let primaryStoryUsage: KimiTokenUsage | null = first.usage;
   let fallbackStoryUsage: KimiTokenUsage | null = null;
+  let evidenceUsage: KimiTokenUsage | null = evidencePass.usage;
   const priceUsage = priceLookup.usage;
 
   async function flushUsageMeters() {
@@ -464,6 +578,12 @@ export async function POST(request: Request) {
         usage: fallbackStoryUsage,
       });
     }
+    await recordKimiUsage({
+      userId,
+      route: `${USAGE_ROUTE}-evidence`,
+      model: storyModel,
+      usage: evidenceUsage,
+    });
     await recordKimiUsage({
       userId,
       route: `${USAGE_ROUTE}-price`,
@@ -559,9 +679,12 @@ export async function POST(request: Request) {
     }
   }
 
-  // Evidence (+ cite sanitization) → axes → weighted total. Always recompute.
-  const partsFromEvidence = finalized.ratingEvidence
-    ? computePartsFromEvidence(finalized.ratingEvidence, {
+  // Evidence from dedicated cold classify (×2 + conservative merge).
+  // Story-pass ratingEvidence is fallback only — narrative variance must not swing the score.
+  const ratingEvidence =
+    evidencePass.evidence ?? finalized.ratingEvidence ?? null;
+  const partsFromEvidence = ratingEvidence
+    ? computePartsFromEvidence(ratingEvidence, {
         aging: body.aging ?? null,
       })
     : null;
@@ -581,7 +704,7 @@ export async function POST(request: Request) {
     ...finalized.research,
     cavataleRating: officialRating,
     cavataleParts: officialParts,
-    cavataleEvidence: finalized.ratingEvidence,
+    cavataleEvidence: ratingEvidence,
     kimiPrice,
     kimiPriceCurrency: kimiPrice != null ? "MXN" : null,
     kimiCheckedAt: new Date().toISOString(),

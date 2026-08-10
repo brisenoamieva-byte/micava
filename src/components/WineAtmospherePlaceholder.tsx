@@ -149,15 +149,20 @@ function BottleSilhouette({
         strokeWidth="3"
         strokeLinecap="round"
       />
-      <rect
-        x="34"
-        y="118"
-        width="52"
-        height="38"
-        rx="3"
-        fill="rgba(255,252,247,0.14)"
-        stroke="rgba(255,252,247,0.22)"
-        strokeWidth="1"
+      {/* Soft glass wash — not a blank paper label */}
+      <ellipse
+        cx="58"
+        cy="145"
+        rx="18"
+        ry="28"
+        fill="rgba(255,252,247,0.08)"
+      />
+      <path
+        d="M48 100 C62 108 70 130 68 158"
+        fill="none"
+        stroke="rgba(255,252,247,0.16)"
+        strokeWidth="2"
+        strokeLinecap="round"
       />
     </svg>
   );

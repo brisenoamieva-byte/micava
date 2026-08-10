@@ -126,6 +126,7 @@ export async function kimiChatWithWebSearch(options: {
       const payload = await kimiRequest(apiKey, model, {
         model,
         thinking: { type: "disabled" },
+        temperature: 0,
         max_tokens: maxTokens,
         tools: [WEB_SEARCH_TOOL],
         messages,

@@ -101,10 +101,10 @@ export function stabilizeCavataleRating(
   if (prev == null) return next;
 
   const deltaAxes = opts?.evidenceDelta ?? 99;
+  // Full jump only when evidence truly moved a lot — not merely because
+  // identity anchors applied (anchors fire every run on famous houses).
   const allowFullJump =
-    opts?.anchored === true ||
-    opts?.forceRecalculate === true ||
-    deltaAxes >= 3;
+    opts?.forceRecalculate === true || deltaAxes >= 3;
   if (allowFullJump) return next;
 
   const maxStep = opts?.maxStep ?? 0.3;

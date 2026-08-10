@@ -262,6 +262,8 @@ export async function researchWineMarketConsensus(options: {
       error: null,
     };
   } catch (e) {
+    // Do not invent matchKind=exact. Reuse prior score only as soft continuity
+    // when the lookup failed — route still only uses .score for hybrid.
     const kept = stabilizeMarketScore(priorScore ?? null, null);
     return {
       ...emptyResult(
@@ -273,7 +275,8 @@ export async function researchWineMarketConsensus(options: {
       score: kept,
       vivino: kept,
       source: kept != null ? "vivino" : null,
-      matchKind: kept != null ? "exact" : null,
+      matchKind: null,
+      confidence: null,
       error: null,
       notes: "Se reutilizó consenso previo por JSON inválido.",
     };

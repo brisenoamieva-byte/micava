@@ -5,17 +5,18 @@
  * para abrir y contar algo verdadero — anclada al consenso público?”
  *
  * When a market consensus (Vivino / Wine-Searcher) is available:
- *   Mercado  45% — public community/critic consensus (1–5)
- *   Oficio   25% — craft of the line + aging signal
+ *   Mercado  50% — public community/critic consensus (1–5), exact SKU only
+ *   Oficio   22% — craft of the line + aging signal
  *   Lugar    12% — place specificity + character
- *   Gente    10% — named humans / human link
- *   Mesa      8% — tellability at dinner
+ *   Gente     9% — named humans / human link
+ *   Mesa      7% — tellability at dinner
  *
  * Without market data, falls back to evidence-only (v2):
  *   Oficio 40% · Lugar 20% · Gente 20% · Mesa 20%
  *
- * LLM classifies evidence enums + cites; server sanitizes and applies the
- * fixed formula. Same evidence + same market → same score. No freeze.
+ * LLM classifies evidence enums + cites; server sanitizes once after majority
+ * vote and applies the fixed formula. Same evidence + same market → same score.
+ * Stability comes from method agreement (×3 classify), not freezing scores.
  */
 
 /** Judged axes; `market` is optional — present → hybrid weights. */
@@ -36,13 +37,13 @@ export const CAVATALE_RATING_WEIGHTS = {
   table: 0.2,
 } as const;
 
-/** Hybrid weights when market consensus is present. */
+/** Hybrid weights when market consensus is present (exact SKU). */
 export const CAVATALE_RATING_WEIGHTS_HYBRID = {
-  market: 0.45,
-  taste: 0.25,
+  market: 0.5,
+  taste: 0.22,
   originality: 0.12,
-  story: 0.1,
-  table: 0.08,
+  story: 0.09,
+  table: 0.07,
 } as const;
 
 /** Snap to half-points 1.0–5.0 so component scores stay comparable across runs. */
@@ -376,6 +377,31 @@ export function sanitizeCavataleEvidence(
 export function parseCavataleRatingEvidence(
   raw: unknown
 ): CavataleRatingEvidence | null {
+  const parsed = parseCavataleEvidenceRaw(raw);
+  if (!parsed) return null;
+  return sanitizeCavataleEvidence(parsed.evidence, parsed.cites);
+}
+
+/**
+ * Enums only — no cite-based sanitize.
+ * Use for stored prior evidence (cites are not persisted) so reloads
+ * do not invent fake axis distance vs a fresh classify.
+ */
+export function parseCavataleRatingEvidenceEnumsOnly(
+  raw: unknown
+): CavataleRatingEvidence | null {
+  return parseCavataleEvidenceRaw(raw)?.evidence ?? null;
+}
+
+export type CavataleEvidenceParsed = {
+  evidence: CavataleRatingEvidence;
+  cites: CavataleRatingCites;
+};
+
+/** Parse enums + cites without sanitizing (sanitize once after majority). */
+export function parseCavataleEvidenceRaw(
+  raw: unknown
+): CavataleEvidenceParsed | null {
   if (!raw || typeof raw !== "object") return null;
   const o = raw as Record<string, unknown>;
   const craft = pickEnum(o.craft ?? o.calidad ?? o.tasteCraft, CRAFT);
@@ -403,9 +429,8 @@ export function parseCavataleRatingEvidence(
   ) {
     return null;
   }
-  const cites = parseCavataleRatingCites(o);
-  return sanitizeCavataleEvidence(
-    {
+  return {
+    evidence: {
       craft,
       people,
       placeFacts,
@@ -413,8 +438,41 @@ export function parseCavataleRatingEvidence(
       distinctiveness,
       agingTier,
     },
-    cites
+    cites: parseCavataleRatingCites(o),
+  };
+}
+
+function pickBestCite(cites: string[]): string {
+  let best = "";
+  for (const c of cites) {
+    const t = (c ?? "").trim();
+    if (t.length > best.length) best = t;
+  }
+  return best;
+}
+
+/**
+ * Majority on raw enums, then one sanitize with the strongest cites.
+ * An axis only changes from prior when ≥2 independent samples agree.
+ */
+export function mergeEvidenceSamples(
+  samples: CavataleEvidenceParsed[],
+  prior?: CavataleRatingEvidence | null
+): CavataleRatingEvidence | null {
+  if (samples.length === 0) return null;
+  const merged = mergeEvidenceMajority(
+    samples.map((s) => s.evidence),
+    prior
   );
+  if (!merged) return null;
+  const cites: CavataleRatingCites = {
+    craftCite: pickBestCite(samples.map((s) => s.cites.craftCite)),
+    peopleCite: pickBestCite(samples.map((s) => s.cites.peopleCite)),
+    placeCite: pickBestCite(samples.map((s) => s.cites.placeCite)),
+    tellCite: pickBestCite(samples.map((s) => s.cites.tellCite)),
+    distinctCite: pickBestCite(samples.map((s) => s.cites.distinctCite)),
+  };
+  return sanitizeCavataleEvidence(merged, cites);
 }
 
 /** Infer aging tier from ficha text (deterministic; complements model enum). */
@@ -735,6 +793,9 @@ export function mergeEvidenceMajority(
     for (const v of values) counts.set(v, (counts.get(v) ?? 0) + 1);
     let maxCount = 0;
     for (const c of counts.values()) maxCount = Math.max(maxCount, c);
+    // Method exactness: an axis only moves when ≥2 samples agree.
+    // Without agreement, keep prior if available (not a score freeze — samples disagreed).
+    if (maxCount < 2 && priorValue != null) return priorValue;
     const tied = [...counts.entries()]
       .filter(([, c]) => c === maxCount)
       .map(([k]) => k);
@@ -988,7 +1049,7 @@ El SERVIDOR:
 1) busca consenso público (Vivino 1–5 y/o Wine-Searcher 0–100) con web search,
 2) baja enums sin cita suficiente,
 3) calcula el total con pesos fijos:
-   CON consenso: 45% Mercado · 25% Oficio · 12% Lugar · 10% Gente · 8% Mesa.
+   CON consenso: 50% Mercado · 22% Oficio · 12% Lugar · 9% Gente · 7% Mesa.
    SIN consenso: 40% Oficio · 20% Lugar · 20% Gente · 20% Mesa.
 
 Devuelve OBLIGATORIAMENTE ratingEvidence si la identidad es clara.

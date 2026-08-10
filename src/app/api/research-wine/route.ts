@@ -8,8 +8,10 @@ import {
   attachMarketConsensus,
   computePartsFromEvidence,
   evidenceAxisDistance,
-  mergeEvidenceMajority,
-  parseCavataleRatingEvidence,
+  mergeEvidenceSamples,
+  parseCavataleEvidenceRaw,
+  parseCavataleRatingEvidenceEnumsOnly,
+  type CavataleEvidenceParsed,
   type CavataleRatingEvidence,
 } from "@/lib/cavatale-rating";
 import { geminiGenerateJson, resolveKimiFallback, resolvePrimaryLlm, RESEARCH_WINE_RESPONSE_SCHEMA } from "@/lib/gemini";
@@ -266,13 +268,13 @@ async function classifyEvidenceOnce(
   prior: CavataleRatingEvidence | null,
   seed: number
 ): Promise<{
-  evidence: CavataleRatingEvidence | null;
+  sample: CavataleEvidenceParsed | null;
   usage: KimiTokenUsage | null;
 }> {
   const priorBlock = prior
     ? `\n\nEvidencia previa (úsalá solo si era precisa; corrige si omitió nombres propios o hechos públicos claros):\n${JSON.stringify(prior)}`
     : "";
-  const userText = `Clasifica evidencia Cavatale con precisión (ni inflar ni castigar).${priorBlock}\n\nFicha:\n${identity}`;
+  const userText = `Clasifica evidencia Cavatale con precisión (ni inflar ni castigar). Misma ficha → mismos enums.${priorBlock}\n\nFicha:\n${identity}`;
   const system =
     CAVATALE_EVIDENCE_CLASSIFY_PROMPT + "\n\n" + CAVATALE_RATING_RUBRIC_PROMPT;
 
@@ -289,12 +291,12 @@ async function classifyEvidenceOnce(
         responseSchema: CAVATALE_EVIDENCE_RESPONSE_SCHEMA,
       });
       const raw = extractJsonObject(out.content) as Record<string, unknown>;
-      const evidence = parseCavataleRatingEvidence(
+      const sample = parseCavataleEvidenceRaw(
         raw.ratingEvidence ?? raw.evidence ?? raw
       );
-      return { evidence, usage: out.usage };
+      return { sample, usage: out.usage };
     } catch {
-      return { evidence: null, usage: null };
+      return { sample: null, usage: null };
     }
   }
 
@@ -310,6 +312,7 @@ async function classifyEvidenceOnce(
         model: llm.model || KIMI_MODEL,
         thinking: { type: "disabled" },
         temperature: 0,
+        seed,
         response_format: { type: "json_object" },
         max_tokens: 1024,
         messages: [
@@ -322,20 +325,20 @@ async function classifyEvidenceOnce(
     const payload = JSON.parse(rawText) as KimiChatResponse;
     const usage = parseKimiUsage(payload);
     const content = payload.choices?.[0]?.message?.content?.trim();
-    if (!kimiRes.ok || !content) return { evidence: null, usage };
+    if (!kimiRes.ok || !content) return { sample: null, usage };
     const raw = extractJsonObject(content) as Record<string, unknown>;
-    const evidence = parseCavataleRatingEvidence(
+    const sample = parseCavataleEvidenceRaw(
       raw.ratingEvidence ?? raw.evidence ?? raw
     );
-    return { evidence, usage };
+    return { sample, usage };
   } catch {
-    return { evidence: null, usage: null };
+    return { sample: null, usage: null };
   }
 }
 
 /**
- * Three cold classifications + majority vote → precise, stable evidence.
- * No decimal freeze; no systematic downward bias.
+ * Three cold classifications → majority on raw enums → sanitize once.
+ * Axis moves only when ≥2 samples agree (method agreement, not score freeze).
  */
 async function classifyEvidenceStable(
   llm: { provider: "gemini" | "kimi"; apiKey: string; model: string },
@@ -345,19 +348,36 @@ async function classifyEvidenceStable(
   evidence: CavataleRatingEvidence | null;
   usage: KimiTokenUsage | null;
 }> {
-  const runs = await Promise.all([
+  let runs = await Promise.all([
     classifyEvidenceOnce(llm, identity, prior, 42),
     classifyEvidenceOnce(llm, identity, prior, 43),
     classifyEvidenceOnce(llm, identity, prior, 44),
   ]);
-  const usage = runs.reduce(
+  let usage = runs.reduce(
     (acc, r) => addKimiUsage(acc, r.usage),
     null as KimiTokenUsage | null
   );
-  const samples = runs
-    .map((r) => r.evidence)
-    .filter((e): e is CavataleRatingEvidence => e != null);
-  return { evidence: mergeEvidenceMajority(samples, prior), usage };
+  let samples = runs
+    .map((r) => r.sample)
+    .filter((e): e is CavataleEvidenceParsed => e != null);
+
+  // Retry failed slots once so majority is not a 1-sample lottery.
+  if (samples.length < 2) {
+    const retries = await Promise.all(
+      [45, 46, 47]
+        .slice(0, 3 - samples.length)
+        .map((seed) => classifyEvidenceOnce(llm, identity, prior, seed))
+    );
+    usage = retries.reduce((acc, r) => addKimiUsage(acc, r.usage), usage);
+    samples = [
+      ...samples,
+      ...retries
+        .map((r) => r.sample)
+        .filter((e): e is CavataleEvidenceParsed => e != null),
+    ];
+  }
+
+  return { evidence: mergeEvidenceSamples(samples, prior), usage };
 }
 
 async function callStoryLlm(
@@ -552,8 +572,9 @@ export async function POST(request: Request) {
   const storyModel = llm.model;
   const priceModel = process.env.KIMI_MODEL?.trim() || "kimi-k2.6";
   const priorEvidence =
-    parseCavataleRatingEvidence(body.priorEvidence ?? body.cavataleEvidence) ??
-    null;
+    parseCavataleRatingEvidenceEnumsOnly(
+      body.priorEvidence ?? body.cavataleEvidence
+    ) ?? null;
 
   // ——— Market-only refresh: no story rewrite (batch-friendly) ———
   if (refreshMode === "market") {
@@ -615,9 +636,12 @@ export async function POST(request: Request) {
     });
 
     let ratingEvidence = evidencePass.evidence;
-    let anchored = false;
     let evidenceDelta = 99;
     if (ratingEvidence) {
+      // Distance vs prior BEFORE identity anchors (anchors fire every run).
+      if (priorEvidence) {
+        evidenceDelta = evidenceAxisDistance(priorEvidence, ratingEvidence);
+      }
       const anchoredResult = applyIdentityEvidenceAnchors(
         {
           name: body.name,
@@ -627,29 +651,19 @@ export async function POST(request: Request) {
         ratingEvidence
       );
       ratingEvidence = anchoredResult.evidence;
-      anchored = anchoredResult.anchored;
-      if (priorEvidence) {
-        evidenceDelta = evidenceAxisDistance(priorEvidence, ratingEvidence);
-      }
     }
     const partsFromEvidence = ratingEvidence
       ? computePartsFromEvidence(ratingEvidence, {
           aging: body.aging ?? null,
         })
       : null;
-    const marketScore =
-      consensusLookup.score ??
-      (body.kimiVivino != null && Number.isFinite(body.kimiVivino)
-        ? body.kimiVivino
-        : body.vivino != null && Number.isFinite(body.vivino)
-          ? body.vivino
-          : null);
+    // Hybrid market only from exact consensus — never revive body.vivino.
+    const marketScore = consensusLookup.score;
     const officialParts = attachMarketConsensus(partsFromEvidence, marketScore);
     const officialRating = resolveOfficialCavataleRating({
       existing: existingRating,
       parts: officialParts,
       evidenceDelta,
-      anchored,
       maxStep: 0.3,
     });
     const kimiPrice = priceLookup.priceMxn ?? null;
@@ -875,13 +889,19 @@ export async function POST(request: Request) {
     }
   }
 
-  // Evidence from dedicated cold classify (×3 + majority, prior on ties).
-  // Story-pass ratingEvidence is fallback only — narrative variance must not swing the score.
-  let ratingEvidence =
-    evidencePass.evidence ?? finalized.ratingEvidence ?? null;
-  let anchored = false;
+  // Evidence from dedicated cold classify only (×3 + majority + sanitize once).
+  // Never score from story-pass ratingEvidence — narrative variance must not swing the score.
+  let ratingEvidence = evidencePass.evidence;
+  if (!ratingEvidence) {
+    const retry = await classifyEvidenceStable(llm, identity, priorEvidence);
+    evidenceUsage = addKimiUsage(evidenceUsage, retry.usage);
+    ratingEvidence = retry.evidence;
+  }
   let evidenceDelta = 99;
   if (ratingEvidence) {
+    if (priorEvidence) {
+      evidenceDelta = evidenceAxisDistance(priorEvidence, ratingEvidence);
+    }
     const anchoredResult = applyIdentityEvidenceAnchors(
       {
         name: body.name,
@@ -891,10 +911,6 @@ export async function POST(request: Request) {
       ratingEvidence
     );
     ratingEvidence = anchoredResult.evidence;
-    anchored = anchoredResult.anchored;
-    if (priorEvidence) {
-      evidenceDelta = evidenceAxisDistance(priorEvidence, ratingEvidence);
-    }
   }
   const partsFromEvidence = ratingEvidence
     ? computePartsFromEvidence(ratingEvidence, {
@@ -902,20 +918,13 @@ export async function POST(request: Request) {
       })
     : null;
   const evidenceParts = partsFromEvidence ?? finalized.ratingParts;
-  const marketScore =
-    consensusLookup.score ??
-    finalized.research.kimiVivino ??
-    (body.kimiVivino != null && Number.isFinite(body.kimiVivino)
-      ? body.kimiVivino
-      : body.vivino != null && Number.isFinite(body.vivino)
-        ? body.vivino
-        : null);
+  // Hybrid market only from exact consensus lookup — no body/story vivino fallback.
+  const marketScore = consensusLookup.score;
   const officialParts = attachMarketConsensus(evidenceParts, marketScore);
   const officialRating = resolveOfficialCavataleRating({
     existing: existingRating,
     parts: officialParts,
     evidenceDelta,
-    anchored,
     maxStep: 0.3,
   });
 

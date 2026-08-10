@@ -934,15 +934,15 @@ select {
   align-items: flex-end;
   justify-content: center;
   flex-shrink: 0;
-  min-width: 4.2rem;
+  min-width: 5.5rem;
 }
 
 .wine-atmosphere__bottle {
   position: relative;
   z-index: 1;
-  width: clamp(3.4rem, 14vw, 4.6rem);
+  width: clamp(4.8rem, 20vw, 6.4rem);
   height: auto;
-  filter: drop-shadow(0 16px 24px rgba(20, 18, 16, 0.32));
+  filter: drop-shadow(0 14px 20px rgba(20, 18, 16, 0.28));
   animation: wineAtmFloat 6.5s var(--ease) infinite alternate;
   transform-origin: 50% 100%;
 }
@@ -950,36 +950,36 @@ select {
 .wine-atmosphere__caption {
   position: relative;
   z-index: 1;
-  max-width: min(16rem, 58%);
-  padding: 0.15rem 0;
-  text-align: right;
+  max-width: min(15rem, 55%);
   margin-left: auto;
+  padding: 0.65rem 0.8rem 0.7rem;
+  border-radius: 12px;
+  background: rgba(255, 252, 247, 0.94);
+  border: 1px solid rgba(20, 18, 16, 0.06);
+  box-shadow: 0 8px 22px rgba(20, 18, 16, 0.08);
+  text-align: left;
   animation: fadeUp 0.85s var(--ease) both;
 }
 
 .wine-atmosphere__eyebrow {
   font-size: 9px;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--wine);
-  text-shadow: 0 1px 12px rgba(255, 252, 247, 0.8);
 }
 
 .wine-atmosphere__type {
-  margin-top: 0.35rem;
+  margin-top: 0.3rem;
   font-family: var(--font-display), Georgia, serif;
-  font-size: clamp(1.45rem, 5vw, 1.85rem);
-  line-height: 1.02;
+  font-size: clamp(1.4rem, 4.8vw, 1.75rem);
+  line-height: 1.05;
   color: var(--ink);
-  text-shadow: 0 1px 14px rgba(255, 252, 247, 0.85);
 }
 
 .wine-atmosphere__place {
-  margin-top: 0.35rem;
-  font-size: 0.72rem;
-  letter-spacing: 0.01em;
+  margin-top: 0.3rem;
+  font-size: 0.75rem;
   color: var(--ink-soft);
-  text-shadow: 0 1px 10px rgba(255, 252, 247, 0.7);
 }
 
 .wine-atmosphere__bubbles {

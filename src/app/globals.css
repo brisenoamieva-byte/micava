@@ -907,30 +907,34 @@ select {
 .wine-atmosphere--tinto .wine-atmosphere__glow,
 .wine-atmosphere--otro .wine-atmosphere__glow {
   background:
-    radial-gradient(ellipse at 72% 18%, rgba(138, 42, 56, 0.5), transparent 52%),
-    radial-gradient(ellipse at 18% 88%, rgba(42, 12, 18, 0.35), transparent 55%),
-    linear-gradient(165deg, rgba(110, 31, 44, 0.2), rgba(248, 245, 238, 0.55));
+    radial-gradient(ellipse at 72% 18%, rgba(138, 42, 56, 0.55), transparent 52%),
+    radial-gradient(ellipse at 12% 40%, rgba(184, 129, 74, 0.12), transparent 42%),
+    radial-gradient(ellipse at 18% 88%, rgba(42, 12, 18, 0.38), transparent 55%),
+    linear-gradient(165deg, rgba(110, 31, 44, 0.22), rgba(248, 245, 238, 0.55));
 }
 
 .wine-atmosphere--blanco .wine-atmosphere__glow {
   background:
-    radial-gradient(ellipse at 70% 15%, rgba(201, 166, 107, 0.45), transparent 50%),
-    radial-gradient(ellipse at 20% 85%, rgba(184, 129, 74, 0.18), transparent 55%),
-    linear-gradient(165deg, rgba(232, 213, 168, 0.35), rgba(248, 245, 238, 0.7));
+    radial-gradient(ellipse at 70% 15%, rgba(201, 166, 107, 0.5), transparent 50%),
+    radial-gradient(ellipse at 14% 42%, rgba(232, 213, 168, 0.35), transparent 45%),
+    radial-gradient(ellipse at 20% 85%, rgba(184, 129, 74, 0.2), transparent 55%),
+    linear-gradient(165deg, rgba(232, 213, 168, 0.38), rgba(248, 245, 238, 0.7));
 }
 
 .wine-atmosphere--rosado .wine-atmosphere__glow {
   background:
-    radial-gradient(ellipse at 68% 16%, rgba(212, 138, 146, 0.48), transparent 52%),
-    radial-gradient(ellipse at 22% 86%, rgba(160, 77, 86, 0.22), transparent 55%),
-    linear-gradient(165deg, rgba(160, 77, 86, 0.18), rgba(248, 245, 238, 0.65));
+    radial-gradient(ellipse at 68% 16%, rgba(212, 138, 146, 0.52), transparent 52%),
+    radial-gradient(ellipse at 14% 44%, rgba(248, 210, 214, 0.35), transparent 45%),
+    radial-gradient(ellipse at 22% 86%, rgba(160, 77, 86, 0.24), transparent 55%),
+    linear-gradient(165deg, rgba(160, 77, 86, 0.2), rgba(248, 245, 238, 0.65));
 }
 
 .wine-atmosphere--espumoso .wine-atmosphere__glow {
   background:
-    radial-gradient(ellipse at 65% 12%, rgba(196, 163, 90, 0.35), transparent 48%),
-    radial-gradient(ellipse at 25% 80%, rgba(47, 66, 52, 0.28), transparent 55%),
-    linear-gradient(165deg, rgba(155, 176, 138, 0.28), rgba(248, 245, 238, 0.7));
+    radial-gradient(ellipse at 65% 12%, rgba(196, 163, 90, 0.4), transparent 48%),
+    radial-gradient(ellipse at 16% 38%, rgba(220, 232, 212, 0.4), transparent 44%),
+    radial-gradient(ellipse at 25% 80%, rgba(47, 66, 52, 0.3), transparent 55%),
+    linear-gradient(165deg, rgba(155, 176, 138, 0.3), rgba(248, 245, 238, 0.7));
 }
 
 .wine-atmosphere__bottle {

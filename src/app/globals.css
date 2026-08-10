@@ -917,7 +917,7 @@ select {
 .wine-atmosphere__bottle {
   position: relative;
   z-index: 1;
-  width: clamp(3.8rem, 16vw, 5.2rem);
+  width: clamp(3.2rem, 13vw, 4.4rem);
   height: auto;
   flex-shrink: 0;
   margin-bottom: 0.15rem;
@@ -930,23 +930,8 @@ select {
   position: relative;
   z-index: 1;
   max-width: min(15rem, 58%);
-  padding: 0.35rem 0.15rem 0.2rem;
+  padding: 0.2rem 0;
   animation: fadeUp 0.8s var(--ease) both;
-}
-
-.wine-atmosphere__caption::before {
-  content: "";
-  position: absolute;
-  inset: -0.55rem -0.85rem -0.65rem -0.55rem;
-  z-index: -1;
-  border-radius: 14px;
-  background: radial-gradient(
-    ellipse at 30% 50%,
-    rgba(255, 252, 247, 0.55),
-    rgba(255, 252, 247, 0.12) 58%,
-    transparent 78%
-  );
-  pointer-events: none;
 }
 
 .wine-atmosphere__eyebrow {
@@ -954,7 +939,7 @@ select {
   letter-spacing: 0.15em;
   text-transform: uppercase;
   color: var(--wine);
-  text-shadow: 0 1px 0 rgba(255, 252, 247, 0.45);
+  text-shadow: 0 1px 8px rgba(255, 252, 247, 0.7);
 }
 
 .wine-atmosphere__type {
@@ -963,14 +948,14 @@ select {
   font-size: clamp(1.35rem, 4.5vw, 1.65rem);
   line-height: 1.05;
   color: var(--ink);
-  text-shadow: 0 1px 0 rgba(255, 252, 247, 0.55);
+  text-shadow: 0 1px 10px rgba(255, 252, 247, 0.75);
 }
 
 .wine-atmosphere__place {
   margin-top: 0.28rem;
   font-size: 0.75rem;
   color: var(--ink-soft);
-  text-shadow: 0 1px 0 rgba(255, 252, 247, 0.4);
+  text-shadow: 0 1px 8px rgba(255, 252, 247, 0.65);
 }
 
 .wine-atmosphere__bubbles {

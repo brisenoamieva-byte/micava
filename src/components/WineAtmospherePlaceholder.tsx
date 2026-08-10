@@ -191,6 +191,10 @@ function BottleSilhouette({
       </>
     );
 
+  // Bordeaux-ish silhouette: long neck, clear shoulders, straight body.
+  const body =
+    "M52 28 L52 68 C52 74 50 80 46 86 C40 96 36 108 36 124 L36 198 C36 206 42 212 52 212 L68 212 C78 212 84 206 84 198 L84 124 C84 108 80 96 74 86 C70 80 68 74 68 68 L68 28 Z";
+
   return (
     <svg
       className="wine-atmosphere__bottle"
@@ -198,77 +202,55 @@ function BottleSilhouette({
       aria-hidden
     >
       <defs>
-        <linearGradient id={fillId} x1="0.15" y1="0" x2="0.85" y2="1">
+        <linearGradient id={fillId} x1="0.2" y1="0" x2="0.85" y2="1">
           {stops}
         </linearGradient>
         <linearGradient id={shadeId} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="rgba(255,252,247,0.22)" />
-          <stop offset="35%" stopColor="rgba(255,252,247,0)" />
-          <stop offset="70%" stopColor="rgba(20,18,16,0)" />
-          <stop offset="100%" stopColor="rgba(20,18,16,0.28)" />
+          <stop offset="0%" stopColor="rgba(255,252,247,0.2)" />
+          <stop offset="40%" stopColor="rgba(255,252,247,0)" />
+          <stop offset="100%" stopColor="rgba(20,18,16,0.22)" />
         </linearGradient>
       </defs>
-      {/* Neck */}
-      <rect x="52" y="10" width="16" height="34" rx="3" fill="#1a1714" />
-      {/* Capsule */}
+
+      {/* Capsule / foil */}
       <rect
-        x="49"
-        y="4"
-        width="22"
-        height="16"
-        rx="2.5"
-        fill={kind === "espumoso" ? "#c4a35a" : "#2a1014"}
+        x="50"
+        y="6"
+        width="20"
+        height="22"
+        rx="2"
+        fill={kind === "espumoso" ? "#c4a35a" : "#1a1214"}
       />
       {kind === "espumoso" ? (
         <path
-          d="M52 4 L60 0 L68 4"
+          d="M54 6 L60 1 L66 6"
           fill="none"
           stroke="#a88440"
-          strokeWidth="1.5"
+          strokeWidth="1.4"
         />
-      ) : null}
-      {/* Body */}
+      ) : (
+        <rect x="50" y="14" width="20" height="2" fill="rgba(255,252,247,0.12)" />
+      )}
+
+      {/* Glass: neck + shoulders + body as one shape */}
+      <path d={body} fill={fill} />
+      <path d={body} fill={`url(#${shadeId})`} />
+
+      {/* Neck ring / lip under capsule */}
+      <rect x="51" y="26" width="18" height="3" rx="1" fill="rgba(20,18,16,0.35)" />
+
+      {/* Glass highlight along left flank */}
       <path
-        d="M44 44
-           C44 44 39 58 35 74
-           C29 96 27 114 27 132
-           L27 196
-           C27 207 36 214 48 214
-           L72 214
-           C84 214 93 207 93 196
-           L93 132
-           C93 114 91 96 85 74
-           C81 58 76 44 76 44
-           Z"
-        fill={fill}
-      />
-      {/* Volume shade */}
-      <path
-        d="M44 44
-           C44 44 39 58 35 74
-           C29 96 27 114 27 132
-           L27 196
-           C27 207 36 214 48 214
-           L72 214
-           C84 214 93 207 93 196
-           L93 132
-           C93 114 91 96 85 74
-           C81 58 76 44 76 44
-           Z"
-        fill={`url(#${shadeId})`}
-      />
-      {/* Highlight */}
-      <path
-        d="M40 78 C37 112 37 152 40 192"
+        d="M42 100 C40 130 40 160 42 198"
         fill="none"
-        stroke="rgba(255,252,247,0.38)"
-        strokeWidth="3.5"
+        stroke="rgba(255,252,247,0.32)"
+        strokeWidth="2.5"
         strokeLinecap="round"
       />
       <path
-        d="M48 96 C58 108 64 132 62 164"
+        d="M56 34 L56 66"
         fill="none"
-        stroke="rgba(255,252,247,0.14)"
+        stroke="rgba(255,252,247,0.22)"
         strokeWidth="2"
         strokeLinecap="round"
       />

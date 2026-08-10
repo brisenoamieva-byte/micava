@@ -61,11 +61,11 @@ function sum(nums: number[]) {
   return nums.reduce((a, b) => a + b, 0);
 }
 
-/** Collapse duplicate bottles (same name / winery / vintage). */
+/** Collapse duplicate bottles (same name / winery / vintage / aging / grape). */
 export function wineIdentityKey(
-  w: Pick<Wine, "name" | "winery" | "vintage">
+  w: Pick<Wine, "name" | "winery" | "vintage" | "aging" | "grape">
 ): string {
-  return [w.name, w.winery, w.vintage ?? ""]
+  return [w.name, w.winery, w.vintage ?? "", w.aging ?? "", w.grape ?? ""]
     .map((s) => String(s).trim().toLowerCase())
     .join("|");
 }

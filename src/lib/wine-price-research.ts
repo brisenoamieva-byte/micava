@@ -42,6 +42,8 @@ export type WinePriceIdentity = {
   vintage?: number | null;
   type?: string;
   grape?: string;
+  /** Crianza / designation (Reserva, Joven, 12 meses…) — critical for SKU price. */
+  aging?: string;
 };
 
 export type WinePriceResearchResult = {
@@ -129,6 +131,8 @@ export function buildWinePriceSearchQuery(
   return [
     wine.name,
     wine.winery,
+    wine.aging,
+    wine.grape,
     wine.vintage != null ? String(wine.vintage) : "",
     wine.region,
     market.searchPriceHint,
@@ -159,10 +163,13 @@ Reglas:
 ${mxRule}
 - currency: código ISO de la moneda local usada en priceLocal (ej. MXN, USD, EUR), o null.
 - Prefiere el precio típico/promedio de menudeo del mercado del usuario, no el outlier más barato.
+- IDENTIDAD ESTRICTA: el precio debe ser de ESTA línea + crianza/designación + uva + cosecha cuando constan.
+  Joven ≠ Crianza ≠ Reserva ≠ Gran Reserva. Misma bodega NO basta.
+  Si solo encuentras precio de otra variante/añada/línea de la casa → priceMxn null (no aproximes con el hermano).
 - No inventes precios. Prefiere null a inventar.
-- Preferible UNA sola búsqueda corta enfocada en precio retail de esta botella/cosecha (máximo 2).
+- Preferible UNA sola búsqueda corta enfocada en precio retail de esta botella/cosecha/crianza (máximo 2).
 - Tras la búsqueda, responde de inmediato con el JSON (no dejes priceMxn vacío si hay datos).
-- notes: una frase corta sobre fuentes (sin URLs largas). Si convertiste a MXN, menciónalo.`;
+- notes: una frase corta sobre fuentes (sin URLs largas). Si convertiste a MXN, menciónalo. Si rechazaste por variante distinta, dilo.`;
 }
 
 function buildVerifyPriceSystem(
@@ -189,6 +196,7 @@ Reglas:
 - currency: código ISO 4217 de amount (MXN, USD, EUR, GBP…). OBLIGATORIO si hay amount.
 - NO conviertas a otra moneda. Si el anuncio está en EUR, amount en euros y currency "EUR".
 - Prefiere precio típico/promedio, no el outlier más barato ni subastas.
+- IDENTIDAD ESTRICTA: misma línea + crianza + uva + cosecha cuando constan. Si el hit es otra variante → amount null.
 - No inventes. Si no hay dato fiable: amount null, currency null.
 - confidence: "high" | "medium" | "low".
 - Preferible 1 búsqueda corta (máx 2). Luego responde JSON de inmediato.
@@ -197,7 +205,7 @@ Reglas:
 
 function buildPriceUser(wine: WinePriceIdentity, market: MarketGeo): string {
   const query = buildWinePriceSearchQuery(wine, market);
-  return `Estima el precio de menudeo típico de esta botella para el mercado ${market.marketLabel}:
+  return `Estima el precio de menudeo típico de esta botella EXACTA para el mercado ${market.marketLabel}:
 
 - name: ${wine.name}
 - winery: ${wine.winery || ""}
@@ -205,10 +213,12 @@ function buildPriceUser(wine: WinePriceIdentity, market: MarketGeo): string {
 - region: ${wine.region || ""}
 - type: ${wine.type || ""}
 - grape: ${wine.grape || ""}
+- aging / designación: ${wine.aging || ""}
 - vintage: ${wine.vintage ?? ""}
 - consulta sugerida: ${query}
 
-Usa $web_search (preferible 1 búsqueda) y devuelve JSON con priceMxn rellenado cuando haya datos públicos fiables.`;
+Usa $web_search (preferible 1 búsqueda). Si el precio público es de otra crianza/línea/uva/añada, devuelve priceMxn null.
+JSON con priceMxn rellenado SOLO cuando el match sea de esta variante.`;
 }
 
 function buildVerifyPriceUser(
@@ -228,10 +238,12 @@ function buildVerifyPriceUser(
 - region: ${wine.region || ""}
 - type: ${wine.type || ""}
 - grape: ${wine.grape || ""}
+- aging / designación: ${wine.aging || ""}
 - vintage: ${wine.vintage ?? ""}
 - consulta sugerida: ${query}
 
-Usa $web_search y devuelve JSON con amount + currency (moneda original, sin convertir).`;
+Usa $web_search y devuelve JSON con amount + currency (moneda original, sin convertir).
+Si el hit es otra crianza/línea/uva/añada → amount null.`;
 }
 
 function emptyResult(

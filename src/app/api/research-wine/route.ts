@@ -536,6 +536,7 @@ export async function POST(request: Request) {
     region: body.region ?? "",
     type: body.type ?? "",
     grape: body.grape ?? "",
+    aging: body.aging ?? "",
     vintage: body.vintage ?? null,
   };
 
@@ -579,6 +580,7 @@ export async function POST(request: Request) {
           wineSearcher100: null as number | null,
           source: null,
           confidence: null,
+          matchKind: null,
           notes: null as string | null,
           usage: null as KimiTokenUsage | null,
           error: "Sin KIMI_API_KEY para consenso",
@@ -801,6 +803,7 @@ export async function POST(request: Request) {
       wineSearcher100: consensusLookup.wineSearcher100,
       source: consensusLookup.source,
       confidence: consensusLookup.confidence,
+      matchKind: consensusLookup.matchKind,
     },
     ...(priceLookup.priceMxn == null && priceLookup.error
       ? { priceLookupError: priceLookup.error }

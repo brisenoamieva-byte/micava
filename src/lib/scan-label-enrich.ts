@@ -28,13 +28,15 @@ name, winery, country, region, type, grape, aging, vintage, vivino, price, confi
 
 Reglas:
 - Busca primero en Vivino / sitios de vino / tiendas MX (${MX_MARKET.retailersHint}).
+- IDENTIDAD ESTRICTA: confirma la MISMA línea + crianza/designación + uva + cosecha cuando constan en la ficha.
+  No sustituyas por otra variante de la misma bodega (Joven≠Reserva; otra uva = otro vino).
 - country: exactamente uno de: ${COUNTRY_PROMPT}. Usa el nombre en español de la lista.
-- vivino: número 1–5 (un decimal ok) del vino/cosecha si aparece; si solo hay rango, toma el más citado; si no hay dato fiable, null.
-- price: entero MXN de menudeo típico actual o reciente; si solo USD/EUR, convierte aprox. a MXN; si no hay, null.
+- vivino: número 1–5 (un decimal ok) SOLO si el hit es esa SKU/cosecha; si solo hay all-vintages u otra variante, null.
+- price: entero MXN de menudeo típico de ESA variante; si el precio es de otra crianza/línea, null. Si solo USD/EUR, convierte aprox. a MXN.
 - No inventes ratings ni precios. Prefiere null a inventar.
-- Si la búsqueda corrige el nombre/bodega/país, actualízalos.
+- Si la búsqueda corrige tipografía del nombre/bodega SIN cambiar de SKU, actualízalos. No “corrijas” hacia otra línea.
 - notes: qué fuentes usaste en una frase corta (sin URLs largas).
-- Usa como máximo 1–2 búsquedas: prioriza Vivino rating + precio México en consultas cortas.`;
+- Usa como máximo 1–2 búsquedas: prioriza Vivino rating + precio México en consultas cortas con crianza+añada.`;
 
 export type EnrichHint = {
   matchMethod?: string;
@@ -65,6 +67,9 @@ export function buildSearchQuery(
       winery: fields.winery,
       region: fields.region,
       vintage: fields.vintage,
+      grape: fields.grape,
+      aging: fields.aging,
+      type: fields.type,
     },
     MX_MARKET
   );

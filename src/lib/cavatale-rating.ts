@@ -454,6 +454,19 @@ function mergeAgingTier(a: AgingTier, b: AgingTier): AgingTier {
   return AGING_RANK[a] >= AGING_RANK[b] ? a : b;
 }
 
+/**
+ * When the ficha states crianza, trust it over an optimistic model enum.
+ * Model may still fill when ficha has no aging signal.
+ */
+export function resolveAgingTierForScore(
+  evidenceTier: AgingTier,
+  fichaAging?: string | null
+): AgingTier {
+  const fromFicha = inferAgingTierFromFicha(fichaAging);
+  if (fromFicha !== "none") return fromFicha;
+  return evidenceTier;
+}
+
 /** Enough signal to publish a score (not pure guesswork). */
 export function evidenceIsScorable(e: CavataleRatingEvidence): boolean {
   if (e.craft !== "unknown") return true;
@@ -534,15 +547,15 @@ export function mapOriginalityAxis(e: CavataleRatingEvidence): number {
 
 /**
  * Map structured evidence → four half-point axes (deterministic).
- * Optionally merge ficha aging text into agingTier.
+ * Ficha aging text wins over model agingTier when present.
  */
 export function computePartsFromEvidence(
   evidence: CavataleRatingEvidence,
   ficha?: { aging?: string | null }
 ): CavataleRatingParts | null {
-  const agingTier = mergeAgingTier(
+  const agingTier = resolveAgingTierForScore(
     evidence.agingTier,
-    inferAgingTierFromFicha(ficha?.aging)
+    ficha?.aging
   );
   const e: CavataleRatingEvidence = { ...evidence, agingTier };
   if (!evidenceIsScorable(e)) return null;
@@ -886,6 +899,8 @@ export function evidenceAxisDistance(
 export const CAVATALE_EVIDENCE_CLASSIFY_PROMPT = `Eres el clasificador de evidencia Cavatale v3 (ejes Oficio/Lugar/Gente/Mesa). NO inventas el decimal: solo enums + citas cortas y VERACES.
 El consenso de mercado (Vivino/Wine-Searcher) lo busca el servidor por separado — tú NO lo inventes ni lo copies aquí.
 Pregunta del eje Cavatale: ¿qué tan fuerte es esta botella como elección de cava para abrir y contar algo verdadero?
+IDENTIDAD: clasifica ESTA línea + crianza + uva + cosecha. Misma bodega ≠ misma craft/distinctiveness.
+Si la ficha trae crianza (Joven/Crianza/Reserva…), agingTier debe alinearse a esa ficha — no infles a reservaPlus.
 Misma botella + mismos hechos → MISMOS enums. Sé PRECISO (ni inflar ni castigar). Estabilidad > creatividad.
 
 Devuelve SOLO JSON:
@@ -979,6 +994,8 @@ El SERVIDOR:
 Devuelve OBLIGATORIAMENTE ratingEvidence si la identidad es clara.
 NUNCA uses cavataleRating libre como fuente de verdad.
 El campo vivino es estimación secundaria; el consenso oficial lo fija el servidor.
+Si hay crianza en ficha, agingTier debe respetarla (Joven→entry; Crianza/Reserva→aged; Gran Reserva→reservaPlus).
+No trates dos variantes de la misma casa como el mismo vino.
 
 ### ratingEvidence — enums + citas
 

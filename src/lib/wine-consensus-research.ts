@@ -25,6 +25,8 @@ export type WineConsensusIdentity = {
   region?: string;
   vintage?: number | null;
   type?: string;
+  grape?: string;
+  aging?: string;
 };
 
 export type WineConsensusResult = {
@@ -34,6 +36,8 @@ export type WineConsensusResult = {
   wineSearcher100: number | null;
   source: "vivino" | "wine-searcher" | "blended" | null;
   confidence: "high" | "medium" | "low" | null;
+  /** How tightly the public hit matches this SKU. */
+  matchKind: "exact" | "all_vintages" | "wrong_variant" | "unknown" | null;
   notes: string | null;
   usage: KimiTokenUsage | null;
   error: string | null;
@@ -105,10 +109,16 @@ export function stabilizeMarketScore(
 
 function buildConsensusSystem(): string {
   return `Eres un investigador de calificaciones públicas de vino. Usa $web_search.
-Busca SOLO el promedio comunitario Vivino (escala 1–5) y/o el score agregado Wine-Searcher (0–100) de ESTA botella y cosecha.
-NO inventes números. Si no hay dato claro para esa identidad/vintage, usa null.
+Busca SOLO el promedio comunitario Vivino (escala 1–5) y/o el score agregado Wine-Searcher (0–100) de ESTA botella exacta (línea + crianza + uva + cosecha).
+NO inventes números. Misma bodega ≠ misma botella.
 Devuelve SOLO JSON:
-{"vivino":number|null,"wineSearcher100":number|null,"confidence":"high"|"medium"|"low","notes":string}`;
+{"vivino":number|null,"wineSearcher100":number|null,"confidence":"high"|"medium"|"low","matchKind":"exact"|"all_vintages"|"wrong_variant"|"unknown","notes":string}
+
+matchKind:
+- exact: misma línea/designación y preferible misma cosecha (o claramente esa SKU).
+- all_vintages: solo hay promedio “all vintages” / sin cosecha.
+- wrong_variant: el hit es otra crianza, otra uva, otra línea de la casa, o botella distinta.
+- unknown: no queda claro.`;
 }
 
 function buildConsensusUser(wine: WineConsensusIdentity): string {
@@ -116,15 +126,17 @@ function buildConsensusUser(wine: WineConsensusIdentity): string {
     wine.vintage != null && Number.isFinite(wine.vintage)
       ? String(wine.vintage)
       : "sin añada";
-  return `Identidad exacta:
-- Nombre: ${wine.name}
+  return `Identidad exacta (NO sustituyas por otra variante de la casa):
+- Nombre / línea: ${wine.name}
 - Bodega: ${wine.winery || "—"}
 - País/región: ${wine.country || "—"} / ${wine.region || "—"}
 - Tipo: ${wine.type || "—"}
+- Uva: ${wine.grape || "—"}
+- Crianza / designación: ${wine.aging || "—"}
 - Cosecha: ${vintage}
 
-Busca en Vivino el average rating (1–5) y en Wine-Searcher el aggregate critic score (≈0–100) de ESTA botella.
-Prefiere la misma cosecha; si solo hay “all vintages”, anótalo en notes y baja confidence.
+Busca Vivino average (1–5) y Wine-Searcher aggregate (≈0–100) de ESTA SKU.
+Si solo hay “all vintages” o otra crianza/línea → matchKind correspondiente y puedes poner números en vivino/wineSearcher100, pero anótalo.
 JSON final obligatorio.`;
 }
 
@@ -138,6 +150,7 @@ function emptyResult(
     wineSearcher100: null,
     source: null,
     confidence: null,
+    matchKind: null,
     notes: null,
     usage,
     error,
@@ -191,7 +204,6 @@ export async function researchWineMarketConsensus(options: {
         ? wineSearcher100
         : null;
     const { score: blended, source } = blendMarketScores(vivino, wsOk);
-    const score = stabilizeMarketScore(priorScore ?? null, blended);
     const confidenceRaw = asStr(raw.confidence)?.toLowerCase();
     const confidence =
       confidenceRaw === "high" ||
@@ -199,17 +211,42 @@ export async function researchWineMarketConsensus(options: {
       confidenceRaw === "low"
         ? confidenceRaw
         : null;
+    const matchRaw = asStr(raw.matchKind ?? raw.match_kind)?.toLowerCase();
+    const matchKind =
+      matchRaw === "exact" ||
+      matchRaw === "all_vintages" ||
+      matchRaw === "wrong_variant" ||
+      matchRaw === "unknown"
+        ? matchRaw
+        : blended != null
+          ? ("unknown" as const)
+          : null;
+
+    // Hybrid market axis only accepts an exact SKU match (line+aging+grape+vintage when known).
+    const usableForHybrid =
+      blended != null &&
+      matchKind === "exact" &&
+      confidence !== "low";
+    const score = usableForHybrid
+      ? stabilizeMarketScore(priorScore ?? null, blended)
+      : null;
 
     if (score == null) {
       return {
         score: null,
         vivino,
         wineSearcher100: wsOk,
-        source: null,
+        source: usableForHybrid ? source : null,
         confidence,
+        matchKind,
         notes: asStr(raw.notes),
         usage: result.usage,
-        error: "Sin rating público usable para esta botella.",
+        error:
+          matchKind === "wrong_variant"
+            ? "El rating público es de otra variante (crianza/uva/línea)."
+            : matchKind === "all_vintages"
+              ? "Solo hay rating all-vintages; no se usa en el score híbrido."
+              : "Sin rating público exacto para esta botella.",
       };
     }
 
@@ -219,6 +256,7 @@ export async function researchWineMarketConsensus(options: {
       wineSearcher100: wsOk,
       source,
       confidence,
+      matchKind,
       notes: asStr(raw.notes),
       usage: result.usage,
       error: null,
@@ -235,6 +273,7 @@ export async function researchWineMarketConsensus(options: {
       score: kept,
       vivino: kept,
       source: kept != null ? "vivino" : null,
+      matchKind: kept != null ? "exact" : null,
       error: null,
       notes: "Se reutilizó consenso previo por JSON inválido.",
     };

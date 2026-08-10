@@ -930,13 +930,23 @@ select {
   position: relative;
   z-index: 1;
   max-width: min(15rem, 58%);
-  padding: 0.65rem 0.75rem 0.7rem;
-  border-radius: 10px;
-  background: rgba(255, 252, 247, 0.55);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  box-shadow: 0 8px 24px rgba(20, 18, 16, 0.06);
+  padding: 0.35rem 0.15rem 0.2rem;
   animation: fadeUp 0.8s var(--ease) both;
+}
+
+.wine-atmosphere__caption::before {
+  content: "";
+  position: absolute;
+  inset: -0.55rem -0.85rem -0.65rem -0.55rem;
+  z-index: -1;
+  border-radius: 14px;
+  background: radial-gradient(
+    ellipse at 30% 50%,
+    rgba(255, 252, 247, 0.55),
+    rgba(255, 252, 247, 0.12) 58%,
+    transparent 78%
+  );
+  pointer-events: none;
 }
 
 .wine-atmosphere__eyebrow {
@@ -944,6 +954,7 @@ select {
   letter-spacing: 0.15em;
   text-transform: uppercase;
   color: var(--wine);
+  text-shadow: 0 1px 0 rgba(255, 252, 247, 0.45);
 }
 
 .wine-atmosphere__type {
@@ -952,12 +963,14 @@ select {
   font-size: clamp(1.35rem, 4.5vw, 1.65rem);
   line-height: 1.05;
   color: var(--ink);
+  text-shadow: 0 1px 0 rgba(255, 252, 247, 0.55);
 }
 
 .wine-atmosphere__place {
   margin-top: 0.28rem;
   font-size: 0.75rem;
   color: var(--ink-soft);
+  text-shadow: 0 1px 0 rgba(255, 252, 247, 0.4);
 }
 
 .wine-atmosphere__bubbles {

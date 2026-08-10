@@ -6,7 +6,8 @@ import { createClient } from "@/lib/supabase/server";
  * so this is a soft guard — not a hard global quota.
  */
 const WINDOW_MS = 10 * 60 * 1000;
-const MAX_REQUESTS = 20;
+/** Headroom for batch “Actualizar cava” (market refresh) across many SKUs. */
+const MAX_REQUESTS = 120;
 /** Stricter cap for founder-notify (abuse = spam to Discord/email). */
 const NOTIFY_WINDOW_MS = 10 * 60 * 1000;
 const NOTIFY_MAX_REQUESTS = 8;

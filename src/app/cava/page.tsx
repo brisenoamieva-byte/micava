@@ -23,7 +23,7 @@ import { WineFormModal } from "@/components/WineFormModal";
 import { WineList } from "@/components/WineList";
 import { useCellar } from "@/lib/cellar-store";
 import { useAuth } from "@/lib/auth-store";
-import { useT } from "@/lib/i18n";
+import { useT, useLocale } from "@/lib/i18n";
 import { uploadLabelImage } from "@/lib/label-image";
 import {
   buildInviteFriendText,
@@ -36,6 +36,7 @@ import type {
   Wine,
   WineDraft,
 } from "@/lib/types";
+import type { KimiResearch } from "@/lib/kimi-research";
 import {
   cellarStats,
   filterWines,
@@ -76,6 +77,7 @@ export default function CavaPage() {
     addWine,
     updateWine,
     saveKimiResearch,
+    saveMarketRefresh,
     saveKimiUserNote,
     setLabelImageUrl,
     applyKimiResearch,
@@ -95,6 +97,7 @@ export default function CavaPage() {
   } = useCellar();
   const { signOut, user, configured } = useAuth();
   const t = useT();
+  const { locale } = useLocale();
   const [filters, setFilters] = useState<Filters>(initialFilters);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("lista");
@@ -391,6 +394,7 @@ export default function CavaPage() {
             region: wine.region,
             type: wine.type,
             grape: wine.grape,
+            aging: wine.aging,
             vintage: wine.vintage,
             ...(countryCode ? { countryCode } : {}),
           }),
@@ -411,6 +415,112 @@ export default function CavaPage() {
       }
     }
     return updated;
+  }
+
+  async function refreshCellarMarket(
+    targets: Wine[],
+    opts: {
+      signal: AbortSignal;
+      onProgress: (p: { done: number; total: number }) => void;
+    }
+  ): Promise<{ updated: number; failed: number; cancelled: boolean }> {
+    const countryCode = clientCountryCodeHint();
+    const total = targets.length;
+    let updated = 0;
+    let failed = 0;
+    let done = 0;
+    let nextIndex = 0;
+    const concurrency = 2;
+
+    async function runOne(wine: Wine) {
+      if (opts.signal.aborted) return;
+      try {
+        const res = await fetch("/api/research-wine", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            refreshMode: "market",
+            name: wine.name,
+            winery: wine.winery,
+            country: wine.country,
+            region: wine.region,
+            type: wine.type,
+            grape: wine.grape,
+            aging: wine.aging,
+            vintage: wine.vintage,
+            vivino: wine.vivino,
+            kimiVivino: wine.kimiVivino,
+            cavataleRating: wine.cavataleRating,
+            cavataleEvidence: wine.cavataleEvidence,
+            price: wine.price,
+            locale,
+            ...(countryCode ? { countryCode } : {}),
+          }),
+          signal: opts.signal,
+        });
+        if (!res.ok) {
+          failed += 1;
+          return;
+        }
+        const payload = (await res.json()) as {
+          research?: Pick<
+            KimiResearch,
+            | "cavataleRating"
+            | "cavataleParts"
+            | "cavataleEvidence"
+            | "kimiVivino"
+            | "kimiPrice"
+            | "kimiPriceCurrency"
+            | "kimiCheckedAt"
+            | "kimiConfidence"
+          >;
+        };
+        const research = payload.research;
+        if (!research) {
+          failed += 1;
+          return;
+        }
+        saveMarketRefresh(wine.id, {
+          cavataleRating: research.cavataleRating ?? null,
+          cavataleParts: research.cavataleParts ?? null,
+          cavataleEvidence: research.cavataleEvidence ?? null,
+          kimiVivino: research.kimiVivino ?? null,
+          kimiPrice: research.kimiPrice ?? null,
+          kimiPriceCurrency: research.kimiPriceCurrency ?? null,
+          kimiCheckedAt: research.kimiCheckedAt ?? new Date().toISOString(),
+          kimiConfidence: research.kimiConfidence ?? null,
+        });
+        updated += 1;
+      } catch (err) {
+        if (opts.signal.aborted) return;
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        failed += 1;
+      } finally {
+        done += 1;
+        opts.onProgress({ done: Math.min(done, total), total });
+      }
+    }
+
+    async function worker() {
+      while (true) {
+        if (opts.signal.aborted) return;
+        const i = nextIndex++;
+        if (i >= targets.length) return;
+        await runOne(targets[i]!);
+      }
+    }
+
+    const workers = Array.from(
+      { length: Math.min(concurrency, Math.max(targets.length, 1)) },
+      () => worker()
+    );
+    await Promise.all(workers);
+
+    return {
+      updated,
+      failed,
+      cancelled: opts.signal.aborted,
+    };
   }
 
   const immersiveDetail =
@@ -724,6 +834,7 @@ export default function CavaPage() {
               history={history}
               onSelectWine={(w) => selectWine(w, true, "lista")}
               onRefreshPrices={refreshCellarPrices}
+              onRefreshMarket={refreshCellarMarket}
             />
           </div>
         ) : !ready ? (

@@ -610,6 +610,16 @@ export const es = {
     priceRefreshDone: "Actualizadas {count} referencias",
     priceRefreshFailed: "No se pudieron actualizar los precios",
     priceRefreshNone: "Nada pendiente de refrescar",
+    marketRefreshCta: "Actualizar cava ({count})",
+    marketRefreshConfirm:
+      "Actualizará score y precio de referencia de {count} vinos (sin reescribir historias). Puede tardar varios minutos. ¿Continuar?",
+    marketRefreshing: "Actualizando {done} de {total}…",
+    marketRefreshDone: "Listo: {updated} actualizados{failed}",
+    marketRefreshFailedSuffix: ", {count} con error",
+    marketRefreshCancelled: "Cancelado en {done} de {total}",
+    marketRefreshCancel: "Cancelar",
+    marketRefreshHint:
+      "Score + precio de mercado. Las historias no se reescriben.",
   },
   drinkWindow: {
     status: {

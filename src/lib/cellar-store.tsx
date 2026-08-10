@@ -129,6 +129,24 @@ type CellarContextValue = {
     options?: { syncVivino?: boolean }
   ) => void;
   saveKimiResearch: (id: string, research: KimiResearch) => number;
+  /**
+   * Score + price + consensus refresh without wiping story fields.
+   * Used by batch "Actualizar cava".
+   */
+  saveMarketRefresh: (
+    id: string,
+    patch: Pick<
+      KimiResearch,
+      | "cavataleRating"
+      | "cavataleParts"
+      | "cavataleEvidence"
+      | "kimiVivino"
+      | "kimiPrice"
+      | "kimiPriceCurrency"
+      | "kimiCheckedAt"
+      | "kimiConfidence"
+    >
+  ) => number;
   /** Persist owner dispute note for story review (not ground truth). */
   saveKimiUserNote: (id: string, note: string | null) => number;
   /** Price-only verify: update kimiPrice + currency without touching story. */
@@ -1018,6 +1036,83 @@ export function CellarProvider({ children }: { children: ReactNode }) {
     [upsertWineRemote]
   );
 
+  const saveMarketRefresh = useCallback(
+    (
+      id: string,
+      patch: Pick<
+        KimiResearch,
+        | "cavataleRating"
+        | "cavataleParts"
+        | "cavataleEvidence"
+        | "kimiVivino"
+        | "kimiPrice"
+        | "kimiPriceCurrency"
+        | "kimiCheckedAt"
+        | "kimiConfidence"
+      >
+    ) => {
+      let touched: Wine[] = [];
+      setWines((prev) => {
+        const source = prev.find((w) => w.id === id);
+        if (!source) return prev;
+        const key = wineIdentityKey(source);
+        const nextList = prev.map((w) => {
+          if (wineIdentityKey(w) !== key) return w;
+          return {
+            ...w,
+            cavataleRating:
+              patch.cavataleRating != null
+                ? patch.cavataleRating
+                : w.cavataleRating,
+            cavataleParts:
+              patch.cavataleParts != null
+                ? patch.cavataleParts
+                : patch.cavataleRating != null
+                  ? null
+                  : w.cavataleParts,
+            cavataleEvidence:
+              patch.cavataleEvidence != null
+                ? patch.cavataleEvidence
+                : patch.cavataleRating != null
+                  ? null
+                  : w.cavataleEvidence,
+            kimiVivino:
+              patch.kimiVivino !== undefined
+                ? patch.kimiVivino
+                : w.kimiVivino,
+            kimiPrice:
+              patch.kimiPrice != null ? patch.kimiPrice : w.kimiPrice,
+            kimiPriceCurrency:
+              patch.kimiPrice != null
+                ? patch.kimiPriceCurrency ?? "MXN"
+                : w.kimiPriceCurrency,
+            kimiCheckedAt: patch.kimiCheckedAt ?? w.kimiCheckedAt,
+            kimiConfidence:
+              patch.kimiConfidence !== undefined
+                ? patch.kimiConfidence
+                : w.kimiConfidence,
+            price:
+              w.price == null && patch.kimiPrice != null
+                ? patch.kimiPrice
+                : w.price,
+            priceCurrency:
+              w.price == null && patch.kimiPrice != null
+                ? patch.kimiPriceCurrency ?? "MXN"
+                : w.priceCurrency,
+          };
+        });
+        touched = nextList.filter((w) => wineIdentityKey(w) === key);
+        return nextList;
+      });
+      const uid = userIdRef.current;
+      if (uid) {
+        for (const w of touched) void upsertWineRemote(w, uid);
+      }
+      return touched.length;
+    },
+    [upsertWineRemote]
+  );
+
   const saveKimiUserNote = useCallback(
     (id: string, note: string | null) => {
       let touched: Wine[] = [];
@@ -1495,6 +1590,7 @@ export function CellarProvider({ children }: { children: ReactNode }) {
       updateWine,
       verifyWineRating,
       saveKimiResearch,
+      saveMarketRefresh,
       saveKimiUserNote,
       saveVerifiedPrice,
       setLabelImageUrl,
@@ -1529,6 +1625,7 @@ export function CellarProvider({ children }: { children: ReactNode }) {
       updateWine,
       verifyWineRating,
       saveKimiResearch,
+      saveMarketRefresh,
       saveKimiUserNote,
       saveVerifiedPrice,
       setLabelImageUrl,

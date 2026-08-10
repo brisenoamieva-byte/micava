@@ -169,6 +169,11 @@ type Body = {
    */
   mode?: ResearchMode | string | null;
   /**
+   * "market" = refresh score + price + consensus without rewriting the story.
+   * Used by batch "Actualizar cava".
+   */
+  refreshMode?: "full" | "market" | string | null;
+  /**
    * @deprecated Scores always recompute from sanitized evidence.
    */
   recalculateRating?: boolean;
@@ -515,6 +520,8 @@ export async function POST(request: Request) {
   });
 
   const mode = resolveMode(body.mode);
+  const refreshMode =
+    body.refreshMode === "market" ? "market" : ("full" as const);
   const locale = resolveLocale(body.locale);
   const market = resolveMarketGeoFromRequest(
     request,
@@ -547,6 +554,151 @@ export async function POST(request: Request) {
   const priorEvidence =
     parseCavataleRatingEvidence(body.priorEvidence ?? body.cavataleEvidence) ??
     null;
+
+  // ——— Market-only refresh: no story rewrite (batch-friendly) ———
+  if (refreshMode === "market") {
+    const [priceLookup, evidencePass, consensusLookup] = await Promise.all([
+      kimiKeyForPrice
+        ? researchWineRetailPrice({
+            apiKey: kimiKeyForPrice,
+            wine: wineForPrice,
+            market,
+          })
+        : Promise.resolve({
+            priceMxn: null as number | null,
+            usage: null as KimiTokenUsage | null,
+            error: "Sin KIMI_API_KEY para precio",
+            notes: null as string | null,
+          }),
+      classifyEvidenceStable(llm, identity, priorEvidence),
+      kimiKeyForPrice
+        ? researchWineMarketConsensus({
+            apiKey: kimiKeyForPrice,
+            wine: wineForPrice,
+            priorScore:
+              body.kimiVivino != null && Number.isFinite(body.kimiVivino)
+                ? body.kimiVivino
+                : body.vivino != null && Number.isFinite(body.vivino)
+                  ? body.vivino
+                  : null,
+          })
+        : Promise.resolve({
+            score: null as number | null,
+            vivino: null as number | null,
+            wineSearcher100: null as number | null,
+            source: null,
+            confidence: null,
+            matchKind: null,
+            notes: null as string | null,
+            usage: null as KimiTokenUsage | null,
+            error: "Sin KIMI_API_KEY para consenso",
+          }),
+    ]);
+
+    await recordKimiUsage({
+      userId,
+      route: `${USAGE_ROUTE}-evidence`,
+      model: storyModel,
+      usage: evidencePass.usage,
+    });
+    await recordKimiUsage({
+      userId,
+      route: `${USAGE_ROUTE}-price`,
+      model: priceModel,
+      usage: priceLookup.usage,
+    });
+    await recordKimiUsage({
+      userId,
+      route: `${USAGE_ROUTE}-consensus`,
+      model: priceModel,
+      usage: consensusLookup.usage,
+    });
+
+    let ratingEvidence = evidencePass.evidence;
+    let anchored = false;
+    let evidenceDelta = 99;
+    if (ratingEvidence) {
+      const anchoredResult = applyIdentityEvidenceAnchors(
+        {
+          name: body.name,
+          winery: body.winery,
+          region: body.region,
+        },
+        ratingEvidence
+      );
+      ratingEvidence = anchoredResult.evidence;
+      anchored = anchoredResult.anchored;
+      if (priorEvidence) {
+        evidenceDelta = evidenceAxisDistance(priorEvidence, ratingEvidence);
+      }
+    }
+    const partsFromEvidence = ratingEvidence
+      ? computePartsFromEvidence(ratingEvidence, {
+          aging: body.aging ?? null,
+        })
+      : null;
+    const marketScore =
+      consensusLookup.score ??
+      (body.kimiVivino != null && Number.isFinite(body.kimiVivino)
+        ? body.kimiVivino
+        : body.vivino != null && Number.isFinite(body.vivino)
+          ? body.vivino
+          : null);
+    const officialParts = attachMarketConsensus(partsFromEvidence, marketScore);
+    const officialRating = resolveOfficialCavataleRating({
+      existing: existingRating,
+      parts: officialParts,
+      evidenceDelta,
+      anchored,
+      maxStep: 0.3,
+    });
+    const kimiPrice = priceLookup.priceMxn ?? null;
+    const kimiVivino =
+      consensusLookup.vivino ??
+      consensusLookup.score ??
+      body.kimiVivino ??
+      null;
+
+    return NextResponse.json({
+      research: {
+        cavataleRating: officialRating,
+        cavataleParts: officialParts,
+        cavataleEvidence: ratingEvidence,
+        kimiVivino,
+        kimiPrice,
+        kimiPriceCurrency: kimiPrice != null ? "MXN" : null,
+        kimiSummary: null,
+        kimiCuriosity: null,
+        kimiTalkHook: null,
+        kimiPairings: null,
+        kimiPairingNote: null,
+        kimiCheckedAt: new Date().toISOString(),
+        kimiConfidence: consensusLookup.confidence,
+      },
+      refreshMode: "market",
+      thinStory: false,
+      ratingLocked: false,
+      provider: llm.provider,
+      market: {
+        countryCode: market.countryCode,
+        marketLabel: market.marketLabel,
+      },
+      consensus: {
+        score: consensusLookup.score,
+        vivino: consensusLookup.vivino,
+        wineSearcher100: consensusLookup.wineSearcher100,
+        source: consensusLookup.source,
+        confidence: consensusLookup.confidence,
+        matchKind: consensusLookup.matchKind,
+      },
+      ...(priceLookup.priceMxn == null && priceLookup.error
+        ? { priceLookupError: priceLookup.error }
+        : {}),
+      ...(consensusLookup.score == null && consensusLookup.error
+        ? { consensusLookupError: consensusLookup.error }
+        : {}),
+    });
+  }
 
   const [first, priceLookup, evidencePass, consensusLookup] = await Promise.all([
     callStoryLlm(llm, userPrompt, locale, marketBlock),

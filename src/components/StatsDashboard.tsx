@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import type { CellarLogEntry, CellarUnit, Wine } from "@/lib/types";
 import { CountryFlag } from "@/components/CountryFlag";
 import { DrinkWindowBadge } from "@/components/DrinkWindowBadge";
 import { DrinkWindowNotifyOptIn } from "@/components/DrinkWindowNotifyOptIn";
-import { buildInsights, qualityScore, type ReplenishItem } from "@/lib/analytics";
+import { buildInsights, qualityScore, wineIdentityKey, type ReplenishItem } from "@/lib/analytics";
 import {
   computeDrinkWindow,
   groupWinesByDrinkStatus,
@@ -23,6 +23,17 @@ import {
   formatPrice,
 } from "@/lib/wines";
 
+type MarketRefreshProgress = {
+  done: number;
+  total: number;
+};
+
+type MarketRefreshResult = {
+  updated: number;
+  failed: number;
+  cancelled: boolean;
+};
+
 type Props = {
   wines: Wine[];
   cellars?: CellarUnit[];
@@ -30,6 +41,16 @@ type Props = {
   onSelectWine?: (wine: Wine) => void;
   /** Refresh reference prices for up to N stale bottles (AI). */
   onRefreshPrices?: (wines: Wine[]) => Promise<number> | number;
+  /**
+   * Batch refresh score + market price for all unique SKUs (no story rewrite).
+   */
+  onRefreshMarket?: (
+    wines: Wine[],
+    opts: {
+      signal: AbortSignal;
+      onProgress: (p: MarketRefreshProgress) => void;
+    }
+  ) => Promise<MarketRefreshResult>;
 };
 
 export function StatsDashboard({
@@ -38,6 +59,7 @@ export function StatsDashboard({
   history = [],
   onSelectWine,
   onRefreshPrices,
+  onRefreshMarket,
 }: Props) {
   const t = useT();
   const { locale } = useLocale();
@@ -52,8 +74,22 @@ export function StatsDashboard({
     () => winesNeedingPriceRefresh(wines, 5),
     [wines]
   );
+  const marketTargets = useMemo(() => {
+    const map = new Map<string, Wine>();
+    for (const w of wines) {
+      const key = wineIdentityKey(w);
+      if (!map.has(key)) map.set(key, w);
+    }
+    return [...map.values()];
+  }, [wines]);
   const [priceBusy, setPriceBusy] = useState(false);
   const [priceHint, setPriceHint] = useState<string | null>(null);
+  const [marketBusy, setMarketBusy] = useState(false);
+  const [marketHint, setMarketHint] = useState<string | null>(null);
+  const [marketProgress, setMarketProgress] = useState<MarketRefreshProgress | null>(
+    null
+  );
+  const marketAbortRef = useRef<AbortController | null>(null);
   const maxCountry = Math.max(...insights.byCountry.map((c) => c.count), 1);
   const maxVintage = Math.max(...insights.vintages.map((v) => v.count), 1);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
@@ -105,6 +141,63 @@ export function StatsDashboard({
     } finally {
       setPriceBusy(false);
     }
+  }
+
+  async function handleRefreshMarket() {
+    if (!onRefreshMarket || marketBusy || marketTargets.length === 0) return;
+    if (
+      !confirm(
+        t("stats.marketRefreshConfirm", { count: marketTargets.length })
+      )
+    ) {
+      return;
+    }
+    marketAbortRef.current?.abort();
+    const ac = new AbortController();
+    marketAbortRef.current = ac;
+    setMarketBusy(true);
+    setMarketHint(null);
+    setMarketProgress({ done: 0, total: marketTargets.length });
+    let lastDone = 0;
+    try {
+      const result = await onRefreshMarket(marketTargets, {
+        signal: ac.signal,
+        onProgress: (p) => {
+          lastDone = p.done;
+          setMarketProgress(p);
+        },
+      });
+      if (result.cancelled) {
+        setMarketHint(
+          t("stats.marketRefreshCancelled", {
+            done: lastDone,
+            total: marketTargets.length,
+          })
+        );
+      } else {
+        setMarketHint(
+          t("stats.marketRefreshDone", {
+            updated: result.updated,
+            failed:
+              result.failed > 0
+                ? t("stats.marketRefreshFailedSuffix", {
+                    count: result.failed,
+                  })
+                : "",
+          })
+        );
+      }
+    } catch {
+      setMarketHint(t("stats.priceRefreshFailed"));
+    } finally {
+      setMarketBusy(false);
+      setMarketProgress(null);
+      marketAbortRef.current = null;
+    }
+  }
+
+  function cancelMarketRefresh() {
+    marketAbortRef.current?.abort();
   }
 
   return (
@@ -351,21 +444,66 @@ export function StatsDashboard({
             ) : null}
           </div>
         </div>
-        {onRefreshPrices ? (
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              className="btn btn-ghost min-h-[40px] border border-[var(--line)] px-3 text-sm"
-              disabled={priceBusy || priceTargets.length === 0}
-              onClick={() => void handleRefreshPrices()}
-            >
-              {priceBusy
-                ? t("stats.priceRefreshing")
-                : t("stats.priceRefreshCta", { count: priceTargets.length })}
-            </button>
+        {onRefreshPrices || onRefreshMarket ? (
+          <div className="mt-3 space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {onRefreshMarket ? (
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-ghost min-h-[40px] border border-[var(--line)] px-3 text-sm"
+                    disabled={marketBusy || marketTargets.length === 0}
+                    onClick={() => void handleRefreshMarket()}
+                  >
+                    {marketBusy && marketProgress
+                      ? t("stats.marketRefreshing", {
+                          done: marketProgress.done,
+                          total: marketProgress.total,
+                        })
+                      : t("stats.marketRefreshCta", {
+                          count: marketTargets.length,
+                        })}
+                  </button>
+                  {marketBusy ? (
+                    <button
+                      type="button"
+                      className="btn btn-ghost min-h-[40px] px-3 text-sm text-ink-soft"
+                      onClick={cancelMarketRefresh}
+                    >
+                      {t("stats.marketRefreshCancel")}
+                    </button>
+                  ) : null}
+                </>
+              ) : null}
+              {onRefreshPrices ? (
+                <button
+                  type="button"
+                  className="btn btn-ghost min-h-[40px] border border-[var(--line)] px-3 text-sm"
+                  disabled={
+                    priceBusy || marketBusy || priceTargets.length === 0
+                  }
+                  onClick={() => void handleRefreshPrices()}
+                >
+                  {priceBusy
+                    ? t("stats.priceRefreshing")
+                    : t("stats.priceRefreshCta", {
+                        count: priceTargets.length,
+                      })}
+                </button>
+              ) : null}
+            </div>
+            {marketBusy ? (
+              <p className="text-xs text-ink-soft">{t("stats.marketRefreshHint")}</p>
+            ) : null}
+            {marketHint ? (
+              <p className="text-xs text-ink-soft">{marketHint}</p>
+            ) : null}
             {priceHint ? (
               <p className="text-xs text-ink-soft">{priceHint}</p>
-            ) : priceTargets.length === 0 ? (
+            ) : onRefreshPrices &&
+              !marketBusy &&
+              priceTargets.length === 0 &&
+              !priceHint ? (
               <p className="text-xs text-ink-soft">{t("stats.priceRefreshNone")}</p>
             ) : null}
           </div>

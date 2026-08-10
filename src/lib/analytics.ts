@@ -91,7 +91,8 @@ export function qualityScore(
   return w.cavataleRating ?? null;
 }
 
-function uniqueByIdentity(wines: Wine[]): Wine[] {
+/** One representative bottle per SKU identity (name/winery/vintage/aging/grape). */
+export function uniqueWinesByIdentity(wines: Wine[]): Wine[] {
   const map = new Map<string, Wine>();
   for (const w of wines) {
     const key = wineIdentityKey(w);
@@ -259,7 +260,7 @@ export function buildInsights(
     .map(([year, count]) => ({ year, count }))
     .sort((a, b) => a.year - b.year);
 
-  const topByCavatale = uniqueByIdentity(withQuality)
+  const topByCavatale = uniqueWinesByIdentity(withQuality)
     .sort(
       (a, b) =>
         (qualityScore(b) ?? 0) - (qualityScore(a) ?? 0) ||
@@ -267,7 +268,7 @@ export function buildInsights(
     )
     .slice(0, 5);
 
-  const topByPrice = uniqueByIdentity(withPrice)
+  const topByPrice = uniqueWinesByIdentity(withPrice)
     .sort((a, b) => (b.price ?? 0) - (a.price ?? 0))
     .slice(0, 5);
 

@@ -623,9 +623,13 @@ export const en = {
     priceRefreshFailed: "Could not refresh prices",
     priceRefreshNone: "Nothing pending to refresh",
     marketRefreshCta: "Refresh cellar ({count})",
-    marketRefreshLead: "Score and market price for every wine — stories stay as they are.",
+    marketRefreshLead:
+      "Score and market price for every wine — stories stay as they are.",
+    marketRefreshLeadDupes:
+      "{bottles} bottles → {unique} unique wines (duplicates update together).",
     marketRefreshConfirm:
-      "This will refresh score and market price for {count} wines (stories stay as they are). It can take several minutes. Continue?",
+      "This will refresh score and market price for {count} unique wines ({bottles} bottles){duplicates}. Stories stay as they are. It can take several minutes. Continue?",
+    marketRefreshDuplicates: "; skipping {extra} duplicate lookups",
     marketRefreshing: "Updating {done} of {total}…",
     marketRefreshDone: "Done: {updated} updated{failed}",
     marketRefreshFailedSuffix: ", {count} failed",

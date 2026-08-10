@@ -611,9 +611,13 @@ export const es = {
     priceRefreshFailed: "No se pudieron actualizar los precios",
     priceRefreshNone: "Nada pendiente de refrescar",
     marketRefreshCta: "Actualizar cava ({count})",
-    marketRefreshLead: "Score y precio de referencia de todos los vinos, sin reescribir historias.",
+    marketRefreshLead:
+      "Score y precio de referencia de todos los vinos, sin reescribir historias.",
+    marketRefreshLeadDupes:
+      "{bottles} botellas → {unique} vinos únicos (las repeticiones se actualizan juntas).",
     marketRefreshConfirm:
-      "Actualizará score y precio de referencia de {count} vinos (sin reescribir historias). Puede tardar varios minutos. ¿Continuar?",
+      "Actualizará score y precio de {count} vinos únicos ({bottles} botellas){duplicates}. Sin reescribir historias. Puede tardar varios minutos. ¿Continuar?",
+    marketRefreshDuplicates: "; se omiten {extra} consultas duplicadas",
     marketRefreshing: "Actualizando {done} de {total}…",
     marketRefreshDone: "Listo: {updated} actualizados{failed}",
     marketRefreshFailedSuffix: ", {count} con error",

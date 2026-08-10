@@ -25,6 +25,7 @@ import { useCellar } from "@/lib/cellar-store";
 import { useAuth } from "@/lib/auth-store";
 import { useT, useLocale } from "@/lib/i18n";
 import { uploadLabelImage } from "@/lib/label-image";
+import { uniqueWinesByIdentity } from "@/lib/analytics";
 import {
   buildInviteFriendText,
   shareOrCopyText,
@@ -424,8 +425,10 @@ export default function CavaPage() {
       onProgress: (p: { done: number; total: number }) => void;
     }
   ): Promise<{ updated: number; failed: number; cancelled: boolean }> {
+    // Hard guarantee: never call the API twice for the same SKU.
+    const uniqueTargets = uniqueWinesByIdentity(targets);
     const countryCode = clientCountryCodeHint();
-    const total = targets.length;
+    const total = uniqueTargets.length;
     let updated = 0;
     let failed = 0;
     let done = 0;
@@ -480,6 +483,7 @@ export default function CavaPage() {
           failed += 1;
           return;
         }
+        // Fans out to every bottle with the same identity.
         saveMarketRefresh(wine.id, {
           cavataleRating: research.cavataleRating ?? null,
           cavataleParts: research.cavataleParts ?? null,
@@ -505,13 +509,13 @@ export default function CavaPage() {
       while (true) {
         if (opts.signal.aborted) return;
         const i = nextIndex++;
-        if (i >= targets.length) return;
-        await runOne(targets[i]!);
+        if (i >= uniqueTargets.length) return;
+        await runOne(uniqueTargets[i]!);
       }
     }
 
     const workers = Array.from(
-      { length: Math.min(concurrency, Math.max(targets.length, 1)) },
+      { length: Math.min(concurrency, Math.max(uniqueTargets.length, 1)) },
       () => worker()
     );
     await Promise.all(workers);

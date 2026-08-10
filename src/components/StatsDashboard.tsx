@@ -5,7 +5,7 @@ import type { CellarLogEntry, CellarUnit, Wine } from "@/lib/types";
 import { CountryFlag } from "@/components/CountryFlag";
 import { DrinkWindowBadge } from "@/components/DrinkWindowBadge";
 import { DrinkWindowNotifyOptIn } from "@/components/DrinkWindowNotifyOptIn";
-import { buildInsights, qualityScore, wineIdentityKey, type ReplenishItem } from "@/lib/analytics";
+import { buildInsights, qualityScore, uniqueWinesByIdentity, type ReplenishItem } from "@/lib/analytics";
 import {
   computeDrinkWindow,
   groupWinesByDrinkStatus,
@@ -74,14 +74,15 @@ export function StatsDashboard({
     () => winesNeedingPriceRefresh(wines, 5),
     [wines]
   );
-  const marketTargets = useMemo(() => {
-    const map = new Map<string, Wine>();
-    for (const w of wines) {
-      const key = wineIdentityKey(w);
-      if (!map.has(key)) map.set(key, w);
-    }
-    return [...map.values()];
-  }, [wines]);
+  const marketTargets = useMemo(
+    () => uniqueWinesByIdentity(wines),
+    [wines]
+  );
+  const marketBottleCount = wines.length;
+  const marketDuplicateExtra = Math.max(
+    0,
+    marketBottleCount - marketTargets.length
+  );
   const [priceBusy, setPriceBusy] = useState(false);
   const [priceHint, setPriceHint] = useState<string | null>(null);
   const [marketBusy, setMarketBusy] = useState(false);
@@ -147,7 +148,16 @@ export function StatsDashboard({
     if (!onRefreshMarket || marketBusy || marketTargets.length === 0) return;
     if (
       !confirm(
-        t("stats.marketRefreshConfirm", { count: marketTargets.length })
+        t("stats.marketRefreshConfirm", {
+          count: marketTargets.length,
+          bottles: marketBottleCount,
+          duplicates:
+            marketDuplicateExtra > 0
+              ? t("stats.marketRefreshDuplicates", {
+                  extra: marketDuplicateExtra,
+                })
+              : "",
+        })
       )
     ) {
       return;
@@ -211,7 +221,12 @@ export function StatsDashboard({
             <p className="mt-1 text-xs text-ink-soft">
               {marketBusy
                 ? t("stats.marketRefreshHint")
-                : t("stats.marketRefreshLead")}
+                : marketDuplicateExtra > 0
+                  ? t("stats.marketRefreshLeadDupes", {
+                      unique: marketTargets.length,
+                      bottles: marketBottleCount,
+                    })
+                  : t("stats.marketRefreshLead")}
             </p>
           ) : null}
         </div>

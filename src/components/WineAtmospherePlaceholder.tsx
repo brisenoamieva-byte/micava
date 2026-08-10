@@ -11,8 +11,8 @@ type Props = {
 };
 
 /**
- * No-label stand-in: vineyard atmosphere + bottle matching the Cavatale mark
- * proportions (never a fake label photo).
+ * No-label stand-in: vineyard atmosphere + the real Cavatale mark
+ * (exact brand bottle — never a fake label photo).
  */
 export function WineAtmospherePlaceholder({
   type,
@@ -50,8 +50,16 @@ export function WineAtmospherePlaceholder({
         </div>
       ) : null}
       <div className="wine-atmosphere__stage">
-        <div className="wine-atmosphere__bottle-wrap">
-          <BottleFromMark kind={kind} uid={uid} />
+        <div className="wine-atmosphere__mark-wrap">
+          {/* Exact brand silhouette — same asset as nav mark */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/brand/cavatale-mark.png"
+            alt=""
+            className="wine-atmosphere__mark"
+            width={160}
+            height={160}
+          />
         </div>
         <div className="wine-atmosphere__caption">
           <p className="wine-atmosphere__eyebrow">{t("wine.atmosphereHint")}</p>
@@ -59,7 +67,9 @@ export function WineAtmospherePlaceholder({
           {placeLine ? (
             <p className="wine-atmosphere__place">{placeLine}</p>
           ) : (
-            <p className="wine-atmosphere__place">{t("wine.atmosphereAddPhoto")}</p>
+            <p className="wine-atmosphere__place">
+              {t("wine.atmosphereAddPhoto")}
+            </p>
           )}
         </div>
       </div>
@@ -133,64 +143,6 @@ function SceneBackdrop({
         d="M0 168 C70 154 120 172 180 160 C250 146 300 168 400 156 L400 240 L0 240 Z"
         fill={hillNear}
         opacity="0.4"
-      />
-    </svg>
-  );
-}
-
-/**
- * Silhouette proportions matched to /brand/cavatale-mark.png:
- * stout body (~2.4× neck), sloping shoulders, flat lip, rounded base.
- */
-function BottleFromMark({
-  kind,
-  uid,
-}: {
-  kind: WineAtmosphereKind;
-  uid: string;
-}) {
-  const fillId = `atm-mark-${uid}`;
-  // Matched to cavatale-mark.png: stout body, sloping shoulders, flat lip.
-  const bottle =
-    "M48 6 L72 6 L72 16 L68 22 L68 72 C68 84 76 96 88 110 C94 118 96 130 96 146 L96 198 C96 208 88 214 78 214 L42 214 C32 214 24 208 24 198 L24 146 C24 130 26 118 32 110 C44 96 52 84 52 72 L52 22 L48 16 Z";
-
-  const fill =
-    kind === "blanco"
-      ? "#b8814a"
-      : kind === "rosado"
-        ? "#a04d56"
-        : kind === "espumoso"
-          ? "#2f4234"
-          : "#6a1a28";
-
-  return (
-    <svg
-      className="wine-atmosphere__bottle"
-      viewBox="0 0 120 220"
-      aria-hidden
-    >
-      <defs>
-        <linearGradient id={fillId} x1="0.2" y1="0" x2="0.85" y2="1">
-          <stop offset="0%" stopColor={fill} stopOpacity="0.92" />
-          <stop offset="55%" stopColor={fill} />
-          <stop offset="100%" stopColor="#1a1214" stopOpacity="0.92" />
-        </linearGradient>
-      </defs>
-      <ellipse
-        cx="60"
-        cy="210"
-        rx="34"
-        ry="6"
-        fill="rgba(20,18,16,0.22)"
-      />
-      <path d={bottle} fill={`url(#${fillId})`} />
-      {/* Soft glass sheen — no fake label */}
-      <path
-        d="M40 120 C38 150 38 175 40 200"
-        fill="none"
-        stroke="rgba(255,252,247,0.22)"
-        strokeWidth="2.5"
-        strokeLinecap="round"
       />
     </svg>
   );

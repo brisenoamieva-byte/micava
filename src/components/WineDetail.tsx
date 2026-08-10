@@ -470,7 +470,9 @@ export function WineDetail({
         ) : (
           <WineAtmospherePlaceholder
             type={wine.type}
-            place={[wine.region, wine.country].filter(Boolean).join(" · ") || null}
+            place={
+              [wine.region, wine.country].filter(Boolean).join(" · ") || null
+            }
           />
         )}
       </div>

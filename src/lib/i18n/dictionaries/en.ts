@@ -623,6 +623,7 @@ export const en = {
     priceRefreshFailed: "Could not refresh prices",
     priceRefreshNone: "Nothing pending to refresh",
     marketRefreshCta: "Refresh cellar ({count})",
+    marketRefreshLead: "Score and market price for every wine — stories stay as they are.",
     marketRefreshConfirm:
       "This will refresh score and market price for {count} wines (stories stay as they are). It can take several minutes. Continue?",
     marketRefreshing: "Updating {done} of {total}…",

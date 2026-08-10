@@ -202,10 +202,52 @@ export function StatsDashboard({
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="display text-3xl text-ink md:text-4xl">{t("stats.pulseTitle")}</h2>
+          <h2 className="display text-3xl text-ink md:text-4xl">
+            {t("stats.pulseTitle")}
+          </h2>
+          {onRefreshMarket ? (
+            <p className="mt-1 text-xs text-ink-soft">
+              {marketBusy
+                ? t("stats.marketRefreshHint")
+                : t("stats.marketRefreshLead")}
+            </p>
+          ) : null}
         </div>
+        {onRefreshMarket ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              className="btn btn-primary min-h-[44px] px-4 text-sm"
+              disabled={marketBusy || marketTargets.length === 0}
+              onClick={() => void handleRefreshMarket()}
+            >
+              {marketBusy && marketProgress
+                ? t("stats.marketRefreshing", {
+                    done: marketProgress.done,
+                    total: marketProgress.total,
+                  })
+                : t("stats.marketRefreshCta", {
+                    count: marketTargets.length,
+                  })}
+            </button>
+            {marketBusy ? (
+              <button
+                type="button"
+                className="btn btn-ghost min-h-[44px] px-3 text-sm text-ink-soft"
+                onClick={cancelMarketRefresh}
+              >
+                {t("stats.marketRefreshCancel")}
+              </button>
+            ) : null}
+            {marketHint ? (
+              <p className="basis-full text-xs text-ink-soft sm:basis-auto">
+                {marketHint}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       {openTonight.length > 0 ? (
@@ -444,66 +486,27 @@ export function StatsDashboard({
             ) : null}
           </div>
         </div>
-        {onRefreshPrices || onRefreshMarket ? (
+        {onRefreshPrices ? (
           <div className="mt-3 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              {onRefreshMarket ? (
-                <>
-                  <button
-                    type="button"
-                    className="btn btn-ghost min-h-[40px] border border-[var(--line)] px-3 text-sm"
-                    disabled={marketBusy || marketTargets.length === 0}
-                    onClick={() => void handleRefreshMarket()}
-                  >
-                    {marketBusy && marketProgress
-                      ? t("stats.marketRefreshing", {
-                          done: marketProgress.done,
-                          total: marketProgress.total,
-                        })
-                      : t("stats.marketRefreshCta", {
-                          count: marketTargets.length,
-                        })}
-                  </button>
-                  {marketBusy ? (
-                    <button
-                      type="button"
-                      className="btn btn-ghost min-h-[40px] px-3 text-sm text-ink-soft"
-                      onClick={cancelMarketRefresh}
-                    >
-                      {t("stats.marketRefreshCancel")}
-                    </button>
-                  ) : null}
-                </>
-              ) : null}
-              {onRefreshPrices ? (
-                <button
-                  type="button"
-                  className="btn btn-ghost min-h-[40px] border border-[var(--line)] px-3 text-sm"
-                  disabled={
-                    priceBusy || marketBusy || priceTargets.length === 0
-                  }
-                  onClick={() => void handleRefreshPrices()}
-                >
-                  {priceBusy
-                    ? t("stats.priceRefreshing")
-                    : t("stats.priceRefreshCta", {
-                        count: priceTargets.length,
-                      })}
-                </button>
-              ) : null}
+              <button
+                type="button"
+                className="btn btn-ghost min-h-[40px] border border-[var(--line)] px-3 text-sm"
+                disabled={
+                  priceBusy || marketBusy || priceTargets.length === 0
+                }
+                onClick={() => void handleRefreshPrices()}
+              >
+                {priceBusy
+                  ? t("stats.priceRefreshing")
+                  : t("stats.priceRefreshCta", {
+                      count: priceTargets.length,
+                    })}
+              </button>
             </div>
-            {marketBusy ? (
-              <p className="text-xs text-ink-soft">{t("stats.marketRefreshHint")}</p>
-            ) : null}
-            {marketHint ? (
-              <p className="text-xs text-ink-soft">{marketHint}</p>
-            ) : null}
             {priceHint ? (
               <p className="text-xs text-ink-soft">{priceHint}</p>
-            ) : onRefreshPrices &&
-              !marketBusy &&
-              priceTargets.length === 0 &&
-              !priceHint ? (
+            ) : priceTargets.length === 0 && !priceHint ? (
               <p className="text-xs text-ink-soft">{t("stats.priceRefreshNone")}</p>
             ) : null}
           </div>

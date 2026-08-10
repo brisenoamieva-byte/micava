@@ -885,6 +885,168 @@ select {
   pointer-events: none;
 }
 
+/* Typed atmosphere when there is no real label photo */
+.wine-atmosphere {
+  position: relative;
+  display: flex;
+  min-height: min(32dvh, 13.5rem);
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1.1rem 1rem 1rem;
+  overflow: hidden;
+}
+
+.wine-atmosphere__glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+.wine-atmosphere--tinto .wine-atmosphere__glow,
+.wine-atmosphere--otro .wine-atmosphere__glow {
+  background:
+    radial-gradient(ellipse at 72% 18%, rgba(138, 42, 56, 0.5), transparent 52%),
+    radial-gradient(ellipse at 18% 88%, rgba(42, 12, 18, 0.35), transparent 55%),
+    linear-gradient(165deg, rgba(110, 31, 44, 0.2), rgba(248, 245, 238, 0.55));
+}
+
+.wine-atmosphere--blanco .wine-atmosphere__glow {
+  background:
+    radial-gradient(ellipse at 70% 15%, rgba(201, 166, 107, 0.45), transparent 50%),
+    radial-gradient(ellipse at 20% 85%, rgba(184, 129, 74, 0.18), transparent 55%),
+    linear-gradient(165deg, rgba(232, 213, 168, 0.35), rgba(248, 245, 238, 0.7));
+}
+
+.wine-atmosphere--rosado .wine-atmosphere__glow {
+  background:
+    radial-gradient(ellipse at 68% 16%, rgba(212, 138, 146, 0.48), transparent 52%),
+    radial-gradient(ellipse at 22% 86%, rgba(160, 77, 86, 0.22), transparent 55%),
+    linear-gradient(165deg, rgba(160, 77, 86, 0.18), rgba(248, 245, 238, 0.65));
+}
+
+.wine-atmosphere--espumoso .wine-atmosphere__glow {
+  background:
+    radial-gradient(ellipse at 65% 12%, rgba(196, 163, 90, 0.35), transparent 48%),
+    radial-gradient(ellipse at 25% 80%, rgba(47, 66, 52, 0.28), transparent 55%),
+    linear-gradient(165deg, rgba(155, 176, 138, 0.28), rgba(248, 245, 238, 0.7));
+}
+
+.wine-atmosphere__bottle {
+  position: relative;
+  z-index: 1;
+  width: clamp(3.4rem, 14vw, 4.6rem);
+  height: auto;
+  flex-shrink: 0;
+  filter: drop-shadow(0 10px 18px rgba(20, 18, 16, 0.18));
+  animation: wineAtmFloat 5.5s var(--ease) infinite alternate;
+  transform-origin: 50% 100%;
+}
+
+.wine-atmosphere__caption {
+  position: relative;
+  z-index: 1;
+  max-width: 14rem;
+  padding-bottom: 0.15rem;
+  animation: fadeUp 0.75s var(--ease) both;
+}
+
+.wine-atmosphere__eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--wine);
+}
+
+.wine-atmosphere__type {
+  margin-top: 0.35rem;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 1.35rem;
+  line-height: 1.1;
+  color: var(--ink);
+}
+
+.wine-atmosphere__place {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+}
+
+.wine-atmosphere__bubbles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.wine-atmosphere__bubbles span {
+  position: absolute;
+  bottom: 12%;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 252, 247, 0.55);
+  animation: wineAtmBubble 4.2s ease-in infinite;
+}
+
+.wine-atmosphere__bubbles span:nth-child(1) {
+  left: 58%;
+  animation-delay: 0s;
+}
+.wine-atmosphere__bubbles span:nth-child(2) {
+  left: 64%;
+  width: 3px;
+  height: 3px;
+  animation-delay: 0.7s;
+}
+.wine-atmosphere__bubbles span:nth-child(3) {
+  left: 70%;
+  animation-delay: 1.4s;
+}
+.wine-atmosphere__bubbles span:nth-child(4) {
+  left: 52%;
+  width: 4px;
+  height: 4px;
+  animation-delay: 2.1s;
+}
+.wine-atmosphere__bubbles span:nth-child(5) {
+  left: 76%;
+  width: 3px;
+  height: 3px;
+  animation-delay: 2.8s;
+}
+
+@keyframes wineAtmFloat {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes wineAtmBubble {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateY(-7.5rem) scale(0.6);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wine-atmosphere__bottle,
+  .wine-atmosphere__bubbles span {
+    animation: none;
+  }
+}
+
 .desktop-only {
   display: none;
 }

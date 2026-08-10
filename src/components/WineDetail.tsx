@@ -21,6 +21,7 @@ import { clientCountryCodeHint } from "@/lib/market-geo";
 import { AiTheaterStatus } from "@/components/AiTheaterStatus";
 import { CavataleRatingCard } from "@/components/CavataleRatingCard";
 import { ThinkingIndicator } from "@/components/ThinkingIndicator";
+import { WineAtmospherePlaceholder } from "@/components/WineAtmospherePlaceholder";
 
 type Props = {
   wine: Wine | null;
@@ -467,15 +468,10 @@ export function WineDetail({
           // eslint-disable-next-line @next/next/no-img-element
           <img src={labelSrc} alt={t("wine.labelAlt", { name: wine.name })} />
         ) : (
-          <div className="wine-label-hero__fallback relative">
-            <div className="wine-label-hero__fallback-mark" aria-hidden />
-            <p className="relative text-[11px] uppercase tracking-[0.16em] text-[var(--wine)]">
-              {t("wine.detail")}
-            </p>
-            <p className="relative mt-2 max-w-[16rem] text-sm text-ink-soft">
-              {t("wine.labelHeroEmpty")}
-            </p>
-          </div>
+          <WineAtmospherePlaceholder
+            type={wine.type}
+            place={[wine.region, wine.country].filter(Boolean).join(" · ") || null}
+          />
         )}
       </div>
 

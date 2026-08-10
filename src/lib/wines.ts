@@ -262,3 +262,30 @@ export function typeAccent(type: string): string {
   }
   return "#6a1a28"; /* wine */
 }
+
+/** Atmosphere placeholder family when there is no real label photo. */
+export type WineAtmosphereKind =
+  | "tinto"
+  | "blanco"
+  | "rosado"
+  | "espumoso"
+  | "otro";
+
+export function wineAtmosphereKind(type: string): WineAtmosphereKind {
+  const t = type.toLowerCase();
+  if (t.includes("blanc") || t.includes("white")) return "blanco";
+  if (t.includes("ros")) return "rosado";
+  if (
+    t.includes("espum") ||
+    t.includes("spark") ||
+    t.includes("cava") ||
+    t.includes("champ") ||
+    t.includes("prosecco")
+  ) {
+    return "espumoso";
+  }
+  if (t.includes("tint") || t.includes("red") || t.includes("negro")) {
+    return "tinto";
+  }
+  return "otro";
+}

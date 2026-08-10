@@ -357,6 +357,8 @@ export const es = {
     whatStory: "¿Qué cuenta esta botella?",
     storyInvite: "Cuenta la historia de esta botella.",
     labelHeroEmpty: "Sin foto de etiqueta aún.",
+    atmosphereHint: "Sin etiqueta · imagen orientativa",
+    atmosphereAlt: "Imagen orientativa de vino {type}",
     lastQuery: "Última consulta: {date}",
     telling: "Contando…",
     tellWineStory: "Contar la historia de este vino",

@@ -369,6 +369,8 @@ export const en = {
     whatStory: "What does this bottle have to say?",
     storyInvite: "Tell this bottle’s story.",
     labelHeroEmpty: "No label photo yet.",
+    atmosphereHint: "No label · suggestive image",
+    atmosphereAlt: "Suggestive image for {type} wine",
     lastQuery: "Last lookup: {date}",
     telling: "Telling…",
     tellWineStory: "Tell this wine’s story",

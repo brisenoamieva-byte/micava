@@ -371,6 +371,7 @@ export const en = {
     labelHeroEmpty: "No label photo yet.",
     atmosphereHint: "No label · suggestive image",
     atmosphereAlt: "Suggestive image for {type} wine",
+    atmosphereAddPhoto: "Add a label photo",
     lastQuery: "Last lookup: {date}",
     telling: "Telling…",
     tellWineStory: "Tell this wine’s story",

@@ -214,6 +214,7 @@ export function WineDetail({
           region: wine.region,
           type: wine.type,
           grape: wine.grape,
+          aging: wine.aging,
           vintage: wine.vintage,
           ...(countryCode ? { countryCode } : {}),
         }),

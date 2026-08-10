@@ -17,6 +17,7 @@ type Body = {
   region?: string;
   type?: string;
   grape?: string;
+  aging?: string;
   vintage?: number | null;
   countryCode?: string | null;
   marketCountry?: string | null;
@@ -63,6 +64,7 @@ export async function POST(request: Request) {
       region: typeof body.region === "string" ? body.region : "",
       type: typeof body.type === "string" ? body.type : "",
       grape: typeof body.grape === "string" ? body.grape : "",
+      aging: typeof body.aging === "string" ? body.aging : "",
       vintage: body.vintage ?? null,
     },
     market,

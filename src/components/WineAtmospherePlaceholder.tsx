@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useId } from "react";
 import { useT, wineTypeLabel, useLocale } from "@/lib/i18n";
 import { wineAtmosphereKind, type WineAtmosphereKind } from "@/lib/wines";
@@ -51,14 +52,14 @@ export function WineAtmospherePlaceholder({
       ) : null}
       <div className="wine-atmosphere__stage">
         <div className="wine-atmosphere__mark-wrap">
-          {/* Exact brand silhouette — same asset as nav mark */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src="/brand/cavatale-mark.png"
             alt=""
-            className="wine-atmosphere__mark"
             width={160}
             height={160}
+            className="wine-atmosphere__mark"
+            priority
+            sizes="(max-width: 640px) 24vw, 124px"
           />
         </div>
         <div className="wine-atmosphere__caption">

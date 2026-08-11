@@ -864,14 +864,14 @@ export const en = {
     privacyTitle: "Privacy",
   },
   foodPair: {
-    title: "What should I open?",
-    lead: "Tell Cavatale what you’re eating and it picks the best bottle from your cellar.",
-    dishLabel: "Your meal",
+    title: "Wine for the table",
+    lead: "Tell Cavatale what’s on the table and it picks the best bottle from your cellar.",
+    dishLabel: "Your dish",
     placeholder:
       "E.g. grilled steak with salad, creamy pasta, sushi at home…",
     submit: "Recommend from my cellar",
     thinking: "Thinking…",
-    needDish: "Tell me what you’re eating.",
+    needDish: "Describe the dish or meal.",
     emptyCellar: "Your cellar is empty. Add bottles first.",
     failed: "Couldn’t pick a wine. Try again.",
     timeout: "That took too long. Try again.",

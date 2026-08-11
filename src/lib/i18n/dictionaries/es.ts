@@ -852,14 +852,14 @@ export const es = {
     privacyTitle: "Privacidad",
   },
   foodPair: {
-    title: "¿Qué vino abro?",
-    lead: "Cuéntale a Cavatale qué vas a comer y te recomienda la mejor botella de tu cava.",
-    dishLabel: "Tu comida",
+    title: "Vino para la mesa",
+    lead: "Di qué hay en la mesa y Cavatale elige la mejor botella de tu cava.",
+    dishLabel: "Tu plato",
     placeholder:
       "Ej. arrachera a la parrilla con ensalada, pasta alfredo, sushi en casa…",
     submit: "Recomendar de mi cava",
     thinking: "Pensando…",
-    needDish: "Escribe qué vas a comer.",
+    needDish: "Escribe el plato o la comida.",
     emptyCellar: "Tu cava está vacía. Agrega botellas primero.",
     failed: "No pude elegir un vino. Intenta de nuevo.",
     timeout: "Tardó demasiado. Intenta de nuevo.",

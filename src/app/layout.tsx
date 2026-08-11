@@ -80,6 +80,14 @@ export default function RootLayout({
       lang="es"
       className={`${outfit.variable} ${cormorant.variable} h-full`}
     >
+      <head>
+        <link
+          rel="preload"
+          href="/brand/cavatale-mark.png"
+          as="image"
+          type="image/png"
+        />
+      </head>
       <body className="min-h-full antialiased">
         <LocaleProvider>
           <AuthProvider>

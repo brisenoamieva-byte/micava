@@ -963,6 +963,7 @@ Pregunta del eje Cavatale: ¿qué tan fuerte es esta botella como elección de c
 IDENTIDAD: clasifica ESTA línea + crianza + uva + cosecha. Misma bodega ≠ misma craft/distinctiveness.
 Si la ficha trae crianza (Joven/Crianza/Reserva…), agingTier debe alinearse a esa ficha — no infles a reservaPlus.
 Misma botella + mismos hechos → MISMOS enums. Sé PRECISO (ni inflar ni castigar). Estabilidad > creatividad.
+ANTI-INVENCIÓN: no inventes fundadores, hermanos ni biografías. Si no conoces gente real de ESA casa, people=none|generic y peopleCite="". Nunca «hermanos + apellido de la bodega» por etimología.
 
 Devuelve SOLO JSON:
 ratingEvidence {craft, people, placeFacts, tellability, distinctiveness, agingTier, craftCite, peopleCite, placeCite, tellCite, distinctCite}
@@ -971,19 +972,19 @@ ratingEvidence {craft, people, placeFacts, tellability, distinctiveness, agingTi
 1) Commodity / supermercado sin gente ni lugar propio (Faustino entry, Campo Viejo entry):
    craft=basic|sound, people=none|generic, placeFacts=regionOnly, tellability=mild|none, distinctiveness=commodity|typical.
 2) Línea de ENTRADA de casa seria (ej. Finca Resalso / Emilio Moro joven-entry; Celeste entry):
-   craft=sound (NO fine). people=named si la casa tiene nombre propio (Emilio Moro, Torres…).
+   craft=sound (NO fine). people=named SOLO si el nombre público es real y conocido (Emilio Moro, Torres…).
    placeFacts=bottleSpecific solo con pueblo/viñedo citado (Pesquera…); si solo “Ribera” → regionOnly.
    tellability=mild|strong. distinctiveness=typical (NO distinct/rare: es la línea accesible).
 3) Casa seria de DO con pueblo/milla de oro / viñedo propio + línea ALTA (Lleiroso Valbuena, Malleolus, iconos):
    craft=sound|fine según ESA línea. placeFacts=bottleSpecific con pueblo/paraje.
-   people=named con fundador/familia. tellability=mild|strong. distinctiveness=typical|distinct.
+   people=named solo con fundador/familia VERIFICABLE. tellability=mild|strong. distinctiveness=typical|distinct.
 4) Boutique íntima con parcela + vínculo humano rico: intimate/rich/magnetic solo con citas reales.
-5) Prohibido: outstanding/rare por marketing; prohibido tratar Resalso/entry como fine+distinct; prohibido bajar a people=none una casa con nombre público.
+5) Prohibido: outstanding/rare por marketing; prohibido tratar Resalso/entry como fine+distinct; prohibido inventar people=named sin certeza.
 
 ### Consistencia
 - Si hay evidencia previa y los hechos públicos no cambiaron, REUTILIZA los mismos enums.
-- Corrige evidencia previa SOLO si omitió nombres o lugar concreto públicos, o si infló entry→fine.
-- Citas: frases cortas factuales; "" solo si no hay hecho.`;
+- Corrige evidencia previa SOLO si omitió nombres o lugar concreto públicos VERIFICABLES, o si infló entry→fine.
+- Citas: frases cortas factuales; "" si no hay hecho. No inventes citas.`;
 
 export const CAVATALE_EVIDENCE_RESPONSE_SCHEMA: Record<string, unknown> = {
   type: "OBJECT",
@@ -1067,7 +1068,8 @@ craft: unknown / basic / sound / fine / outstanding
 - outstanding casi nunca (icono de categoría).
 
 people: none / generic / named / rich
-- named exige nombre propio real (fundador, familia, enólogo).
+- named exige nombre propio real (fundador, familia, enólogo) que conozcas con certeza.
+- PROHIBIDO inventar «hermanos/familia + apellido de la bodega» por etimología. Sin certeza → people=none|generic y peopleCite "".
 
 placeFacts: none / regionOnly / bottleSpecific / intimate
 - bottleSpecific si hay pueblo (Valbuena), milla de oro, viñedo propio, paraje — NO basta “Ribera del Duero” genérica.
@@ -1077,11 +1079,11 @@ distinctiveness: commodity / typical / distinct / rare
 agingTier: none / entry / aged / reservaPlus
 
 ### Anti-inflado y anti-castigo
-- Sin cita → el servidor degrada. No inventes citas.
+- Sin cita → el servidor degrada. No inventes citas ni biografías.
 - Misma evidencia → mismos enums.
 - No regales outstanding/rich/magnetic/rare.
 - Línea de entrada de casa seria (Finca Resalso / Emilio Moro entry): craft=sound, distinctiveness=typical, people=named. NO fine+distinct.
 - No trates como commodity una bodega seria de pueblo/milla de oro con proyecto real.
-- Casa con fundador público → people=named con cita.
+- Casa con fundador público VERIFICABLE → people=named con cita real. Si no estás seguro del nombre → no inventes; people=none|generic.
 - Si la evidencia previa ya era precisa y los hechos no cambiaron → mismos enums (estabilidad).
 - NUNCA menciones Vivino en summary/curiosity/talkHook/pairingNote.`;

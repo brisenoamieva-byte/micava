@@ -45,12 +45,15 @@ const USAGE_ROUTE = "research-wine";
 
 const SYSTEM = `Eres el narrador y crítico de Cavatale: conviertes una botella de una cava personal en algo que la gente QUIERE escuchar y contar, y clasificas evidencia para el Rating Cavatale oficial.
 
-El clic "Contar historia" debe valer la pena. Prohibido sonar a ficha de tienda, catálogo Vivino o párrafo de Wikipedia sobre la denominación. Escribe como quien acaba de descubrir un secreto y lo comparte en la mesa: calidez, precisión, un toque de teatro.
+Regla #0 — VERDAD antes que teatro: está PROHIBIDO inventar. Si no sabes un hecho, no lo digas. Una historia corta y honesta vale más que una inventada “para impresionar”.
+No inventes dueños, fundadores, “hermanos/familia X”, enólogos, fechas, premios, anécdotas ni biografías. En especial: NO fabriques parentesco solo porque el apellido coincide con el nombre de la bodega (p. ej. nunca digas «los hermanos Barrigón» solo porque la bodega se llama Barrigón).
+
+El clic "Contar historia" debe valer la pena. Prohibido sonar a ficha de tienda, catálogo Vivino o párrafo de Wikipedia sobre la denominación. Escribe con calidez y precisión — teatro solo si está anclado en hechos que sí conozcas.
 
 Prioridad narrativa (en este orden):
-1) LAS PERSONAS — dueños, fundadores, familia, enólogo/a, generaciones. Nombres propios, vínculos (padre/hijo, pareja, inmigrantes, herencia), decisiones humanas o anécdotas íntimas van AL CENTRO.
-2) EL LUGAR Y LA BOTELLA — viñedo concreto, cosecha/añada, estilo, por qué importa ESTA botella (no "la región en general").
-3) Solo si faltan personas concretas: un detalle humano del proyecto o del paisaje vivido — nunca un folleto genérico de la DO.
+1) HECHOS VERIFICABLES de ESTA botella/bodega — estilo, añada, crianza, lugar concreto, proyecto conocido.
+2) PERSONAS — solo si tienes certeza razonable e independiente (fundador/a, enólogo/a, dueño con nombre público). Si no, OMITE personas; no rellenes.
+3) Nunca un folleto genérico de la DO ni marketing vacío.
 
 Responde SOLO con JSON válido (sin markdown) con estas claves:
 ratingEvidence, ratingParts, cavataleRating, vivino, price, confidence, summary, curiosity, talkHook, pairings, pairingNote.
@@ -61,22 +64,21 @@ ${CAVATALE_RATING_RUBRIC_PROMPT}
 
 - vivino (number|null): mejor estimación del promedio comunitario 1–5 de ESTA botella; si no hay señal, null. Independiente de cavataleRating. Nunca inventes un Vivino “bonito”.
 - price (number|null): déjalo null. El servidor busca precio de menudeo con web search (geo del usuario) y lo guarda en MXN. No inventes precios de memoria.
-- confidence: "high" | "medium" | "low". "high" SOLO si la identidad es clara Y (si das vivino) la estimación es fiable.
+- confidence: "high" | "medium" | "low". "high" SOLO si la identidad es clara Y los hechos narrativos que afirmas son los que sí conoces (no por inventar personas). Si dudaste de gente/fechas, usa "medium" o "low".
 
 ## Campos narrativos — coherencia de UNA sola botella
 
-Los cuatro campos hablan del MISMO vino concreto. Misma bodega, misma gente, mismos hechos. No mezcles datos de otra etiqueta ni inventes para rellenar.
+Los cuatro campos hablan del MISMO vino concreto. Misma bodega, mismos hechos. No mezcles datos de otra etiqueta ni inventes para rellenar.
 
-- summary (string): LA HISTORIA ÍNTIMA — 2–4 frases cortas en español MX/LatAm (máx. ~80 palabras).
-  Abre con persona, gesto o detalle vivo de ESTA botella/bodega — NUNCA con denominación, región o tipología ("X es una de las denominaciones más…", "Este tinto de Ribera…", "Se elabora en…").
-  Preferencia fuerte: fundador/a, dueños, familia, enólogo/a. Nombres cuando los sepas.
-  Si NO conoces personas de ESA bodega: 2–3 frases honestas con lo más concreto que sí sepas (lugar, proyecto, añada). Di la incertidumbre con naturalidad. NO inventes biografías.
-  Incluye al menos un detalle concreto (nombre, año, viñedo, decisión, anécdota).
-  Prohibido wine-speak vacío: "equilibrio perfecto", "expresión del terroir", "final largo y sedoso", "notas de fruta roja y especias" sin anclaje humano.
+- summary (string): LA HISTORIA — 2–4 frases cortas (máx. ~80 palabras).
+  Abre con un detalle vivo y VERIFICABLE de ESTA botella/bodega — NUNCA con denominación/región genérica ("X es una de las denominaciones más…", "Este tinto de Ribera…", "Se elabora en…").
+  Nombres de personas SOLO con certeza. Si no los conoces: 2–3 frases honestas con lo concreto que sí sepas (lugar, estilo, añada, proyecto). Di la incertidumbre con naturalidad.
+  Detalle concreto permitido: añada, crianza, viñedo/pueblo conocido, estilo — NO un nombre inventado.
+  Prohibido wine-speak vacío: "equilibrio perfecto", "expresión del terroir", "final largo y sedoso", "notas de fruta roja y especias" sin anclaje factual.
 
-- curiosity (string): EL DATO QUE SE REPITE — 1 frase (máx. 2, ~40 palabras). Anecdota de personas o hecho sorprendente del lugar/bodega. Debe hacer decir "¿en serio?". Distinto del summary (no parafrasear). Prohibido lo obvio ("es un tinto de la región").
+- curiosity (string): EL DATO QUE SE REPITE — 1 frase (máx. 2, ~40 palabras). Hecho sorprendente VERIFICABLE del lugar/bodega/botella. Distinto del summary. Prohibido lo obvio y lo inventado. Si no tienes un dato sólido, una frase corta honesta sobre el estilo o el lugar concreto — nunca un parentesco fabricado.
 
-- talkHook (string): EL GANCHO DE MESA — 1 frase corta. Provocación sobre gente/historia humana. Evita preguntas de cata ("¿notas fruta o madera?"). Distinto de summary y curiosity.
+- talkHook (string): EL GANCHO DE MESA — 1 frase corta anclada en un hecho real (no inventes provocaciones biográficas). Evita preguntas de cata ("¿notas fruta o madera?"). Distinto de summary y curiosity.
 
 - pairings (string[]): 4 platillos CONCRETOS para ESTA botella, anclados al MERCADO del usuario (ver bloque de mercado). Piensa en lo que alguien pediría o cocinaría HOY con esta botella (casa, restaurante, cena informal) — no en un catálogo de platillos típicos/folclóricos del país. No listas genéricas de uva. No sugieras cocina solo-mexicana regional si el usuario NO está en México.
 
@@ -94,9 +96,9 @@ NO empieces con variantes de:
 
 ## Reglas de oro
 
-1. Personas reales > detalle de botella/lugar > marketing de denominación.
-2. Nunca inventes dueños, fundadores, enólogos, fechas familiares ni premios.
-3. Si la ficha es incompleta o la identidad es dudosa: confidence "low" o "medium", ratingEvidence null si hace falta, summary corto y honesto — no rellenes con catálogo.
+1. Verdad > teatro. Hechos de botella/lugar > personas (solo si las conoces) > marketing de denominación.
+2. Nunca inventes dueños, fundadores, enólogos, parentescos, fechas familiares ni premios. No “hermanos/familia + apellido de la bodega” por etimología.
+3. Si la ficha es incompleta o la identidad es dudosa: confidence "low" o "medium", ratingEvidence null si hace falta, summary corto y honesto — no rellenes con catálogo ni biografías.
 4. summary, curiosity, talkHook y pairings NO repiten la misma idea.
 5. No digas que consultaste Vivino/internet en vivo.
 6. Idioma natural (México/LatAm por defecto en es; inglés natural en en). Sin emojis. Sin markdown dentro de los strings.
@@ -199,8 +201,8 @@ MODO ENCUENTRO (mesa de esta noche):
 Esta consulta viene de un restaurante / mesa ahora — no de una cava en casa.
 - talkHook es EL HÉROE: exactamente 1 frase (nunca 2) que se diga EN VOZ ALTA con la copa en la mano.
 - Tono: oral, provocador, humano — para esta mesa esta noche. No suena a pregunta de cata ni a tip genérico de sommelier.
-- Preferí: un secreto de gente, una decisión íntima, un "¿sabían que…?" anclado en hechos reales de ESTA botella.
-- Prohibido: "¿notas…?", "busca aromas de…", "ideal para maridar con…", preguntas de degustación, ganchos genéricos de región/DO.
+- Preferí un "¿sabían que…?" anclado SOLO en hechos reales de ESTA botella. Si no conoces un secreto de gente, usa un hecho concreto de lugar/estilo/añada — no inventes biografías.
+- Prohibido: "¿notas…?", "busca aromas de…", "ideal para maridar con…", preguntas de degustación, ganchos genéricos de región/DO, parentescos inventados.
 - summary y curiosity siguen siendo el relato completo; talkHook es lo que se lanza primero a la mesa.`;
 
 function resolveMode(raw: Body["mode"]): ResearchMode {
@@ -226,22 +228,25 @@ function buildUserPrompt(identity: string, mode: ResearchMode): string {
 
   const opener =
     mode === "encounter"
-      ? "Esta botella está en la mesa AHORA (restaurante / cena). Prioriza a las personas detrás del vino (fundadores, dueños, familia, enólogo/a) si las conoces; si no, sé honesto y cuenta lo más íntimo y concreto que sí sepas — sin inventar."
-      : "Esta botella está a punto de abrirse (o regalarse). Prioriza a las personas detrás del vino (fundadores, dueños, familia, enólogo/a) si las conoces; si no, sé honesto y cuenta lo más íntimo y concreto que sí sepas — sin inventar.";
+      ? "Esta botella está en la mesa AHORA (restaurante / cena). Cuenta solo hechos que conozcas de ESTA botella/bodega. Nombra personas únicamente con certeza; si no, omítelas. Nunca inventes hermanos/familia a partir del nombre de la bodega."
+      : "Esta botella está a punto de abrirse (o regalarse). Cuenta solo hechos que conozcas de ESTA botella/bodega. Nombra personas únicamente con certeza; si no, omítelas. Nunca inventes hermanos/familia a partir del nombre de la bodega.";
 
   return `${opener}
 
 Dame JSON con:
-1) ratingEvidence puede ir, pero el SERVIDOR clasifica evidencia en un paso aparte (tú prioriza el relato).
+1) ratingEvidence puede ir, pero el SERVIDOR clasifica evidencia en un paso aparte (tú prioriza el relato VERAZ).
 2) ratingParts opcional; cavataleRating libre lo IGNORA el servidor.
-3) summary (historia íntima; NUNCA abrir con denominación/región genérica), curiosity, ${talkHookHint}, pairings + pairingNote.
+3) summary (historia veraz; NUNCA abrir con denominación/región genérica; NUNCA inventar gente), curiosity, ${talkHookHint}, pairings + pairingNote.
 4) vivino solo si lo conoces bien; price siempre null (precio lo busca el servidor con web search).
 No metas Vivino en los textos narrativos.
 ${mode === "encounter" ? ENCOUNTER_TALKHOOK_BIAS : ""}
 Ficha:\n\n${identity}`;
 }
 
-function finalizeResearch(content: string): {
+function finalizeResearch(
+  content: string,
+  opts?: { winery?: string | null }
+): {
   research: Omit<KimiResearch, "kimiCheckedAt">;
   thinStory: boolean;
   ratingParts: ReturnType<typeof parseKimiResearchFromModelText>["ratingParts"];
@@ -250,7 +255,8 @@ function finalizeResearch(content: string): {
   >["ratingEvidence"];
 } {
   const parsed = polishKimiResearchNarratives(
-    parseKimiResearchFromModelText(content)
+    parseKimiResearchFromModelText(content),
+    { winery: opts?.winery }
   );
   const { ratingParts, ratingEvidence, ...research } = parsed;
   const quality = assessKimiStoryQuality(research);
@@ -401,7 +407,8 @@ async function callStoryLlm(
         system,
         userText: userContent,
         maxTokens: opts?.maxTokens ?? 8192,
-        temperature: opts?.temperature ?? 0.6,
+        // Low temperature: storytelling must stay factual, not creative fiction.
+        temperature: opts?.temperature ?? 0.25,
         responseSchema: RESEARCH_WINE_RESPONSE_SCHEMA,
       });
       return { ok: true, content: out.content, usage: out.usage };
@@ -433,9 +440,9 @@ async function callStoryLlm(
       body: JSON.stringify({
         model: llm.model || KIMI_MODEL,
         thinking: { type: "disabled" },
-        temperature: 0.6,
+        temperature: opts?.temperature ?? 0.25,
         response_format: { type: "json_object" },
-        max_tokens: 2048,
+        max_tokens: opts?.maxTokens ?? 2048,
         messages: [
           { role: "system", content: system },
           { role: "user", content: userContent },
@@ -819,27 +826,31 @@ export async function POST(request: Request) {
     );
   }
 
+  const storyWinery = body.winery ?? "";
+
   let finalized: ReturnType<typeof finalizeResearch> | null = null;
   let storyContent = first.content;
   try {
-    finalized = finalizeResearch(storyContent);
+    finalized = finalizeResearch(storyContent, { winery: storyWinery });
   } catch (firstParseError) {
     // Gemini Flash sometimes emits invalid JSON; one constrained retry, then Kimi.
     const retryPrompt =
       userPrompt +
-      `\n\nIMPORTANTE: Tu JSON anterior era inválido. Responde SOLO con un único objeto JSON válido. En summary/curiosity/talkHook NO uses comillas dobles internas ni saltos de línea; usa frases cortas.`;
+      `\n\nIMPORTANTE: Tu JSON anterior era inválido. Responde SOLO con un único objeto JSON válido. En summary/curiosity/talkHook NO uses comillas dobles internas ni saltos de línea; usa frases cortas. No inventes personas ni parentescos.`;
 
     let lastDetail = storyContent;
     if (llm.provider === "gemini") {
       const recovered = await callStoryLlm(llm, retryPrompt, locale, marketBlock, {
-        temperature: 0.2,
+        temperature: 0.15,
         maxTokens: 8192,
       });
       primaryStoryUsage = addKimiUsage(primaryStoryUsage, recovered.usage);
       if (recovered.ok) {
         lastDetail = recovered.content;
         try {
-          finalized = finalizeResearch(recovered.content);
+          finalized = finalizeResearch(recovered.content, {
+            winery: storyWinery,
+          });
           storyContent = recovered.content;
         } catch {
           /* fall through to Kimi */
@@ -855,7 +866,9 @@ export async function POST(request: Request) {
         if (kimiOut.ok) {
           lastDetail = kimiOut.content;
           try {
-            finalized = finalizeResearch(kimiOut.content);
+            finalized = finalizeResearch(kimiOut.content, {
+              winery: storyWinery,
+            });
             storyContent = kimiOut.content;
           } catch (e) {
             await flushUsageMeters();

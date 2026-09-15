@@ -13,6 +13,7 @@ import { FoodPairModal } from "@/components/FoodPairModal";
 import { FiltersBar } from "@/components/FiltersBar";
 import { FirstRunGuide } from "@/components/FirstRunGuide";
 import { InstallAppHint } from "@/components/InstallAppHint";
+import { KimiUsageHint } from "@/components/KimiUsageHint";
 import { MoveWineSheet } from "@/components/MoveWineSheet";
 import { RecentHistory } from "@/components/RecentHistory";
 import { ResizableDesktopPanels } from "@/components/ResizableDesktopPanels";
@@ -1144,6 +1145,7 @@ export default function CavaPage() {
               ? t("cava.savedCloudEmail", { email: user.email })
               : t("cava.savedCloud")}
           </span>
+          {user ? <KimiUsageHint /> : null}
         </div>
           </>
         )}

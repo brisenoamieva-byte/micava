@@ -240,6 +240,7 @@ Trátalo como una reclamación/disputa a contrastar — NO como hecho confirmado
 - Verifica contra lo que sí sepas de ESTA botella/bodega. Si el reclamo parece correcto y verificable, corrige el error.
 - Si no puedes verificarlo, dilo con naturalidad en el relato (o omite el dato dudoso); no lo presentes como certeza.
 - NUNCA inventes personas, fechas, premios, anécdotas ni biografías para “cumplir” la nota.
+- En especial: no inventes «hermanos/familia + apellido de la bodega» por etimología.
 - No reescribas la historia solo para agradar: prioriza hechos conocidos y honestidad.
 - Devuelve el JSON completo otra vez.`;
 }
@@ -503,6 +504,103 @@ function trimNarrativeFluff(text: string | null): string | null {
   return t || null;
 }
 
+const WINERY_STOPWORDS = new Set([
+  "bodega",
+  "bodegas",
+  "vina",
+  "viña",
+  "vinas",
+  "viñas",
+  "cellar",
+  "cellars",
+  "winery",
+  "wineries",
+  "domaine",
+  "chateau",
+  "château",
+  "casa",
+  "hacienda",
+  "finca",
+  "estate",
+  "the",
+  "de",
+  "del",
+  "la",
+  "el",
+  "los",
+  "las",
+  "y",
+  "and",
+  "wine",
+  "wines",
+  "vinos",
+]);
+
+function normalizeToken(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+/** Significant tokens from a winery name (skip "Bodegas", "Viña", etc.). */
+export function wineryIdentityTokens(winery: string | null | undefined): string[] {
+  if (!winery?.trim()) return [];
+  return winery
+    .split(/[\s/|,.–—-]+/)
+    .map((t) => normalizeToken(t))
+    .filter((t) => t.length >= 4 && !WINERY_STOPWORDS.has(t));
+}
+
+/**
+ * Drop sentences that invent sibling kinship from the winery name
+ * (classic LLM pattern: «hermanos Barrigón» because bodega = Barrigón).
+ * Does not invent replacement text — only removes suspect clauses.
+ * Does NOT strip "familia X" (often true for famous houses).
+ */
+export function scrubLikelyFabricatedKinship(
+  text: string | null,
+  winery: string | null | undefined
+): string | null {
+  if (!text?.trim()) return text;
+  const tokens = wineryIdentityTokens(winery);
+  if (tokens.length === 0) return text;
+
+  const looksFabricated = (sentence: string): boolean => {
+    const norm = normalizeToken(sentence);
+    return tokens.some((t) => {
+      if (!norm.includes(t)) return false;
+      return (
+        norm.includes(`hermanos${t}`) ||
+        norm.includes(`hermanas${t}`) ||
+        norm.includes(`brothers${t}`) ||
+        norm.includes(`sisters${t}`) ||
+        norm.includes(`foundedbythebrothers${t}`) ||
+        norm.includes(`foundedbybrothers${t}`) ||
+        norm.includes(`foundedbythesisters${t}`) ||
+        norm.includes(`fundadaporloshermanos${t}`) ||
+        norm.includes(`fundadaporhermanos${t}`) ||
+        norm.includes(`fundadoporloshermanos${t}`) ||
+        norm.includes(`fundadoporhermanos${t}`) ||
+        norm.includes(`fundadasporlashermanas${t}`)
+      );
+    });
+  };
+
+  const parts = text
+    .split(/(?<=[.!?…])\s+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (parts.length === 0) return text;
+
+  const kept = parts.filter((sentence) => !looksFabricated(sentence));
+
+  if (kept.length === parts.length) return text.trim().replace(/\s+/g, " ");
+  const joined = kept.join(" ").trim().replace(/\s+/g, " ");
+  return joined || null;
+}
+
 export type StoryQuality = {
   /** Thin or catalog-like; UI may hint to retry. */
   thin: boolean;
@@ -513,6 +611,7 @@ export type StoryQuality = {
 /**
  * Light quality gate for Contar historia narratives.
  * Does not invent content — only flags / trims fluff.
+ * Short honest stories are OK; do not push retries that encourage fabrication.
  */
 export function assessKimiStoryQuality(
   research: Pick<
@@ -524,18 +623,19 @@ export function assessKimiStoryQuality(
   const curiosity = research.kimiCuriosity?.trim() ?? "";
   const hook = research.kimiTalkHook?.trim() ?? "";
 
-  const missingCore = !summary || summary.length < 80;
+  // Empty / near-empty is a problem; short-but-honest (~40+) is fine.
+  const missingCore = !summary || summary.length < 40;
   const genericOpen = summary ? GENERIC_OPENING.test(summary) : false;
   const wineSpeak = summary ? EMPTY_WINE_SPEAK.test(summary) : false;
-  const thinCuriosity = !curiosity || curiosity.length < 28;
-  const thinHook = !hook || hook.length < 18;
+  const thinCuriosity = !curiosity || curiosity.length < 20;
+  const thinHook = !hook || hook.length < 12;
   const repeated =
     (summary && curiosity && overlapRatio(summary, curiosity) >= 0.55) ||
     (summary && hook && overlapRatio(summary, hook) >= 0.55) ||
     (curiosity && hook && overlapRatio(curiosity, hook) >= 0.6);
 
-  const shouldRetry =
-    missingCore || genericOpen || wineSpeak || (thinCuriosity && thinHook);
+  // Retry only for empty/catalog filler — not for "short but factual".
+  const shouldRetry = missingCore || genericOpen || wineSpeak;
 
   const thin =
     shouldRetry ||
@@ -547,7 +647,7 @@ export function assessKimiStoryQuality(
   return { thin, shouldRetry };
 }
 
-/** Soft polish after parse — never invents facts. */
+/** Soft polish after parse — never invents facts; may drop suspect kinship. */
 export function polishKimiResearchNarratives<
   T extends Pick<
     KimiResearch,
@@ -557,12 +657,19 @@ export function polishKimiResearchNarratives<
     | "kimiPairingNote"
     | "kimiPairings"
   >,
->(research: T): T {
+>(
+  research: T,
+  opts?: { winery?: string | null }
+): T {
+  const winery = opts?.winery ?? null;
+  const scrub = (t: string | null) =>
+    scrubLikelyFabricatedKinship(trimNarrativeFluff(t), winery);
+
   return {
     ...research,
-    kimiSummary: trimNarrativeFluff(research.kimiSummary),
-    kimiCuriosity: trimNarrativeFluff(research.kimiCuriosity),
-    kimiTalkHook: trimNarrativeFluff(research.kimiTalkHook),
+    kimiSummary: scrub(research.kimiSummary),
+    kimiCuriosity: scrub(research.kimiCuriosity),
+    kimiTalkHook: scrub(research.kimiTalkHook),
     kimiPairingNote: trimNarrativeFluff(research.kimiPairingNote),
     kimiPairings: research.kimiPairings
       ? research.kimiPairings

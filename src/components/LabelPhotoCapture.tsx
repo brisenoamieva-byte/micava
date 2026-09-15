@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ThinkingIndicator } from "@/components/ThinkingIndicator";
 import { useT } from "@/lib/i18n";
 import {
@@ -25,6 +26,7 @@ type Props = {
 /**
  * Stage up to 2 label photos (front + optional back) before identifying.
  * Prefer rear camera via getUserMedia (facingMode environment).
+ * Live preview opens as a full-viewport overlay (no scroll inside the modal).
  */
 export function LabelPhotoCapture({
   images,
@@ -44,11 +46,14 @@ export function LabelPhotoCapture({
   const [staging, setStaging] = useState(false);
   const [liveOpen, setLiveOpen] = useState(false);
   const [liveError, setLiveError] = useState<string | null>(null);
+  const [portalReady, setPortalReady] = useState(false);
 
   useEffect(() => {
+    setPortalReady(true);
     return () => {
       stopLiveStream();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- unmount cleanup only
   }, []);
 
   useEffect(() => {
@@ -57,6 +62,15 @@ export function LabelPhotoCapture({
     void videoRef.current.play().catch(() => {
       /* autoplay may need a gesture — already in gesture path */
     });
+  }, [liveOpen]);
+
+  useEffect(() => {
+    if (!liveOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
   }, [liveOpen]);
 
   function stopLiveStream() {
@@ -220,6 +234,62 @@ export function LabelPhotoCapture({
 
   const canIdentify = images.length > 0 && !scanning && !staging && !liveOpen;
   const busy = scanning || staging;
+  const liveSlotLabel =
+    targetSlot === 1
+      ? t("scan.photoBack")
+      : targetSlot === 0
+        ? t("scan.photoFront")
+        : images.length === 0
+          ? t("scan.photoFront")
+          : t("scan.photoBack");
+
+  const liveOverlay =
+    portalReady && liveOpen
+      ? createPortal(
+          <div
+            className="fixed inset-0 z-[120] flex flex-col bg-black"
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("scan.takePhoto")}
+          >
+            <div className="relative flex min-h-0 flex-1 flex-col">
+              <div className="pointer-events-none absolute inset-x-0 top-0 z-10 bg-gradient-to-b from-black/70 to-transparent px-4 pb-8 pt-[max(0.75rem,env(safe-area-inset-top))]">
+                <p className="text-center text-[11px] uppercase tracking-[0.16em] text-white/85">
+                  {liveSlotLabel}
+                </p>
+              </div>
+              <video
+                ref={videoRef}
+                playsInline
+                muted
+                autoPlay
+                className="h-full min-h-0 w-full flex-1 object-cover"
+                // Mirror off — labels must read normally (rear camera).
+                style={{ transform: "none" }}
+              />
+            </div>
+            <div className="flex shrink-0 gap-2 border-t border-white/15 bg-[rgba(12,10,9,0.96)] px-4 pt-3 pb-[max(0.85rem,env(safe-area-inset-bottom))]">
+              <button
+                type="button"
+                className="btn btn-ghost min-h-[48px] flex-1 border border-[rgba(255,252,247,0.25)] text-[var(--cream)]"
+                onClick={closeLiveCamera}
+                disabled={staging}
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary min-h-[48px] flex-1 disabled:opacity-60"
+                onClick={() => void snapLivePhoto()}
+                disabled={staging}
+              >
+                {staging ? t("scan.scanning") : t("scan.takePhoto")}
+              </button>
+            </div>
+          </div>,
+          document.body
+        )
+      : null;
 
   return (
     <div className="space-y-3">
@@ -309,57 +379,35 @@ export function LabelPhotoCapture({
         })}
       </div>
 
-      {liveOpen || liveError ? (
+      {liveError && !liveOpen ? (
         <div className="overflow-hidden rounded-[12px] border border-[var(--line)] bg-[rgba(20,18,16,0.92)]">
-          {liveOpen ? (
-            <div className="relative aspect-[3/4] w-full bg-black sm:aspect-video">
-              <video
-                ref={videoRef}
-                playsInline
-                muted
-                autoPlay
-                className="h-full w-full object-cover"
-                // Mirror off — labels must read normally (rear camera).
-                style={{ transform: "none" }}
-              />
-            </div>
-          ) : null}
-          {liveError ? (
-            <p className="px-3 py-2 text-xs text-[var(--cream)]" role="alert">
-              {liveError}
-            </p>
-          ) : null}
+          <p className="px-3 py-2 text-xs text-[var(--cream)]" role="alert">
+            {liveError}
+          </p>
           <div className="flex gap-2 p-3">
             <button
               type="button"
               className="btn btn-ghost min-h-[44px] flex-1 border border-[rgba(255,252,247,0.25)] text-[var(--cream)]"
-              onClick={closeLiveCamera}
+              onClick={() => setLiveError(null)}
               disabled={staging}
             >
               {t("common.cancel")}
             </button>
-            {liveOpen ? (
-              <button
-                type="button"
-                className="btn btn-primary min-h-[44px] flex-1 disabled:opacity-60"
-                onClick={() => void snapLivePhoto()}
-                disabled={staging}
-              >
-                {staging ? t("scan.scanning") : t("scan.takePhoto")}
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="btn btn-primary min-h-[44px] flex-1 disabled:opacity-60"
-                onClick={() => void openRearCamera(targetSlot === "next" ? 0 : targetSlot)}
-                disabled={staging}
-              >
-                {t("common.retry")}
-              </button>
-            )}
+            <button
+              type="button"
+              className="btn btn-primary min-h-[44px] flex-1 disabled:opacity-60"
+              onClick={() =>
+                void openRearCamera(targetSlot === "next" ? 0 : targetSlot)
+              }
+              disabled={staging}
+            >
+              {t("common.retry")}
+            </button>
           </div>
         </div>
       ) : null}
+
+      {liveOverlay}
 
       {busy && scanning ? (
         <div

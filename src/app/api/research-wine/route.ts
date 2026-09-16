@@ -28,6 +28,7 @@ import {
 import { extractJsonObject } from "@/lib/scan-label";
 import {
   addKimiUsage,
+  KIMI_API_TEMPERATURE,
   parseKimiUsage,
   recordKimiUsage,
   type KimiTokenUsage,
@@ -317,7 +318,7 @@ async function classifyEvidenceOnce(
       body: JSON.stringify({
         model: llm.model || KIMI_MODEL,
         thinking: { type: "disabled" },
-        temperature: 0,
+        temperature: KIMI_API_TEMPERATURE,
         seed,
         response_format: { type: "json_object" },
         max_tokens: 1024,
@@ -440,7 +441,8 @@ async function callStoryLlm(
       body: JSON.stringify({
         model: llm.model || KIMI_MODEL,
         thinking: { type: "disabled" },
-        temperature: opts?.temperature ?? 0.25,
+        // kimi-k2.6 only accepts 0.6 — ignore lower opts used for Gemini.
+        temperature: KIMI_API_TEMPERATURE,
         response_format: { type: "json_object" },
         max_tokens: opts?.maxTokens ?? 2048,
         messages: [

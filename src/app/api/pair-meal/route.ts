@@ -7,6 +7,7 @@ import {
 } from "@/lib/gemini";
 import {
   addKimiUsage,
+  KIMI_API_TEMPERATURE,
   parseKimiUsage,
   recordKimiUsage,
   type KimiTokenUsage,
@@ -136,7 +137,7 @@ async function callPairLlm(
       body: JSON.stringify({
         model: llm.model || KIMI_MODEL,
         thinking: { type: "disabled" },
-        temperature: 0.4,
+        temperature: KIMI_API_TEMPERATURE,
         response_format: { type: "json_object" },
         max_tokens: 2048,
         messages: [

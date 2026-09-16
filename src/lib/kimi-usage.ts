@@ -5,6 +5,12 @@ export const KIMI_PRICE_IN_PER_M = 0.95;
 export const KIMI_PRICE_OUT_PER_M = 4.0;
 
 /**
+ * kimi-k2.6 rejects any temperature other than 0.6
+ * ("invalid temperature: only 0.6 is allowed for this model").
+ */
+export const KIMI_API_TEMPERATURE = 0.6;
+
+/**
  * Gemini paid-tier list prices (USD per 1M tokens).
  * https://ai.google.dev/gemini-api/docs/pricing
  * Default app model is Flash-Lite (cheap); keep full Flash rates for legacy events.

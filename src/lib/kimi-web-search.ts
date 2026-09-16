@@ -5,6 +5,7 @@
 
 import {
   addKimiUsage,
+  KIMI_API_TEMPERATURE,
   parseKimiUsage,
   type KimiTokenUsage,
 } from "@/lib/kimi-usage";
@@ -126,7 +127,7 @@ export async function kimiChatWithWebSearch(options: {
       const payload = await kimiRequest(apiKey, model, {
         model,
         thinking: { type: "disabled" },
-        temperature: 0,
+        temperature: KIMI_API_TEMPERATURE,
         max_tokens: maxTokens,
         tools: [WEB_SEARCH_TOOL],
         messages,
@@ -188,6 +189,7 @@ export async function kimiChatWithWebSearch(options: {
       const payload = await kimiRequest(apiKey, model, {
         model,
         thinking: { type: "disabled" },
+        temperature: KIMI_API_TEMPERATURE,
         max_tokens: maxTokens,
         messages,
       });

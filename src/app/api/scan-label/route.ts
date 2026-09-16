@@ -3,6 +3,7 @@ import { guardKimiApi } from "@/lib/api-guard";
 import { geminiGenerateJson, resolvePrimaryLlm } from "@/lib/gemini";
 import {
   addKimiUsage,
+  KIMI_API_TEMPERATURE,
   parseKimiUsage,
   recordKimiUsage,
   type KimiTokenUsage,
@@ -215,7 +216,7 @@ async function visionIdentify(
       body: JSON.stringify({
         model: llm.model || KIMI_MODEL,
         thinking: { type: "disabled" },
-        temperature: 0.6,
+        temperature: KIMI_API_TEMPERATURE,
         response_format: { type: "json_object" },
         max_tokens: 2048,
         messages: [

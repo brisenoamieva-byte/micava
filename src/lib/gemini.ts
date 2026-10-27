@@ -101,20 +101,15 @@ function isGemini3Family(model: string): boolean {
   );
 }
 
-function isGeminiFlashLite(model: string): boolean {
-  const m = model.toLowerCase();
-  return m.includes("flash-lite") || m.includes("lite-latest");
-}
-
 /**
- * Lite models: disable thinking (thinkingBudget 0) so output budget isn't eaten.
- * Other Gemini 3: thinkingLevel minimal. Gemini 2.5: thinkingBudget 0.
+ * Gemini 3.5 Flash-Lite rejects `thinkingBudget: 0` (400 INVALID_ARGUMENT).
+ * Use thinkingLevel for all Gemini 3.x; budget 0 only on older 2.x families.
  */
 function thinkingConfigForModel(model: string): Record<string, unknown> {
-  if (isGeminiFlashLite(model) || !isGemini3Family(model)) {
-    return { thinkingBudget: 0 };
+  if (isGemini3Family(model)) {
+    return { thinkingLevel: "minimal" };
   }
-  return { thinkingLevel: "minimal" };
+  return { thinkingBudget: 0 };
 }
 
 function looksLikeCompleteJsonObject(text: string): boolean {

@@ -10,6 +10,9 @@ export type ResolvedLlm = {
   model: string;
 };
 
+/** Current default: Gemini 3.5 Flash-Lite (GA, vision + cheap). */
+export const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite";
+
 /** Prefer Gemini when configured; otherwise Kimi. */
 export function resolvePrimaryLlm(): ResolvedLlm | null {
   const geminiKey = process.env.GEMINI_API_KEY?.trim();
@@ -17,7 +20,7 @@ export function resolvePrimaryLlm(): ResolvedLlm | null {
     return {
       provider: "gemini",
       apiKey: geminiKey,
-      model: process.env.GEMINI_MODEL?.trim() || "gemini-3.1-flash-lite",
+      model: process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL,
     };
   }
   const kimiKey = process.env.KIMI_API_KEY?.trim();
@@ -165,7 +168,7 @@ export async function geminiGenerateJson(options: {
   /** OpenAPI-subset schema; strongly improves JSON validity on Flash models. */
   responseSchema?: Record<string, unknown>;
 }): Promise<{ content: string; usage: KimiTokenUsage | null }> {
-  const model = options.model?.trim() || "gemini-3.1-flash-lite";
+  const model = options.model?.trim() || DEFAULT_GEMINI_MODEL;
   const parts: GeminiPart[] = [];
   for (const url of options.images ?? []) {
     const { mimeType, data } = parseDataUrl(url);
@@ -180,15 +183,17 @@ export async function geminiGenerateJson(options: {
     thinkingConfig: thinkingConfigForModel(model),
   };
 
-  // Gemini 3 docs: leave sampling defaults unless you have a reason.
+  // Gemini 3.x rejects custom sampling (temperature / topP / topK) on several
+  // Flash-Lite endpoints — omit and keep API defaults.
   if (options.temperature != null && !isGemini3Family(model)) {
-    generationConfig.temperature = options.temperature;
-  } else if (options.temperature != null && isGemini3Family(model)) {
-    // Still allow an explicit override (e.g. evidence classify at 0).
     generationConfig.temperature = options.temperature;
   }
 
-  if (options.seed != null && Number.isFinite(options.seed)) {
+  if (
+    options.seed != null &&
+    Number.isFinite(options.seed) &&
+    !isGemini3Family(model)
+  ) {
     generationConfig.seed = Math.floor(options.seed);
   }
 

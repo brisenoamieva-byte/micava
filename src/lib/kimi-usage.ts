@@ -132,7 +132,7 @@ export function estimateUsdForProvider(
 ): number {
   // Provider-level estimate uses current defaults (Lite for Gemini, K2.6 for Kimi).
   const model =
-    provider === "gemini" ? "gemini-3.1-flash-lite" : "kimi-k2.6";
+    provider === "gemini" ? "gemini-3.5-flash-lite" : "kimi-k2.6";
   return estimateUsdForModel(model, usage);
 }
 

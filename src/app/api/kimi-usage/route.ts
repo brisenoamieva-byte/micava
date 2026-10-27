@@ -148,7 +148,7 @@ export async function GET() {
       gemini: {
         inputPerMillionUsd: GEMINI_FLASH_LITE_PRICE_IN_PER_M,
         outputPerMillionUsd: GEMINI_FLASH_LITE_PRICE_OUT_PER_M,
-        model: "gemini-3.1-flash-lite",
+        model: "gemini-3.5-flash-lite",
       },
     },
   });

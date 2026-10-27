@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { guardKimiApi } from "@/lib/api-guard";
-import { geminiGenerateJson, resolvePrimaryLlm } from "@/lib/gemini";
+import {
+  geminiGenerateJson,
+  resolveKimiFallback,
+  resolvePrimaryLlm,
+} from "@/lib/gemini";
 import {
   addKimiUsage,
   KIMI_API_TEMPERATURE,
@@ -279,6 +283,7 @@ export async function POST(request: Request) {
   }
 
   let sessionUsage: KimiTokenUsage | null = null;
+  let usedModel = llm.model;
   let vision: {
     fields: ScanLabelFields;
     extras: EnrichHint;
@@ -287,27 +292,68 @@ export async function POST(request: Request) {
   try {
     vision = await visionIdentify(llm, imageDataUrls);
     sessionUsage = addKimiUsage(sessionUsage, vision.usage);
-  } catch (e) {
+  } catch (primaryError) {
     const errUsage =
-      e && typeof e === "object" && "usage" in e
-        ? ((e as { usage?: KimiTokenUsage | null }).usage ?? null)
+      primaryError && typeof primaryError === "object" && "usage" in primaryError
+        ? ((primaryError as { usage?: KimiTokenUsage | null }).usage ?? null)
         : null;
     sessionUsage = addKimiUsage(sessionUsage, errUsage);
-    await recordKimiUsage({
-      userId: guard.userId,
-      route: USAGE_ROUTE,
-      model: llm.model,
-      usage: sessionUsage,
-    });
-    return NextResponse.json(
-      {
-        error:
-          e instanceof Error
-            ? e.message
-            : "No se pudo contactar a la IA. Revisa tu conexión e intenta de nuevo.",
-      },
-      { status: 502 }
-    );
+
+    const kimiFallback =
+      llm.provider === "gemini" ? resolveKimiFallback() : null;
+    if (kimiFallback) {
+      console.warn(
+        "[scan-label] primary LLM failed, trying Kimi:",
+        primaryError instanceof Error ? primaryError.message : primaryError
+      );
+      try {
+        vision = await visionIdentify(kimiFallback, imageDataUrls);
+        sessionUsage = addKimiUsage(sessionUsage, vision.usage);
+        usedModel = kimiFallback.model;
+      } catch (fallbackError) {
+        const fbUsage =
+          fallbackError &&
+          typeof fallbackError === "object" &&
+          "usage" in fallbackError
+            ? ((fallbackError as { usage?: KimiTokenUsage | null }).usage ??
+              null)
+            : null;
+        sessionUsage = addKimiUsage(sessionUsage, fbUsage);
+        await recordKimiUsage({
+          userId: guard.userId,
+          route: USAGE_ROUTE,
+          model: usedModel,
+          usage: sessionUsage,
+        });
+        return NextResponse.json(
+          {
+            error:
+              fallbackError instanceof Error
+                ? fallbackError.message
+                : primaryError instanceof Error
+                  ? primaryError.message
+                  : "No se pudo contactar a la IA. Revisa tu conexión e intenta de nuevo.",
+          },
+          { status: 502 }
+        );
+      }
+    } else {
+      await recordKimiUsage({
+        userId: guard.userId,
+        route: USAGE_ROUTE,
+        model: llm.model,
+        usage: sessionUsage,
+      });
+      return NextResponse.json(
+        {
+          error:
+            primaryError instanceof Error
+              ? primaryError.message
+              : "No se pudo contactar a la IA. Revisa tu conexión e intenta de nuevo.",
+        },
+        { status: 502 }
+      );
+    }
   }
 
   const fields = applyMethodNote(vision.fields, vision.extras.matchMethod);
@@ -315,7 +361,7 @@ export async function POST(request: Request) {
   await recordKimiUsage({
     userId: guard.userId,
     route: USAGE_ROUTE,
-    model: llm.model,
+    model: usedModel,
     usage: sessionUsage,
   });
 

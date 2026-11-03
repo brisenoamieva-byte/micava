@@ -13,6 +13,11 @@ type Props = {
   size?: "xs" | "sm" | "md" | "lg";
   showLabel?: boolean;
   className?: string;
+  /**
+   * Skip remote flag images — emoji/ISO only. Use in long lists / dense maps
+   * so large cellars don't spawn hundreds of network requests.
+   */
+  lite?: boolean;
 };
 
 /** Rectangular flag frames (≈3:2), not square — avoids cropping stars/cantons */
@@ -28,6 +33,7 @@ export function CountryFlag({
   size = "md",
   showLabel = false,
   className = "",
+  lite = false,
 }: Props) {
   const { locale } = useLocale();
   const label = countryDisplayName(country, locale);
@@ -35,6 +41,7 @@ export function CountryFlag({
   const code = countryCode[country] ?? country.slice(0, 2).toUpperCase();
   const emoji = countryFlagEmoji[country];
   const s = sizes[size];
+  const useImage = Boolean(iso) && !lite;
 
   return (
     <span
@@ -47,7 +54,7 @@ export function CountryFlag({
           s.box,
         ].join(" ")}
       >
-        {iso ? (
+        {useImage ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={`https://flagcdn.com/w80/${iso}.png`}

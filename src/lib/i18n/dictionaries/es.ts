@@ -850,6 +850,8 @@ export const es = {
     tapToDropBelow: "Toca para soltar abajo / fuera",
     dropToSendBelow: "Suelta para mandar abajo / fuera",
     noBottlesOffGrid: "Sin botellas fuera de la rejilla.",
+    showMoreBelow: "Ver {count} más",
+    showLessBelow: "Ver menos",
     expandedNotice: "Mapa ampliado a pantalla completa.",
     zoomAria: "Zoom del mapa",
     zoomOutAria: "Alejar",

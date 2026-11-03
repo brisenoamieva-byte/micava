@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type DragEvent,
@@ -12,14 +13,17 @@ import { createPortal } from "react-dom";
 import type { Wine } from "@/lib/types";
 import { useLocale, useT } from "@/lib/i18n";
 import {
+  buildSlotWineIndex,
   countryDisplayName,
   formatCavataleRating,
   getEmptySlots,
-  getWineBySlot,
   typeAccent,
 } from "@/lib/wines";
 import { CountryFlag } from "@/components/CountryFlag";
 import { drinkStatus } from "@/lib/drink-window";
+
+/** Cap Abajo chips so huge imports don't paint hundreds of nodes at once. */
+const ABAJO_PREVIEW = 24;
 
 type Props = {
   wines: Wine[];
@@ -339,12 +343,25 @@ export function CellarMap({
   const t = useT();
   const { locale } = useLocale();
   const touchUi = useTouchMoveUi();
-  const abajo = wines.filter((w) => !w.slot || w.slot === "abajo");
   const [expanded, setExpanded] = useState(false);
   const [portalReady, setPortalReady] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const [overTarget, setOverTarget] = useState<string | null>(null);
   const [showMoveHint, setShowMoveHint] = useState(false);
+  const [abajoExpanded, setAbajoExpanded] = useState(false);
+
+  const slotById = useMemo(
+    () => buildSlotWineIndex(wines, cellarId),
+    [wines, cellarId]
+  );
+  const abajo = useMemo(
+    () => wines.filter((w) => !w.slot || w.slot === "abajo"),
+    [wines]
+  );
+
+  useEffect(() => {
+    setAbajoExpanded(false);
+  }, [cellarId]);
   const didDrag = useRef(false);
   const mapScrollRef = useRef<HTMLDivElement | null>(null);
   const {
@@ -469,6 +486,28 @@ export function CellarMap({
       : [];
   const firstEmptySlot = emptySlots[0] ?? null;
 
+  const abajoVisible = useMemo(() => {
+    if (abajoExpanded || abajo.length <= ABAJO_PREVIEW) return abajo;
+    const pinned = new Set(
+      [selectedId, focusWineId, activeMoveId].filter(Boolean) as string[]
+    );
+    const out: Wine[] = [];
+    const seen = new Set<string>();
+    for (const w of abajo) {
+      if (!pinned.has(w.id) || seen.has(w.id)) continue;
+      out.push(w);
+      seen.add(w.id);
+    }
+    for (const w of abajo) {
+      if (out.length >= ABAJO_PREVIEW) break;
+      if (seen.has(w.id)) continue;
+      out.push(w);
+      seen.add(w.id);
+    }
+    return out;
+  }, [abajo, abajoExpanded, selectedId, focusWineId, activeMoveId]);
+  const abajoHidden = Math.max(0, abajo.length - abajoVisible.length);
+
   function clearDesktopDrag() {
     setDragId(null);
     setOverTarget(null);
@@ -588,8 +627,7 @@ export function CellarMap({
 
   const rowProps = {
     cols,
-    cellarId,
-    wines,
+    slotById,
     highlightedIds,
     selectedId,
     focusWineId,
@@ -819,73 +857,86 @@ export function CellarMap({
                     : t("map.noBottlesOffGrid")}
               </p>
             ) : (
-              abajo.map((wine) => {
-                const active = wine.id === selectedId;
-                const located = wine.id === focusWineId;
-                const dimmed =
-                  highlightedIds.size > 0 && !highlightedIds.has(wine.id);
-                const isMoving = activeMoveId === wine.id;
-                return (
-                  <div
-                    key={wine.id}
-                    role="button"
-                    tabIndex={0}
-                    data-slot="abajo"
-                    data-wine-id={wine.id}
-                    draggable={!touchUi && !pickMode && Boolean(onMoveWine)}
-                    onPointerDown={(e) => beginPress(wine, e)}
-                    onPointerMove={updatePress}
-                    onPointerUp={endPress}
-                    onPointerCancel={endPress}
-                    onDragStart={(e) => {
-                      if (touchUi || pickMode) {
-                        e.preventDefault();
-                        return;
-                      }
-                      didDrag.current = false;
-                      setDragId(wine.id);
-                      e.dataTransfer.setData(DRAG_MIME, wine.id);
-                      e.dataTransfer.effectAllowed = "move";
-                      requestAnimationFrame(() => {
-                        didDrag.current = true;
-                      });
-                    }}
-                    onDragEnd={clearDesktopDrag}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        interactSlot("abajo", wine);
-                      }
-                    }}
-                    onClick={() => {
-                      if (didDrag.current) {
+              <>
+                {abajoVisible.map((wine) => {
+                  const active = wine.id === selectedId;
+                  const located = wine.id === focusWineId;
+                  const dimmed =
+                    highlightedIds.size > 0 && !highlightedIds.has(wine.id);
+                  const isMoving = activeMoveId === wine.id;
+                  return (
+                    <div
+                      key={wine.id}
+                      role="button"
+                      tabIndex={0}
+                      data-slot="abajo"
+                      data-wine-id={wine.id}
+                      draggable={!touchUi && !pickMode && Boolean(onMoveWine)}
+                      onPointerDown={(e) => beginPress(wine, e)}
+                      onPointerMove={updatePress}
+                      onPointerUp={endPress}
+                      onPointerCancel={endPress}
+                      onDragStart={(e) => {
+                        if (touchUi || pickMode) {
+                          e.preventDefault();
+                          return;
+                        }
                         didDrag.current = false;
-                        return;
-                      }
-                      interactSlot("abajo", wine);
-                    }}
-                    className={[
-                      "map-cell map-cell--draggable inline-flex min-h-[44px] max-w-full cursor-grab items-center gap-2 rounded-[10px] border px-2.5 py-2 text-left text-sm transition active:cursor-grabbing",
-                      active || isMoving
-                        ? "border-[var(--wine)] bg-[rgba(122,36,48,0.08)] text-ink slot-active"
-                        : "border-[var(--line)] bg-[rgba(255,252,247,0.55)] text-ink hover:border-[rgba(122,36,48,0.35)]",
-                      dimmed ? "opacity-35" : "",
-                      isMoving ? "ring-2 ring-[var(--wine)] opacity-90" : "",
-                      located ? "map-cell--located" : "",
-                    ].join(" ")}
+                        setDragId(wine.id);
+                        e.dataTransfer.setData(DRAG_MIME, wine.id);
+                        e.dataTransfer.effectAllowed = "move";
+                        requestAnimationFrame(() => {
+                          didDrag.current = true;
+                        });
+                      }}
+                      onDragEnd={clearDesktopDrag}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          interactSlot("abajo", wine);
+                        }
+                      }}
+                      onClick={() => {
+                        if (didDrag.current) {
+                          didDrag.current = false;
+                          return;
+                        }
+                        interactSlot("abajo", wine);
+                      }}
+                      className={[
+                        "map-cell map-cell--draggable inline-flex min-h-[44px] max-w-full cursor-grab items-center gap-2 rounded-[10px] border px-2.5 py-2 text-left text-sm transition active:cursor-grabbing",
+                        active || isMoving
+                          ? "border-[var(--wine)] bg-[rgba(122,36,48,0.08)] text-ink slot-active"
+                          : "border-[var(--line)] bg-[rgba(255,252,247,0.55)] text-ink hover:border-[rgba(122,36,48,0.35)]",
+                        dimmed ? "opacity-35" : "",
+                        isMoving ? "ring-2 ring-[var(--wine)] opacity-90" : "",
+                        located ? "map-cell--located" : "",
+                      ].join(" ")}
+                    >
+                      <CountryFlag country={wine.country} size="sm" lite />
+                      <span className="min-w-0">
+                        <span className="block max-w-[10rem] truncate font-medium leading-tight sm:max-w-[14rem]">
+                          {wine.name}
+                        </span>
+                        <span className="block text-xs text-ink-soft">
+                          {countryDisplayName(wine.country, locale)}
+                        </span>
+                      </span>
+                    </div>
+                  );
+                })}
+                {abajoHidden > 0 || abajoExpanded ? (
+                  <button
+                    type="button"
+                    className="btn btn-ghost min-h-[44px] px-3 text-xs"
+                    onClick={() => setAbajoExpanded((v) => !v)}
                   >
-                    <CountryFlag country={wine.country} size="sm" />
-                    <span className="min-w-0">
-                      <span className="block max-w-[10rem] truncate font-medium leading-tight sm:max-w-[14rem]">
-                        {wine.name}
-                      </span>
-                      <span className="block text-xs text-ink-soft">
-                        {countryDisplayName(wine.country, locale)}
-                      </span>
-                    </span>
-                  </div>
-                );
-              })
+                    {abajoExpanded
+                      ? t("map.showLessBelow")
+                      : t("map.showMoreBelow", { count: abajoHidden })}
+                  </button>
+                ) : null}
+              </>
             )}
           </div>
         </div>
@@ -1127,44 +1178,63 @@ export function CellarMap({
                             : t("map.noBottlesOff")}
                         </p>
                       ) : (
-                        abajo.map((wine) => {
-                          const active = wine.id === selectedId;
-                          const isMoving = activeMoveId === wine.id;
-                          return (
-                            <div
-                              key={wine.id}
-                              role="button"
-                              tabIndex={0}
-                              data-slot="abajo"
-                              data-wine-id={wine.id}
-                              onPointerDown={(e) => beginPress(wine, e)}
-                              onPointerMove={updatePress}
-                              onPointerUp={endPress}
-                              onPointerCancel={endPress}
-                              onClick={() => {
-                                if (didDrag.current) {
-                                  didDrag.current = false;
-                                  return;
-                                }
-                                interactSlot("abajo", wine);
-                              }}
-                              className={[
-                                "map-cell map-cell--draggable inline-flex min-h-[36px] max-w-[9rem] shrink-0 cursor-grab items-center gap-1.5 rounded-[10px] border px-2 py-1 text-left text-xs transition",
-                                active || isMoving
-                                  ? "border-[var(--wine)] bg-[rgba(122,36,48,0.08)] text-ink slot-active"
-                                  : "border-[var(--line)] bg-[rgba(255,252,247,0.55)] text-ink",
-                                isMoving
-                                  ? "ring-2 ring-[var(--wine)] opacity-90"
-                                  : "",
-                              ].join(" ")}
+                        <>
+                          {abajoVisible.map((wine) => {
+                            const active = wine.id === selectedId;
+                            const isMoving = activeMoveId === wine.id;
+                            return (
+                              <div
+                                key={wine.id}
+                                role="button"
+                                tabIndex={0}
+                                data-slot="abajo"
+                                data-wine-id={wine.id}
+                                onPointerDown={(e) => beginPress(wine, e)}
+                                onPointerMove={updatePress}
+                                onPointerUp={endPress}
+                                onPointerCancel={endPress}
+                                onClick={() => {
+                                  if (didDrag.current) {
+                                    didDrag.current = false;
+                                    return;
+                                  }
+                                  interactSlot("abajo", wine);
+                                }}
+                                className={[
+                                  "map-cell map-cell--draggable inline-flex min-h-[36px] max-w-[9rem] shrink-0 cursor-grab items-center gap-1.5 rounded-[10px] border px-2 py-1 text-left text-xs transition",
+                                  active || isMoving
+                                    ? "border-[var(--wine)] bg-[rgba(122,36,48,0.08)] text-ink slot-active"
+                                    : "border-[var(--line)] bg-[rgba(255,252,247,0.55)] text-ink",
+                                  isMoving
+                                    ? "ring-2 ring-[var(--wine)] opacity-90"
+                                    : "",
+                                ].join(" ")}
+                              >
+                                <CountryFlag
+                                  country={wine.country}
+                                  size="sm"
+                                  lite
+                                />
+                                <span className="truncate font-medium">
+                                  {wine.name}
+                                </span>
+                              </div>
+                            );
+                          })}
+                          {abajoHidden > 0 || abajoExpanded ? (
+                            <button
+                              type="button"
+                              className="btn btn-ghost min-h-[36px] shrink-0 px-2 text-[11px]"
+                              onClick={() => setAbajoExpanded((v) => !v)}
                             >
-                              <CountryFlag country={wine.country} size="sm" />
-                              <span className="truncate font-medium">
-                                {wine.name}
-                              </span>
-                            </div>
-                          );
-                        })
+                              {abajoExpanded
+                                ? t("map.showLessBelow")
+                                : t("map.showMoreBelow", {
+                                    count: abajoHidden,
+                                  })}
+                            </button>
+                          ) : null}
+                        </>
                       )}
                     </div>
                   </div>
@@ -1184,8 +1254,7 @@ export function CellarMap({
 function Row({
   row,
   cols,
-  cellarId,
-  wines,
+  slotById,
   highlightedIds,
   selectedId,
   focusWineId,
@@ -1206,8 +1275,7 @@ function Row({
 }: {
   row: string;
   cols: number;
-  cellarId: string | null;
-  wines: Wine[];
+  slotById: Map<string, Wine>;
   highlightedIds: Set<string>;
   selectedId: string | null;
   focusWineId: string | null;
@@ -1240,7 +1308,7 @@ function Row({
       {Array.from({ length: cols }, (_, i) => {
         const col = i + 1;
         const slot = `${col}${row}`;
-        const wine = getWineBySlot(wines, slot, cellarId);
+        const wine = slotById.get(slot);
         const active = wine?.id === selectedId;
         const located = wine?.id === focusWineId;
         const isOver = overTarget === slot || (pickMode && !wine);
@@ -1417,7 +1485,7 @@ function Row({
             }}
           >
             <span className="flex items-center px-0.5">
-              <CountryFlag country={wine.country} size="xs" />
+              <CountryFlag country={wine.country} size="xs" lite />
             </span>
             <span className="block truncate px-0.5 text-[9px] font-semibold leading-tight text-ink sm:text-[10px]">
               {label}

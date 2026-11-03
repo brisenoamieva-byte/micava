@@ -863,6 +863,8 @@ export const en = {
     tapToDropBelow: "Tap to drop below / out",
     dropToSendBelow: "Drop to send below / out",
     noBottlesOffGrid: "No bottles off the grid.",
+    showMoreBelow: "Show {count} more",
+    showLessBelow: "Show less",
     expandedNotice: "Map expanded to full screen.",
     zoomAria: "Map zoom",
     zoomOutAria: "Zoom out",

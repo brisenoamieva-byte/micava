@@ -797,6 +797,11 @@ select {
   user-select: none;
 }
 
+.wine-list-row {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 56px;
+}
+
 .map-cell--draggable[draggable="true"] {
   -webkit-user-drag: element;
 }

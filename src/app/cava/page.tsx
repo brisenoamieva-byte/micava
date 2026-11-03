@@ -234,6 +234,10 @@ export default function CavaPage() {
   }, [wines, selectedId]);
 
   const visible = useMemo(() => filterWines(wines, filters), [wines, filters]);
+  const highlightedIds = useMemo(
+    () => new Set(visible.map((w) => w.id)),
+    [visible]
+  );
   const searchFocusWineId = useMemo(() => {
     const q = filters.query.trim();
     if (!q || visible.length === 0) return null;
@@ -1300,7 +1304,7 @@ export default function CavaPage() {
                   rows={activeCellar.rows}
                   cellarId={activeCellar.id}
                   title={activeCellar.name}
-                  highlightedIds={new Set(visible.map((w) => w.id))}
+                  highlightedIds={highlightedIds}
                   selectedId={selected?.id ?? null}
                   focusWineId={mapFocusWineId}
                   focusToken={locateToken}
@@ -1363,7 +1367,7 @@ export default function CavaPage() {
                   rows={activeCellar.rows}
                   cellarId={activeCellar.id}
                   title={activeCellar.name}
-                  highlightedIds={new Set(visible.map((w) => w.id))}
+                  highlightedIds={highlightedIds}
                   selectedId={selected?.id ?? null}
                   focusWineId={mapFocusWineId}
                   focusToken={locateToken}

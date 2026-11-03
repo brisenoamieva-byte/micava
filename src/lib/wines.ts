@@ -67,6 +67,28 @@ export function getWineBySlot(
   });
 }
 
+/**
+ * O(n) slot → wine map for one mueble. Prefer this over getWineBySlot
+ * inside grid renders (those are O(slots × n)).
+ */
+export function buildSlotWineIndex(
+  list: Wine[],
+  cellarId?: string | null
+): Map<string, Wine> {
+  const map = new Map<string, Wine>();
+  for (const w of list) {
+    if (!w.slot || w.slot === "abajo") continue;
+    if (
+      cellarId !== undefined &&
+      (w.cellarId ?? null) !== (cellarId ?? null)
+    ) {
+      continue;
+    }
+    if (!map.has(w.slot)) map.set(w.slot, w);
+  }
+  return map;
+}
+
 export function parseLocation(location: string): {
   slot: string | null;
   col: number | null;

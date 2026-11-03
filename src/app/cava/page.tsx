@@ -1232,6 +1232,7 @@ export default function CavaPage() {
               history={history}
               onSelectWine={(w) => selectWine(w, true, "lista")}
               onLocateWine={(w) => locateWineOnMap(w)}
+              onOpenedWine={(w) => openDepart(w, "opened")}
               onSetVintage={(w, vintage) => {
                 updateWine(w.id, { ...wineToDraft(w), vintage });
               }}
@@ -1446,6 +1447,7 @@ export default function CavaPage() {
                 wines={wines}
                 onSelectWine={(w) => selectWine(w, true, "mapa")}
                 onLocateWine={(w) => locateWineOnMap(w)}
+                onOpenedWine={(w) => openDepart(w, "opened")}
                 onOpenTonight={goToOpenTonight}
               />
               <div className="mb-3 flex items-baseline justify-between gap-3">
@@ -1492,6 +1494,7 @@ export default function CavaPage() {
                 wines={wines}
                 onSelectWine={(w) => selectWine(w, true, "lista")}
                 onLocateWine={(w) => locateWineOnMap(w)}
+                onOpenedWine={(w) => openDepart(w, "opened")}
                 onOpenTonight={goToOpenTonight}
               />
               <div className="mb-3 flex items-baseline justify-between gap-3">

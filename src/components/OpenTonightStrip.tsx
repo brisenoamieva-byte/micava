@@ -18,18 +18,20 @@ type Props = {
   onSelectWine: (wine: Wine) => void;
   /** Jump to the bottle on the map. */
   onLocateWine: (wine: Wine) => void;
+  /** Start tasting memory / remove from cellar. */
+  onOpenedWine: (wine: Wine) => void;
   /** Optional: full Abrir hoy in Pulso (secondary). */
   onOpenTonight?: () => void;
 };
 
 /**
- * Mobile shortcut for Abrir hoy while browsing map / list —
- * occasion chips + top pick → ficha or map, not Pulse first.
+ * Mobile shortcut for Abrir hoy — pick → open or map in one tap.
  */
 export function OpenTonightStrip({
   wines,
   onSelectWine,
   onLocateWine,
+  onOpenedWine,
   onOpenTonight,
 }: Props) {
   const t = useT();
@@ -104,16 +106,16 @@ export function OpenTonightStrip({
         <button
           type="button"
           className="btn btn-primary min-h-[40px] flex-1 px-3 text-sm"
-          onClick={() => onLocateWine(w)}
+          onClick={() => onOpenedWine(w)}
         >
-          {t("cava.takeToMap")}
+          {t("wine.opened")}
         </button>
         <button
           type="button"
           className="btn btn-ghost min-h-[40px] border border-[var(--line)] px-3 text-sm"
-          onClick={() => onSelectWine(w)}
+          onClick={() => onLocateWine(w)}
         >
-          {t("stats.openTonightCta")}
+          {t("cava.takeToMap")}
         </button>
         {onOpenTonight ? (
           <button

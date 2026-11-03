@@ -44,6 +44,8 @@ type Props = {
   onSelectWine?: (wine: Wine) => void;
   /** Jump to map focused on this bottle. */
   onLocateWine?: (wine: Wine) => void;
+  /** Start tasting memory / remove from cellar (Abrir hoy). */
+  onOpenedWine?: (wine: Wine) => void;
   /** Quick-set vintage without opening the full edit form. */
   onSetVintage?: (wine: Wine, vintage: number) => void;
   /** Refresh reference prices for up to N stale bottles (AI). */
@@ -66,6 +68,7 @@ export function StatsDashboard({
   history = [],
   onSelectWine,
   onLocateWine,
+  onOpenedWine,
   onSetVintage,
   onRefreshPrices,
   onRefreshMarket,
@@ -389,13 +392,15 @@ export function StatsDashboard({
                         </p>
                       ) : null}
                       <div className="mt-4 flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          className="btn btn-primary min-h-[40px] px-3 text-sm"
-                          onClick={() => onSelectWine?.(w)}
-                        >
-                          {t("stats.openTonightCta")} →
-                        </button>
+                        {onOpenedWine ? (
+                          <button
+                            type="button"
+                            className="btn btn-primary min-h-[40px] px-3 text-sm"
+                            onClick={() => onOpenedWine(w)}
+                          >
+                            {t("wine.opened")}
+                          </button>
+                        ) : null}
                         {onLocateWine ? (
                           <button
                             type="button"
@@ -403,6 +408,15 @@ export function StatsDashboard({
                             onClick={() => onLocateWine(w)}
                           >
                             {t("cava.takeToMap")}
+                          </button>
+                        ) : null}
+                        {onSelectWine ? (
+                          <button
+                            type="button"
+                            className="btn btn-ghost min-h-[40px] border border-[var(--line)] px-3 text-sm"
+                            onClick={() => onSelectWine(w)}
+                          >
+                            {t("stats.openTonightCta")}
                           </button>
                         ) : null}
                       </div>
@@ -436,11 +450,14 @@ export function StatsDashboard({
                         const rw = pick.wine;
                         const rPair = rw.kimiPairings?.[0];
                         return (
-                          <li key={rw.id}>
+                          <li
+                            key={rw.id}
+                            className="flex items-start gap-2 rounded-[10px] px-1 py-1 transition hover:bg-[rgba(110,31,44,0.06)]"
+                          >
                             <button
                               type="button"
                               onClick={() => onSelectWine?.(rw)}
-                              className="flex w-full items-start justify-between gap-3 rounded-[10px] px-2 py-2 text-left transition hover:bg-[rgba(110,31,44,0.06)]"
+                              className="flex min-w-0 flex-1 items-start justify-between gap-3 rounded-[10px] px-1 py-1 text-left"
                             >
                               <span className="min-w-0">
                                 <span className="flex flex-wrap items-center gap-1.5">
@@ -474,6 +491,15 @@ export function StatsDashboard({
                                 )}
                               </span>
                             </button>
+                            {onOpenedWine ? (
+                              <button
+                                type="button"
+                                className="btn btn-ghost mt-0.5 shrink-0 border border-[var(--line)] px-2 py-1.5 text-[11px]"
+                                onClick={() => onOpenedWine(rw)}
+                              >
+                                {t("wine.opened")}
+                              </button>
+                            ) : null}
                           </li>
                         );
                       })}

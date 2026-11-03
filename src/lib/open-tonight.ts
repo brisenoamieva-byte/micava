@@ -156,7 +156,7 @@ export function rankOpenTonight(
     .slice(0, limit);
 }
 
-/** Cellar reference value + optional kimi uplift signal. */
+/** Cellar reference value + purchase vs market signal. */
 export function cellarValueSnapshot(wines: Wine[]): {
   inventoryValue: number;
   pricedCount: number;
@@ -165,6 +165,15 @@ export function cellarValueSnapshot(wines: Wine[]): {
   /** Sum of (kimiPrice - price) where both exist; positive = market above your tag. */
   vsMarketDelta: number;
   vsMarketCount: number;
+  /** Sum of what you paid (`purchasePrice`). */
+  purchaseTotal: number;
+  purchaseCount: number;
+  /**
+   * Sum of (market - purchase) where purchase exists and market is
+   * kimiPrice ?? price. Positive = market above what you paid.
+   */
+  purchaseGainDelta: number;
+  purchaseGainCount: number;
 } {
   let inventoryValue = 0;
   let pricedCount = 0;
@@ -172,6 +181,10 @@ export function cellarValueSnapshot(wines: Wine[]): {
   let kimiPricedCount = 0;
   let vsMarketDelta = 0;
   let vsMarketCount = 0;
+  let purchaseTotal = 0;
+  let purchaseCount = 0;
+  let purchaseGainDelta = 0;
+  let purchaseGainCount = 0;
 
   for (const w of wines) {
     if (w.price != null) {
@@ -186,6 +199,15 @@ export function cellarValueSnapshot(wines: Wine[]): {
       vsMarketDelta += w.kimiPrice - w.price;
       vsMarketCount += 1;
     }
+    if (w.purchasePrice != null) {
+      purchaseTotal += w.purchasePrice;
+      purchaseCount += 1;
+      const market = w.kimiPrice ?? w.price;
+      if (market != null) {
+        purchaseGainDelta += market - w.purchasePrice;
+        purchaseGainCount += 1;
+      }
+    }
   }
 
   return {
@@ -195,6 +217,10 @@ export function cellarValueSnapshot(wines: Wine[]): {
     kimiPricedCount,
     vsMarketDelta,
     vsMarketCount,
+    purchaseTotal,
+    purchaseCount,
+    purchaseGainDelta,
+    purchaseGainCount,
   };
 }
 

@@ -28,6 +28,8 @@ export type Wine = {
   price: number | null;
   /** ISO 4217 for `price`; null/absent treated as MXN. */
   priceCurrency: string | null;
+  /** What you paid for this bottle (investment); separate from ficha/market `price`. */
+  purchasePrice: number | null;
   /** Score looked up on an external platform (manual for now). */
   externalRating: number | null;
   ratingSource: RatingSource | null;
@@ -123,6 +125,7 @@ export type WineDraft = {
   vintage: number | null;
   vivino: number | null;
   price: number | null;
+  purchasePrice: number | null;
   cellarId: string | null;
   location: string; // "11F" | "abajo" | ""
 };

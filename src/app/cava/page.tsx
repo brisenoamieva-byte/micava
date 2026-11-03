@@ -25,7 +25,7 @@ import { StatsDashboard } from "@/components/StatsDashboard";
 import { WineDetail } from "@/components/WineDetail";
 import { WineFormModal } from "@/components/WineFormModal";
 import { WineList } from "@/components/WineList";
-import { useCellar } from "@/lib/cellar-store";
+import { useCellar, wineToDraft } from "@/lib/cellar-store";
 import { useAuth } from "@/lib/auth-store";
 import {
   downloadWinesCsv,
@@ -1253,6 +1253,9 @@ export default function CavaPage() {
               history={history}
               onSelectWine={(w) => selectWine(w, true, "lista")}
               onLocateWine={(w) => locateWineOnMap(w)}
+              onSetVintage={(w, vintage) => {
+                updateWine(w.id, { ...wineToDraft(w), vintage });
+              }}
               onRefreshPrices={refreshCellarPrices}
               onRefreshMarket={refreshCellarMarket}
             />

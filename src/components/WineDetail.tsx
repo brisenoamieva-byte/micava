@@ -168,6 +168,13 @@ export function WineDetail({
     { label: t("wine.year"), value: wine.vintage ? String(wine.vintage) : "—" },
     { label: t("wine.aging"), value: wine.aging || "—" },
     {
+      label: t("wine.purchasePrice"),
+      value:
+        wine.purchasePrice != null
+          ? formatPrice(wine.purchasePrice, wine.priceCurrency)
+          : "—",
+    },
+    {
       label: t("wine.location"),
       value:
         wine.slot === "abajo"

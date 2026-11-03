@@ -64,6 +64,7 @@ function toWineDraft(identity: EncounterDraft): WineDraft {
     vintage: identity.vintage,
     vivino: null,
     price: null,
+    purchasePrice: null,
     cellarId: null,
     location: "",
   };

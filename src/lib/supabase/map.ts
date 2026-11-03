@@ -37,6 +37,7 @@ export type WineRow = {
   cavatale_evidence?: unknown;
   price: number | null;
   price_currency?: string | null;
+  purchase_price?: number | null;
   external_rating: number | null;
   rating_source: string | null;
   last_checked_at: string | null;
@@ -102,6 +103,7 @@ export function wineFromRow(row: WineRow): Wine {
       cavataleEvidence: parseCavataleRatingEvidence(row.cavatale_evidence),
       price: row.price,
       priceCurrency: row.price_currency ?? null,
+      purchasePrice: row.purchase_price ?? null,
       externalRating: row.external_rating,
       ratingSource: row.rating_source as Wine["ratingSource"],
       lastCheckedAt: row.last_checked_at,
@@ -161,6 +163,7 @@ export function wineToRow(
     cavatale_rating: wine.cavataleRating,
     price: wine.price,
     price_currency: wine.priceCurrency ?? "MXN",
+    purchase_price: wine.purchasePrice,
     external_rating: wine.externalRating,
     rating_source: wine.ratingSource,
     last_checked_at: wine.lastCheckedAt,

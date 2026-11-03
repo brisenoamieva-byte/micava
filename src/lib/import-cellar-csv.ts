@@ -64,7 +64,12 @@ const HEADER_ALIASES: Record<string, MappedField> = {
   price: "price",
   precio: "price",
   preciovivino: "price",
-  purchaseprice: "price",
+  purchaseprice: "purchasePrice",
+  purchase_price: "purchasePrice",
+  compre: "purchasePrice",
+  compreen: "purchasePrice",
+  pagado: "purchasePrice",
+  purchase: "purchasePrice",
   slot: "location",
   location: "location",
   ubicacion: "location",
@@ -214,6 +219,7 @@ function emptyDraft(): WineDraft {
     vintage: null,
     vivino: null,
     price: null,
+    purchasePrice: null,
     cellarId: null,
     location: "",
   };
@@ -229,6 +235,7 @@ const TEMPLATE_HEADERS = [
   "aging",
   "vintage",
   "price",
+  "purchase_price",
   "slot",
 ] as const;
 
@@ -242,6 +249,7 @@ const TEMPLATE_SAMPLE = [
   "Reserva",
   "2019",
   "650",
+  "480",
   "11F",
 ] as const;
 
@@ -371,6 +379,15 @@ export function importWinesFromCsv(
             message: `Precio inválido: “${raw}”`,
           });
         } else draft.price = n != null ? Math.round(n) : null;
+      } else if (field === "purchasePrice") {
+        const n = parseOptionalNumber(raw);
+        if (raw && n == null) {
+          errors.push({
+            row: rowNum,
+            column: "purchase_price",
+            message: `Precio de compra inválido: “${raw}”`,
+          });
+        } else draft.purchasePrice = n != null ? Math.round(n) : null;
       } else if (field === "location") {
         draft.location = raw.toLowerCase() === "abajo" ? "abajo" : raw;
       } else if (field === "cellarId") {

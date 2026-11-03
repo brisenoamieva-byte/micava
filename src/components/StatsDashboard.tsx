@@ -42,6 +42,8 @@ type Props = {
   onSelectWine?: (wine: Wine) => void;
   /** Jump to map focused on this bottle. */
   onLocateWine?: (wine: Wine) => void;
+  /** Quick-set vintage without opening the full edit form. */
+  onSetVintage?: (wine: Wine, vintage: number) => void;
   /** Refresh reference prices for up to N stale bottles (AI). */
   onRefreshPrices?: (wines: Wine[]) => Promise<number> | number;
   /**
@@ -62,6 +64,7 @@ export function StatsDashboard({
   history = [],
   onSelectWine,
   onLocateWine,
+  onSetVintage,
   onRefreshPrices,
   onRefreshMarket,
 }: Props) {
@@ -448,7 +451,7 @@ export function StatsDashboard({
                   })
                 : t("stats.openTonightEmpty")}
             </p>
-            {missingVintage[0] && onSelectWine ? (
+            {missingVintage[0] && onSelectWine && !onSetVintage ? (
               <button
                 type="button"
                 className="btn btn-ghost mt-3 min-h-[40px] border border-[var(--line)] px-3 text-sm"
@@ -460,6 +463,14 @@ export function StatsDashboard({
           </div>
         )}
       </section>
+
+      {missingVintage.length > 0 && onSetVintage ? (
+        <MissingVintagePanel
+          wines={missingVintage}
+          onSetVintage={onSetVintage}
+          onSelectWine={onSelectWine}
+        />
+      ) : null}
 
       <section className="panel-quiet space-y-4 px-4 py-4 sm:px-5">
         <Header title={t("stats.byMoment")} />
@@ -543,10 +554,19 @@ export function StatsDashboard({
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.14em] text-ink-soft">
-              {t("stats.inventoryValue")}
+              {t("stats.purchaseTotal")}
             </p>
             <p className="display mt-1 text-2xl text-ink">
-              {formatPrice(valueSnap.inventoryValue)}
+              {valueSnap.purchaseCount > 0
+                ? formatPrice(valueSnap.purchaseTotal)
+                : "—"}
+            </p>
+            <p className="mt-0.5 text-[11px] text-ink-soft">
+              {valueSnap.purchaseCount > 0
+                ? t("stats.purchaseTotalHint", {
+                    count: valueSnap.purchaseCount,
+                  })
+                : t("stats.purchaseEmpty")}
             </p>
           </div>
           <div>
@@ -556,14 +576,57 @@ export function StatsDashboard({
             <p className="display mt-1 text-2xl text-ink">
               {valueSnap.kimiPricedCount > 0
                 ? formatPrice(valueSnap.kimiRefValue)
-                : "—"}
+                : valueSnap.pricedCount > 0
+                  ? formatPrice(valueSnap.inventoryValue)
+                  : "—"}
             </p>
           </div>
           <div className="col-span-2 sm:col-span-1">
             <p className="text-[10px] uppercase tracking-[0.14em] text-ink-soft">
+              {t("stats.purchaseGain")}
+            </p>
+            <p
+              className={[
+                "display mt-1 text-2xl",
+                valueSnap.purchaseGainCount > 0 &&
+                valueSnap.purchaseGainDelta > 0
+                  ? "text-[var(--leaf)]"
+                  : valueSnap.purchaseGainCount > 0 &&
+                      valueSnap.purchaseGainDelta < 0
+                    ? "text-[var(--wine-deep)]"
+                    : "text-ink",
+              ].join(" ")}
+            >
+              {valueSnap.purchaseGainCount > 0
+                ? formatPrice(valueSnap.purchaseGainDelta)
+                : "—"}
+            </p>
+            {valueSnap.purchaseGainCount > 0 ? (
+              <p className="mt-0.5 text-[11px] text-ink-soft">
+                {t("stats.purchaseGainHint", {
+                  count: valueSnap.purchaseGainCount,
+                })}
+              </p>
+            ) : null}
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.14em] text-ink-soft">
+              {t("stats.inventoryValue")}
+            </p>
+            <p className="display mt-1 text-xl text-ink">
+              {formatPrice(valueSnap.inventoryValue)}
+            </p>
+            <p className="mt-0.5 text-[11px] text-ink-soft">
+              {valueSnap.pricedCount > 0
+                ? t("stats.valuePriced", { count: valueSnap.pricedCount })
+                : t("stats.valueEmpty")}
+            </p>
+          </div>
+          <div className="col-span-2 sm:col-span-2">
+            <p className="text-[10px] uppercase tracking-[0.14em] text-ink-soft">
               {t("stats.vsMarket")}
             </p>
-            <p className="display mt-1 text-2xl text-ink">
+            <p className="display mt-1 text-xl text-ink">
               {valueSnap.vsMarketCount > 0
                 ? formatPrice(valueSnap.vsMarketDelta)
                 : "—"}
@@ -854,6 +917,131 @@ function Header({ title, subtitle }: { title: string; subtitle?: string }) {
         <p className="mt-0.5 text-sm text-ink-soft">{subtitle}</p>
       ) : null}
     </div>
+  );
+}
+
+const VINTAGE_PREVIEW = 6;
+
+function MissingVintagePanel({
+  wines,
+  onSetVintage,
+  onSelectWine,
+}: {
+  wines: Wine[];
+  onSetVintage: (wine: Wine, vintage: number) => void;
+  onSelectWine?: (wine: Wine) => void;
+}) {
+  const t = useT();
+  const maxYear = new Date().getFullYear() + 1;
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showAll, setShowAll] = useState(false);
+  const visible =
+    showAll || wines.length <= VINTAGE_PREVIEW
+      ? wines
+      : wines.slice(0, VINTAGE_PREVIEW);
+  const hidden = wines.length - visible.length;
+
+  function save(wine: Wine) {
+    const raw = (drafts[wine.id] ?? "").trim();
+    const year = Number(raw);
+    if (
+      !raw ||
+      !Number.isFinite(year) ||
+      year < 1900 ||
+      year > maxYear ||
+      !Number.isInteger(year)
+    ) {
+      setErrors((prev) => ({
+        ...prev,
+        [wine.id]: t("stats.missingVintageInvalid", { max: maxYear }),
+      }));
+      return;
+    }
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next[wine.id];
+      return next;
+    });
+    onSetVintage(wine, year);
+  }
+
+  return (
+    <section className="panel-quiet space-y-3 border border-[rgba(110,31,44,0.18)] bg-[rgba(110,31,44,0.04)] px-4 py-4 sm:px-5">
+      <Header
+        title={t("stats.missingVintageTitle", { count: wines.length })}
+        subtitle={t("stats.missingVintageBody")}
+      />
+      <ul className="space-y-2.5">
+        {visible.map((wine) => (
+          <li
+            key={wine.id}
+            className="flex flex-col gap-2 rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.65)] px-3 py-2.5 sm:flex-row sm:items-center"
+          >
+            <button
+              type="button"
+              className="min-w-0 flex-1 text-left"
+              onClick={() => onSelectWine?.(wine)}
+            >
+              <span className="block truncate text-sm font-medium text-ink">
+                {wine.name}
+              </span>
+              <span className="block truncate text-xs text-ink-soft">
+                {[wine.winery, wine.type].filter(Boolean).join(" · ")}
+              </span>
+            </button>
+            <div className="flex shrink-0 items-center gap-2">
+              <input
+                inputMode="numeric"
+                className="w-[5.5rem] min-h-[40px] rounded-[10px] border border-[rgba(20,18,16,0.12)] bg-[rgba(255,252,247,0.95)] px-2.5 text-sm outline-none focus:border-[rgba(122,36,48,0.45)]"
+                placeholder="2021"
+                aria-label={t("wine.year")}
+                value={drafts[wine.id] ?? ""}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setDrafts((prev) => ({ ...prev, [wine.id]: v }));
+                  setErrors((prev) => {
+                    if (!prev[wine.id]) return prev;
+                    const next = { ...prev };
+                    delete next[wine.id];
+                    return next;
+                  });
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    save(wine);
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className="btn btn-primary min-h-[40px] px-3 text-sm"
+                onClick={() => save(wine)}
+              >
+                {t("stats.missingVintageSave")}
+              </button>
+            </div>
+            {errors[wine.id] ? (
+              <p className="text-xs text-[var(--wine-deep)] sm:basis-full">
+                {errors[wine.id]}
+              </p>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+      {hidden > 0 || showAll ? (
+        <button
+          type="button"
+          className="text-xs font-medium text-[var(--wine)] underline-offset-2 hover:underline"
+          onClick={() => setShowAll((v) => !v)}
+        >
+          {showAll
+            ? t("stats.byMomentShowLess")
+            : t("stats.missingVintageShowMore", { count: hidden })}
+        </button>
+      ) : null}
+    </section>
   );
 }
 

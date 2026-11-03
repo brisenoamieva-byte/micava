@@ -56,6 +56,7 @@ const emptyDraft = (slot = "", cellarId: string | null = null): WineDraft => ({
   vintage: null,
   vivino: null,
   price: null,
+  purchasePrice: null,
   cellarId,
   location: slot,
 });
@@ -865,6 +866,24 @@ export function WineFormModal({
                       : t("wine.pricePlaceholder")
                   }
                 />
+              </label>
+
+              <label>
+                <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                  {t("wine.purchasePrice")}
+                </span>
+                <input
+                  className={fieldClass}
+                  inputMode="numeric"
+                  value={draft.purchasePrice ?? ""}
+                  onChange={(e) =>
+                    patch("purchasePrice", parseOptionalNumber(e.target.value))
+                  }
+                  placeholder={t("wine.purchasePricePlaceholder")}
+                />
+                <span className="mt-1 block text-xs text-ink-soft">
+                  {t("wine.purchasePriceHint")}
+                </span>
               </label>
 
               {!editing ? (

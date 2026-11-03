@@ -247,6 +247,10 @@ function draftToWine(draft: WineDraft, id: string, existing?: Wine): Wine {
     cavataleEvidence: existing?.cavataleEvidence ?? null,
     price: draft.price,
     priceCurrency: existing?.priceCurrency ?? null,
+    purchasePrice:
+      draft.purchasePrice !== undefined
+        ? draft.purchasePrice
+        : existing?.purchasePrice ?? null,
     externalRating: existing?.externalRating ?? null,
     ratingSource: existing?.ratingSource ?? null,
     lastCheckedAt: existing?.lastCheckedAt ?? null,
@@ -271,7 +275,12 @@ function draftToWine(draft: WineDraft, id: string, existing?: Wine): Wine {
 }
 
 function normalizeWine(raw: Wine): Wine {
-  return withKimiDefaults(withVerificationDefaults({ ...raw }));
+  return withKimiDefaults(
+    withVerificationDefaults({
+      ...raw,
+      purchasePrice: raw.purchasePrice ?? null,
+    })
+  );
 }
 
 function snapshotWine(w: Wine): CellarLogEntry["wine"] {
@@ -357,6 +366,7 @@ export function wineToDraft(wine: Wine): WineDraft {
     vintage: wine.vintage,
     vivino: wine.vivino,
     price: wine.price,
+    purchasePrice: wine.purchasePrice,
     cellarId: wine.cellarId,
     location: wine.slot ?? "",
   };
@@ -444,6 +454,7 @@ export function CellarProvider({ children }: { children: ReactNode }) {
 
   const priceCurrencyColumnsRef = useRef(true);
   const priceMetaColumnsRef = useRef(true);
+  const purchasePriceColumnsRef = useRef(true);
 
   const upsertWineRemote = useCallback(async (wine: Wine, userId: string) => {
     if (!isSupabaseConfigured()) return;
@@ -457,7 +468,8 @@ export function CellarProvider({ children }: { children: ReactNode }) {
         includeUserNote: boolean,
         includePriceCurrency: boolean,
         includeCavataleBreakdown: boolean,
-        includePriceMeta: boolean
+        includePriceMeta: boolean,
+        includePurchasePrice: boolean
       ): Promise<{ error: SyncErr }> => {
         try {
           const row = wineToRow(wine, userId, {
@@ -481,6 +493,9 @@ export function CellarProvider({ children }: { children: ReactNode }) {
             delete row.kimi_price_notes;
             delete row.kimi_price_checked_at;
           }
+          if (!includePurchasePrice) {
+            delete row.purchase_price;
+          }
           const result = await supabase
             .from("wines")
             .upsert(row, { onConflict: "user_id,id" });
@@ -494,6 +509,7 @@ export function CellarProvider({ children }: { children: ReactNode }) {
       let includeUserNote = true;
       let includePriceCurrency = priceCurrencyColumnsRef.current;
       let includePriceMeta = priceMetaColumnsRef.current;
+      let includePurchasePrice = purchasePriceColumnsRef.current;
       let includeCavataleBreakdown = cavataleBreakdownColumnsRef.current;
       let { error } = await tryUpsert(
         kimiColumnsRef.current,
@@ -501,7 +517,8 @@ export function CellarProvider({ children }: { children: ReactNode }) {
         includeUserNote,
         includePriceCurrency,
         includeCavataleBreakdown,
-        includePriceMeta
+        includePriceMeta,
+        includePurchasePrice
       );
 
       for (let attempt = 1; error && isTransientFetchError(error) && attempt <= 2; attempt++) {
@@ -512,7 +529,8 @@ export function CellarProvider({ children }: { children: ReactNode }) {
           includeUserNote,
           includePriceCurrency,
           includeCavataleBreakdown,
-          includePriceMeta
+          includePriceMeta,
+          includePurchasePrice
         ));
       }
 
@@ -529,7 +547,8 @@ export function CellarProvider({ children }: { children: ReactNode }) {
           includeUserNote,
           includePriceCurrency,
           false,
-          includePriceMeta
+          includePriceMeta,
+          includePurchasePrice
         ));
       }
       if (
@@ -547,6 +566,24 @@ export function CellarProvider({ children }: { children: ReactNode }) {
           includeUserNote,
           includePriceCurrency,
           includeCavataleBreakdown,
+          false,
+          includePurchasePrice
+        ));
+      }
+      if (
+        error &&
+        includePurchasePrice &&
+        /purchase_price/i.test(error.message ?? "")
+      ) {
+        includePurchasePrice = false;
+        purchasePriceColumnsRef.current = false;
+        ({ error } = await tryUpsert(
+          kimiColumnsRef.current,
+          includePairings,
+          includeUserNote,
+          includePriceCurrency,
+          includeCavataleBreakdown,
+          includePriceMeta,
           false
         ));
       }
@@ -563,7 +600,8 @@ export function CellarProvider({ children }: { children: ReactNode }) {
           includeUserNote,
           false,
           includeCavataleBreakdown,
-          includePriceMeta
+          includePriceMeta,
+          includePurchasePrice
         ));
       }
       if (
@@ -578,7 +616,8 @@ export function CellarProvider({ children }: { children: ReactNode }) {
           false,
           includePriceCurrency,
           includeCavataleBreakdown,
-          includePriceMeta
+          includePriceMeta,
+          includePurchasePrice
         ));
       }
       if (
@@ -593,7 +632,8 @@ export function CellarProvider({ children }: { children: ReactNode }) {
           includeUserNote,
           includePriceCurrency,
           includeCavataleBreakdown,
-          includePriceMeta
+          includePriceMeta,
+          includePurchasePrice
         ));
       }
       if (
@@ -608,7 +648,8 @@ export function CellarProvider({ children }: { children: ReactNode }) {
           false,
           includePriceCurrency,
           includeCavataleBreakdown,
-          includePriceMeta
+          includePriceMeta,
+          includePurchasePrice
         ));
       }
       if (error) {

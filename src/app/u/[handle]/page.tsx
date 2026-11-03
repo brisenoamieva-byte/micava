@@ -142,9 +142,10 @@ export default async function PublicHandlePage({ params }: PageProps) {
     .order("name", { ascending: true })
     .limit(500);
 
-  let wineRows = withStories.data;
-  if (
-    withStories.error &&
+  let wines: PublicWine[] = [];
+  if (!withStories.error) {
+    wines = (withStories.data as PublicWine[]) ?? [];
+  } else if (
     /kimi_summary|kimi_curiosity|kimi_talk_hook|kimi_pairings|column/i.test(
       withStories.error.message
     )
@@ -155,10 +156,8 @@ export default async function PublicHandlePage({ params }: PageProps) {
       .eq("user_id", profile.id)
       .order("name", { ascending: true })
       .limit(500);
-    wineRows = basic.data;
+    wines = (basic.data as PublicWine[]) ?? [];
   }
-
-  const wines = (wineRows as PublicWine[]) ?? [];
 
   return (
     <main className="grain relative min-h-screen min-h-[100dvh]">

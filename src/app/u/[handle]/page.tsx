@@ -3,7 +3,12 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BrandMark } from "@/components/BrandMark";
 import { PublicCellarView } from "@/components/PublicCellarView";
-import type { NetworkProfile, PublicWine } from "@/lib/network";
+import {
+  PUBLIC_WINE_COLS,
+  PUBLIC_WINE_COLS_BASIC,
+  type NetworkProfile,
+  type PublicWine,
+} from "@/lib/network";
 import {
   isValidPublicHandle,
   normalizePublicHandle,
@@ -12,9 +17,6 @@ import { createClient } from "@/lib/supabase/server";
 
 const PROFILE_COLS =
   "id, display_name, public_handle, country, city, bio, network_visible, cava_public, network_updated_at";
-
-const PUBLIC_WINE_COLS =
-  "id, user_id, country, region, type, winery, name, aging, grape, vintage, vivino, cavatale_rating";
 
 type PageProps = {
   params: Promise<{ handle: string }>;
@@ -133,12 +135,28 @@ export default async function PublicHandlePage({ params }: PageProps) {
   const isOwnCava = Boolean(user && user.id === profile.id);
   const showSignupCta = !user;
 
-  const { data: wineRows } = await supabase
+  const withStories = await supabase
     .from("public_wines")
     .select(PUBLIC_WINE_COLS)
     .eq("user_id", profile.id)
     .order("name", { ascending: true })
     .limit(500);
+
+  let wineRows = withStories.data;
+  if (
+    withStories.error &&
+    /kimi_summary|kimi_curiosity|kimi_talk_hook|kimi_pairings|column/i.test(
+      withStories.error.message
+    )
+  ) {
+    const basic = await supabase
+      .from("public_wines")
+      .select(PUBLIC_WINE_COLS_BASIC)
+      .eq("user_id", profile.id)
+      .order("name", { ascending: true })
+      .limit(500);
+    wineRows = basic.data;
+  }
 
   const wines = (wineRows as PublicWine[]) ?? [];
 

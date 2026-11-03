@@ -4,8 +4,13 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { CountryFlag } from "@/components/CountryFlag";
 import { ThinkingIndicator } from "@/components/ThinkingIndicator";
+import { DrinkWindowBadge } from "@/components/DrinkWindowBadge";
 import type { NetworkProfile, PublicWine } from "@/lib/network";
-import { placeLabel } from "@/lib/network";
+import { placeLabel, publicWineToRankable } from "@/lib/network";
+import {
+  formatOpenTonightWhy,
+  rankOpenTonight,
+} from "@/lib/open-tonight";
 import {
   countryDisplayName,
   formatCavataleRating,
@@ -135,6 +140,23 @@ export function PublicCellarView({
       .slice(0, 12);
   }, [filtered]);
 
+  const openTonight = useMemo(() => {
+    const rankable = wines.map(publicWineToRankable);
+    return rankOpenTonight(rankable, 2);
+  }, [wines]);
+
+  const storyWines = useMemo(() => {
+    const openIds = new Set(openTonight.map((p) => p.wine.id));
+    return wines
+      .filter(
+        (w) =>
+          Boolean(w.kimi_summary?.trim() || w.kimi_talk_hook?.trim()) &&
+          !openIds.has(w.id)
+      )
+      .sort((a, b) => ratingScore(b) - ratingScore(a) || sortByName(a, b))
+      .slice(0, 2);
+  }, [wines, openTonight]);
+
   const displayName = profile.display_name?.trim() || t("public.collector");
   const handle = profile.public_handle?.trim();
 
@@ -216,6 +238,93 @@ export function PublicCellarView({
           </div>
         )}
       </div>
+
+      {!loading && (openTonight.length > 0 || storyWines.length > 0) ? (
+        <div className="space-y-3">
+          {openTonight.length > 0 ? (
+            <section className="panel-focus relative overflow-hidden px-4 py-4 sm:px-5">
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-[var(--wine)]"
+              />
+              <p className="relative micro-label text-[var(--wine)]">
+                {t("public.openTonight")}
+              </p>
+              <ul className="relative mt-3 space-y-3">
+                {openTonight.map((pick) => {
+                  const w = pick.wine;
+                  const why = formatOpenTonightWhy(pick, t);
+                  const pairing = w.kimiPairings?.[0];
+                  return (
+                    <li key={w.id} className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <p className="font-medium text-ink">{w.name}</p>
+                        <DrinkWindowBadge wine={w} />
+                      </div>
+                      <p className="mt-0.5 text-xs text-ink-soft">
+                        {[
+                          w.winery,
+                          w.vintage ?? null,
+                          w.cavataleRating != null
+                            ? formatCavataleRating(w.cavataleRating)
+                            : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                      {why ? (
+                        <p className="mt-1 text-sm text-[var(--wine-deep)]">
+                          {why}
+                        </p>
+                      ) : null}
+                      {pairing ? (
+                        <p className="mt-1 text-xs text-ink-soft">
+                          {t("stats.openTonightPairing", { dish: pairing })}
+                        </p>
+                      ) : w.kimiTalkHook ? (
+                        <p className="mt-1 text-xs text-ink-soft line-clamp-2">
+                          {w.kimiTalkHook}
+                        </p>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ) : null}
+
+          {storyWines.length > 0 ? (
+            <section className="panel-quiet px-4 py-4 sm:px-5">
+              <p className="micro-label text-ink-soft">{t("public.stories")}</p>
+              <ul className="mt-3 space-y-3">
+                {storyWines.map((w) => (
+                  <li key={w.id}>
+                    <p className="font-medium text-ink">{w.name}</p>
+                    <p className="mt-0.5 text-xs text-ink-soft">
+                      {[w.winery, w.vintage].filter(Boolean).join(" · ")}
+                    </p>
+                    {w.kimi_talk_hook ? (
+                      <p className="mt-1.5 text-sm leading-snug text-ink">
+                        {w.kimi_talk_hook}
+                      </p>
+                    ) : null}
+                    {w.kimi_summary ? (
+                      <p className="mt-1 text-sm leading-relaxed text-ink-soft line-clamp-3">
+                        {w.kimi_summary}
+                      </p>
+                    ) : null}
+                    {w.kimi_curiosity ? (
+                      <p className="mt-1 text-xs italic text-ink-soft line-clamp-2">
+                        {w.kimi_curiosity}
+                      </p>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+        </div>
+      ) : null}
 
       {!loading ? (
         <div className="panel-quiet space-y-4 p-5">

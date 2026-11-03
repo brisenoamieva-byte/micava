@@ -143,6 +143,8 @@ export default function CavaPage() {
   const addedToastTimerRef = useRef<number | null>(null);
   const locateToastTimerRef = useRef<number | null>(null);
   const importPlaceContinueRef = useRef(false);
+  const skipSearchToastRef = useRef(false);
+  const lastSearchToastKeyRef = useRef("");
 
   function closeMoreMenu() {
     if (moreMenuRef.current) moreMenuRef.current.open = false;
@@ -246,19 +248,7 @@ export default function CavaPage() {
 
   const mapFocusWineId = locateTargetId ?? searchFocusWineId;
 
-  function locateWineOnMap(wine: Wine) {
-    setMode("cava");
-    setMobilePanel("mapa");
-    setDetailReturn("mapa");
-    setSelectedId(wine.id);
-    if (wine.cellarId) setActiveCellarId(wine.cellarId);
-    setFilters((prev) => ({
-      ...prev,
-      query: wine.name,
-    }));
-    setLocateTargetId(wine.id);
-    setLocateToken((n) => n + 1);
-
+  function showFoundToast(wine: Wine) {
     const mueble =
       wine.cellarId != null
         ? cellars.find((c) => c.id === wine.cellarId)?.name
@@ -279,11 +269,28 @@ export default function CavaPage() {
     }, 4200);
   }
 
+  function locateWineOnMap(wine: Wine) {
+    skipSearchToastRef.current = true;
+    setMode("cava");
+    setMobilePanel("mapa");
+    setDetailReturn("mapa");
+    setSelectedId(wine.id);
+    if (wine.cellarId) setActiveCellarId(wine.cellarId);
+    setFilters((prev) => ({
+      ...prev,
+      query: wine.name,
+    }));
+    setLocateTargetId(wine.id);
+    setLocateToken((n) => n + 1);
+    showFoundToast(wine);
+  }
+
   // Search → jump to the furniture that holds the first match (≤3s find).
   useEffect(() => {
     const q = filters.query.trim();
     if (!q) {
       setLocateTargetId(null);
+      lastSearchToastKeyRef.current = "";
       return;
     }
     if (visible.length === 0) return;
@@ -294,6 +301,18 @@ export default function CavaPage() {
     if (visible.length === 1) {
       setSelectedId(first.id);
     }
+
+    if (skipSearchToastRef.current) {
+      skipSearchToastRef.current = false;
+      lastSearchToastKeyRef.current = first.id;
+      return;
+    }
+    if (q.length < 2) return;
+    // One toast per focused bottle while typing — not per keystroke.
+    if (lastSearchToastKeyRef.current === first.id) return;
+    lastSearchToastKeyRef.current = first.id;
+    showFoundToast(first);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- toast on search focus change only
   }, [filters.query, visible, activeCellarId, setActiveCellarId]);
 
   const selected =

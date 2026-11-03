@@ -882,6 +882,7 @@ export const en = {
   },
   move: {
     title: "Move bottle",
+    placeTitle: "Place bottle",
     toSlot: "New slot",
     toBelow: "Move below",
     now: "Now: {location}",
@@ -889,6 +890,10 @@ export const en = {
     noFreeSlots:
       "This unit has no free slots. Pick another or \"Below / out\".",
     moveHere: "Move here",
+    placeHere: "Place here",
+    placeInSlot: "Place in {slot}",
+    slotSuggested: "{slot} · suggested",
+    suggestedHint: "First free slot: {slot}. Change it if you prefer another.",
   },
   depart: {
     title: "Uncork",

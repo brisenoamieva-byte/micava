@@ -869,6 +869,7 @@ export const es = {
   },
   move: {
     title: "Mover botella",
+    placeTitle: "Acomodar botella",
     toSlot: "Nuevo hueco",
     toBelow: "Mover abajo",
     now: "Ahora: {location}",
@@ -876,6 +877,10 @@ export const es = {
     noFreeSlots:
       "Este mueble no tiene huecos libres. Elige otro o \"Abajo / fuera\".",
     moveHere: "Mover aquí",
+    placeHere: "Colocar aquí",
+    placeInSlot: "Colocar en {slot}",
+    slotSuggested: "{slot} · sugerido",
+    suggestedHint: "Primer hueco libre: {slot}. Cámbialo si quieres otro.",
   },
   depart: {
     title: "Descorchar",

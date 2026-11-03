@@ -13,6 +13,24 @@ type Props = {
   onConfirm: (targetLocation: string, targetCellarId: string | null) => void;
 };
 
+function firstFreeSlot(
+  wines: Wine[],
+  unit: CellarUnit | null | undefined,
+  wine: Wine
+): string {
+  if (!unit) return "";
+  const free = getEmptySlots(wines, unit.cols, unit.rows, unit.id);
+  if (
+    wine.slot &&
+    wine.slot !== "abajo" &&
+    wine.cellarId === unit.id &&
+    !free.includes(wine.slot)
+  ) {
+    return wine.slot;
+  }
+  return free[0] ?? "";
+}
+
 export function MoveWineSheet({
   wine,
   cellars,
@@ -21,14 +39,17 @@ export function MoveWineSheet({
   onConfirm,
 }: Props) {
   const t = useT();
+  const needsPlacement = !wine.slot || wine.slot === "abajo";
   const initialCellar =
     wine.cellarId && cellars.some((c) => c.id === wine.cellarId)
       ? wine.cellarId
       : cellars[0]?.id ?? null;
   const [cellarId, setCellarId] = useState<string | null>(initialCellar);
-  const [slot, setSlot] = useState(
-    wine.slot && wine.slot !== "abajo" ? wine.slot : ""
-  );
+  const [slot, setSlot] = useState(() => {
+    if (!needsPlacement && wine.slot) return wine.slot;
+    const unit = cellars.find((c) => c.id === initialCellar) ?? null;
+    return firstFreeSlot(wines, unit, wine);
+  });
 
   const unit = cellars.find((c) => c.id === cellarId) ?? null;
   const emptySlots = useMemo(() => {
@@ -45,6 +66,7 @@ export function MoveWineSheet({
     return free;
   }, [wines, unit, wine]);
 
+  const suggested = emptySlots[0] ?? "";
   const currentLabel =
     wine.slot === "abajo" || !wine.slot
       ? t("wine.belowOut")
@@ -75,7 +97,7 @@ export function MoveWineSheet({
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id="move-wine-title" className="display text-2xl text-ink">
-          {t("move.title")}
+          {needsPlacement ? t("move.placeTitle") : t("move.title")}
         </h2>
         <p className="mt-1 text-sm text-ink-soft">
           <span className="font-medium text-ink">{wine.name}</span>
@@ -93,7 +115,8 @@ export function MoveWineSheet({
               onChange={(e) => {
                 const next = e.target.value || null;
                 setCellarId(next);
-                setSlot("");
+                const nextUnit = cellars.find((c) => c.id === next) ?? null;
+                setSlot(firstFreeSlot(wines, nextUnit, wine));
               }}
             >
               {cellars.map((c) => (
@@ -116,7 +139,9 @@ export function MoveWineSheet({
             <option value="abajo">{t("wine.belowOut")}</option>
             {emptySlots.map((s) => (
               <option key={s} value={s}>
-                {t("wine.slotLabel", { slot: s })}
+                {needsPlacement && s === suggested
+                  ? t("move.slotSuggested", { slot: s })
+                  : t("wine.slotLabel", { slot: s })}
               </option>
             ))}
           </select>
@@ -124,6 +149,10 @@ export function MoveWineSheet({
 
         {unit && emptySlots.length === 0 && slot !== "abajo" ? (
           <p className="mt-2 text-xs text-ink-soft">{t("move.noFreeSlots")}</p>
+        ) : needsPlacement && suggested && slot === suggested ? (
+          <p className="mt-2 text-xs text-ink-soft">
+            {t("move.suggestedHint", { slot: suggested })}
+          </p>
         ) : null}
 
         <div className="mt-5 flex flex-col gap-2 sm:flex-row-reverse">
@@ -133,7 +162,11 @@ export function MoveWineSheet({
             disabled={!slot || (slot !== "abajo" && !cellarId)}
             onClick={submit}
           >
-            {t("move.moveHere")}
+            {needsPlacement
+              ? slot && slot !== "abajo"
+                ? t("move.placeInSlot", { slot })
+                : t("move.placeHere")
+              : t("move.moveHere")}
           </button>
           <button
             type="button"

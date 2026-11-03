@@ -1649,6 +1649,13 @@ export default function CavaPage() {
                 setAddedToast(null);
                 addedToastTimerRef.current = null;
               }, 4500);
+              // Same place nudge as CSV import when the bottle has no map slot.
+              if (wineNeedsMapSlot(created)) {
+                importPlaceContinueRef.current = false;
+                setImportPlaceIds((prev) =>
+                  prev.includes(created.id) ? prev : [...prev, created.id]
+                );
+              }
             }
 
             const dataUrl = extras?.labelImageDataUrl;

@@ -34,6 +34,17 @@ export const DRINK_STATUS_DOT: Record<
   late: "bg-[var(--oak)]",
 };
 
+/** CSS color tokens for map cell accents (border / inline style). */
+export const DRINK_STATUS_COLOR: Record<
+  Exclude<DrinkStatus, "unknown">,
+  string
+> = {
+  peak: "var(--wine)",
+  ready: "var(--leaf)",
+  young: "#3a6a8c",
+  late: "var(--oak)",
+};
+
 export function DrinkWindowBadge({ wine, size = "sm", className = "" }: Props) {
   const t = useT();
   const status = drinkStatus(wine);

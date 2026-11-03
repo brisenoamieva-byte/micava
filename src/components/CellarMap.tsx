@@ -20,6 +20,10 @@ import {
   typeAccent,
 } from "@/lib/wines";
 import { CountryFlag } from "@/components/CountryFlag";
+import {
+  DRINK_STATUS_COLOR,
+  DRINK_STATUS_DOT,
+} from "@/components/DrinkWindowBadge";
 import { drinkStatus } from "@/lib/drink-window";
 
 /** Cap Abajo chips so huge imports don't paint hundreds of nodes at once. */
@@ -864,6 +868,7 @@ export function CellarMap({
                   const dimmed =
                     highlightedIds.size > 0 && !highlightedIds.has(wine.id);
                   const isMoving = activeMoveId === wine.id;
+                  const moment = drinkStatus(wine);
                   return (
                     <div
                       key={wine.id}
@@ -871,6 +876,11 @@ export function CellarMap({
                       tabIndex={0}
                       data-slot="abajo"
                       data-wine-id={wine.id}
+                      title={
+                        moment !== "unknown"
+                          ? t(`drinkWindow.status.${moment}`)
+                          : undefined
+                      }
                       draggable={!touchUi && !pickMode && Boolean(onMoveWine)}
                       onPointerDown={(e) => beginPress(wine, e)}
                       onPointerMove={updatePress}
@@ -912,7 +922,24 @@ export function CellarMap({
                         isMoving ? "ring-2 ring-[var(--wine)] opacity-90" : "",
                         located ? "map-cell--located" : "",
                       ].join(" ")}
+                      style={
+                        moment !== "unknown"
+                          ? {
+                              borderTopColor: DRINK_STATUS_COLOR[moment],
+                              borderTopWidth: 2,
+                            }
+                          : undefined
+                      }
                     >
+                      {moment !== "unknown" ? (
+                        <span
+                          className={[
+                            "h-2 w-2 shrink-0 rounded-full",
+                            DRINK_STATUS_DOT[moment],
+                          ].join(" ")}
+                          aria-hidden
+                        />
+                      ) : null}
                       <CountryFlag country={wine.country} size="sm" />
                       <span className="min-w-0">
                         <span className="block max-w-[10rem] truncate font-medium leading-tight sm:max-w-[14rem]">
@@ -1182,6 +1209,7 @@ export function CellarMap({
                           {abajoVisible.map((wine) => {
                             const active = wine.id === selectedId;
                             const isMoving = activeMoveId === wine.id;
+                            const moment = drinkStatus(wine);
                             return (
                               <div
                                 key={wine.id}
@@ -1189,6 +1217,11 @@ export function CellarMap({
                                 tabIndex={0}
                                 data-slot="abajo"
                                 data-wine-id={wine.id}
+                                title={
+                                  moment !== "unknown"
+                                    ? t(`drinkWindow.status.${moment}`)
+                                    : undefined
+                                }
                                 onPointerDown={(e) => beginPress(wine, e)}
                                 onPointerMove={updatePress}
                                 onPointerUp={endPress}
@@ -1209,7 +1242,25 @@ export function CellarMap({
                                     ? "ring-2 ring-[var(--wine)] opacity-90"
                                     : "",
                                 ].join(" ")}
+                                style={
+                                  moment !== "unknown"
+                                    ? {
+                                        borderTopColor:
+                                          DRINK_STATUS_COLOR[moment],
+                                        borderTopWidth: 2,
+                                      }
+                                    : undefined
+                                }
                               >
+                                {moment !== "unknown" ? (
+                                  <span
+                                    className={[
+                                      "h-1.5 w-1.5 shrink-0 rounded-full",
+                                      DRINK_STATUS_DOT[moment],
+                                    ].join(" ")}
+                                    aria-hidden
+                                  />
+                                ) : null}
                                 <CountryFlag
                                   country={wine.country}
                                   size="sm"
@@ -1407,6 +1458,7 @@ function Row({
 
         const label = cellLabel(wine);
         const meta = cellMeta(wine);
+        const moment = drinkStatus(wine);
         const tip = [
           wine.name,
           wine.winery,
@@ -1414,11 +1466,7 @@ function Row({
           wine.cavataleRating != null
             ? `Cavatale ${formatCavataleRating(wine.cavataleRating)}`
             : "",
-          (() => {
-            const s = drinkStatus(wine);
-            if (s === "unknown") return "";
-            return t(`drinkWindow.status.${s}`);
-          })(),
+          moment !== "unknown" ? t(`drinkWindow.status.${moment}`) : "",
           countryDisplayName(wine.country, locale),
           wine.type,
           slot,
@@ -1468,7 +1516,7 @@ function Row({
               onInteractSlot(slot, wine);
             }}
             className={[
-              "map-cell map-cell--draggable flex min-h-[52px] cursor-grab flex-col items-stretch justify-center gap-0.5 rounded-[6px] border px-0.5 py-1 text-left transition active:cursor-grabbing sm:min-h-[58px] sm:rounded-[8px] sm:px-1",
+              "map-cell map-cell--draggable relative flex min-h-[52px] cursor-grab flex-col items-stretch justify-center gap-0.5 rounded-[6px] border px-0.5 py-1 text-left transition active:cursor-grabbing sm:min-h-[58px] sm:rounded-[8px] sm:px-1",
               active || isMoving
                 ? "border-[var(--wine)] bg-[rgba(122,36,48,0.12)] slot-active"
                 : "border-[rgba(122,36,48,0.18)] bg-[linear-gradient(160deg,rgba(122,36,48,0.14),rgba(255,252,247,0.55))]",
@@ -1481,8 +1529,23 @@ function Row({
             style={{
               borderLeftColor: typeAccent(wine.type),
               borderLeftWidth: 3,
+              ...(moment !== "unknown"
+                ? {
+                    borderTopColor: DRINK_STATUS_COLOR[moment],
+                    borderTopWidth: 2,
+                  }
+                : {}),
             }}
           >
+            {moment !== "unknown" ? (
+              <span
+                className={[
+                  "pointer-events-none absolute right-1 top-1 h-1.5 w-1.5 rounded-full sm:right-1.5 sm:top-1.5",
+                  DRINK_STATUS_DOT[moment],
+                ].join(" ")}
+                aria-hidden
+              />
+            ) : null}
             <span className="flex items-center px-0.5">
               <CountryFlag country={wine.country} size="xs" />
             </span>

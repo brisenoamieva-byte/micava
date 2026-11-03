@@ -813,11 +813,11 @@ export const es = {
     },
   },
   bitacora: {
-    title: "Bitácora",
+    title: "Historias de mesa",
     empty: "Cuando descorches, aquí queda el rastro.",
     tasted: "Descorchado",
-    subtitle: "Historias de botellas que escaneaste — fuera del mapa.",
-    noStoriesYet: "Aún no hay historias",
+    subtitle: "Relatos que guardaste sin sumar la botella al mapa.",
+    noStoriesYet: "Aún no hay relatos guardados",
     emptyHint:
       "Desde Más → Historia para bitácora puedes escanear y guardar un relato sin sumarlo al mapa.",
     storiesCount: "{count} historia",
@@ -986,11 +986,16 @@ export const es = {
     photoGallery: "Galería",
   },
   history: {
-    title: "Reciente",
-    lead: "Lo que salió de la cava — con tu nota y foto para recordar qué repetir.",
-    favorites: "Me gustaron (4–5)",
-    tastingMemory: "Memoria al descorchar",
+    title: "Qué repetirías",
+    lead: "Tu nota y foto al descorchar — para no olvidar qué sí volviste a comprar.",
+    favorites: "Compraría otra (4–5)",
+    tastingMemory: "Tu bitácora",
+    lastOpened: "Última que abriste",
+    emptyMemory:
+      "Cuando digas La abrí y dejes nota o foto, aquí queda el recuerdo.",
     noNote: "Sin nota — la próxima deja cómo estuvo.",
+    showActivity: "Ver actividad ({count})",
+    hideActivity: "Ocultar actividad",
     action: {
       opened: "Abriste",
       gifted: "Regalaste",

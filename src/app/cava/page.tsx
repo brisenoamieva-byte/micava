@@ -1220,12 +1220,12 @@ export default function CavaPage() {
         {mode === "stats" ? (
           <div className="mt-6 space-y-5">
             <div id="bitacora">
-              <BitacoraPanel
-                entries={encounters}
-                onRemove={removeEncounter}
-              />
+              <RecentHistory entries={history} />
             </div>
-            <RecentHistory entries={history} />
+            <BitacoraPanel
+              entries={encounters}
+              onRemove={removeEncounter}
+            />
             <StatsDashboard
               wines={wines}
               cellars={cellars}

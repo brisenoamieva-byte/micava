@@ -826,11 +826,11 @@ export const en = {
     },
   },
   bitacora: {
-    title: "Logbook",
+    title: "Table stories",
     empty: "When you uncork, the trail stays here.",
     tasted: "Uncorked",
-    subtitle: "Stories from bottles you scanned — off the map.",
-    noStoriesYet: "No stories yet",
+    subtitle: "Tales you saved without adding the bottle to the map.",
+    noStoriesYet: "No saved tales yet",
     emptyHint:
       "From More → Story for logbook you can scan and save a tale without adding it to the map.",
     storiesCount: "{count} story",
@@ -1000,11 +1000,16 @@ export const en = {
     photoGallery: "Gallery",
   },
   history: {
-    title: "Recent",
-    lead: "What left the cellar — with your note and photo so you know what to buy again.",
-    favorites: "Liked (4–5)",
-    tastingMemory: "Memory from opening",
+    title: "What you’d buy again",
+    lead: "Your note and photo when you opened it — so you remember what was worth repeating.",
+    favorites: "Buy again (4–5)",
+    tastingMemory: "Your logbook",
+    lastOpened: "Last you opened",
+    emptyMemory:
+      "When you tap Opened and leave a note or photo, the memory lands here.",
     noNote: "No note — next time, jot how it was.",
+    showActivity: "Show activity ({count})",
+    hideActivity: "Hide activity",
     action: {
       opened: "Opened",
       gifted: "Gifted",

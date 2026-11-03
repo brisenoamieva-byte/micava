@@ -14,20 +14,23 @@ import { formatCavataleRating } from "@/lib/wines";
 
 type Props = {
   wines: Wine[];
-  /** Jump to full Abrir hoy (Pulso). */
-  onOpenTonight: () => void;
   /** Open the recommended bottle card. */
-  onSelectWine?: (wine: Wine) => void;
+  onSelectWine: (wine: Wine) => void;
+  /** Jump to the bottle on the map. */
+  onLocateWine: (wine: Wine) => void;
+  /** Optional: full Abrir hoy in Pulso (secondary). */
+  onOpenTonight?: () => void;
 };
 
 /**
  * Mobile shortcut for Abrir hoy while browsing map / list —
- * occasion chips + top pick + plain-language why.
+ * occasion chips + top pick → ficha or map, not Pulse first.
  */
 export function OpenTonightStrip({
   wines,
-  onOpenTonight,
   onSelectWine,
+  onLocateWine,
+  onOpenTonight,
 }: Props) {
   const t = useT();
   const [occasion, setOccasion] = useState<OpenOccasion>("week");
@@ -67,7 +70,11 @@ export function OpenTonightStrip({
           );
         })}
       </div>
-      <div className="flex items-start justify-between gap-2">
+      <button
+        type="button"
+        className="flex w-full items-start justify-between gap-2 rounded-[8px] text-left transition hover:bg-[rgba(110,31,44,0.05)]"
+        onClick={() => onSelectWine(w)}
+      >
         <div className="min-w-0">
           <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--wine)]">
             {occasion === "week"
@@ -92,22 +99,29 @@ export function OpenTonightStrip({
             {formatCavataleRating(w.cavataleRating)}
           </p>
         ) : null}
-      </div>
-      <div className="mt-2.5 flex flex-wrap gap-2">
+      </button>
+      <div className="mt-2.5 flex flex-wrap items-center gap-2">
         <button
           type="button"
           className="btn btn-primary min-h-[40px] flex-1 px-3 text-sm"
-          onClick={onOpenTonight}
+          onClick={() => onLocateWine(w)}
         >
-          {t("cava.openTonightSeeAll")}
+          {t("cava.takeToMap")}
         </button>
-        {onSelectWine ? (
+        <button
+          type="button"
+          className="btn btn-ghost min-h-[40px] border border-[var(--line)] px-3 text-sm"
+          onClick={() => onSelectWine(w)}
+        >
+          {t("stats.openTonightCta")}
+        </button>
+        {onOpenTonight ? (
           <button
             type="button"
-            className="btn btn-ghost min-h-[40px] border border-[var(--line)] px-3 text-sm"
-            onClick={() => onSelectWine(w)}
+            className="min-h-[40px] px-1 text-xs text-ink-soft underline-offset-2 hover:text-ink hover:underline"
+            onClick={onOpenTonight}
           >
-            {t("stats.openTonightCta")}
+            {t("cava.openTonightSeeAll")}
           </button>
         ) : null}
       </div>

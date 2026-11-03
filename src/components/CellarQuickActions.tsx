@@ -5,18 +5,18 @@ import { useT } from "@/lib/i18n";
 type Props = {
   onScan: () => void;
   onOpenTonight: () => void;
-  onFind: () => void;
+  onPairMeal: () => void;
   openTonightDisabled?: boolean;
-  findDisabled?: boolean;
+  pairMealDisabled?: boolean;
 };
 
-/** Three primary decisions — scan, open tonight, find on map. */
+/** Three primary decisions — scan, open tonight, wine for the table. */
 export function CellarQuickActions({
   onScan,
   onOpenTonight,
-  onFind,
+  onPairMeal,
   openTonightDisabled,
-  findDisabled,
+  pairMealDisabled,
 }: Props) {
   const t = useT();
 
@@ -53,14 +53,14 @@ export function CellarQuickActions({
       <button
         type="button"
         className="btn btn-ghost flex min-h-[52px] flex-col items-center justify-center gap-0.5 border border-[var(--line)] px-2 py-2 text-center disabled:opacity-45 sm:min-h-[56px]"
-        onClick={onFind}
-        disabled={findDisabled}
+        onClick={onPairMeal}
+        disabled={pairMealDisabled}
       >
         <span className="text-sm font-medium leading-tight text-ink">
-          {t("cava.quickFind")}
+          {t("cava.quickPairMeal")}
         </span>
         <span className="text-[10px] text-ink-soft sm:text-[11px]">
-          {t("cava.quickFindHint")}
+          {t("cava.quickPairMealHint")}
         </span>
       </button>
     </section>

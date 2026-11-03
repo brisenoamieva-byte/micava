@@ -987,17 +987,6 @@ export default function CavaPage() {
                   </button>
                   <button
                     type="button"
-                    className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)] disabled:opacity-45"
-                    disabled={!ready || wines.length === 0}
-                    onClick={() => {
-                      closeMoreMenu();
-                      setFoodPairOpen(true);
-                    }}
-                  >
-                    {t("cava.pairMeal")}
-                  </button>
-                  <button
-                    type="button"
                     className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
                     onClick={() => {
                       closeMoreMenu();
@@ -1161,17 +1150,7 @@ export default function CavaPage() {
             <CellarQuickActions
               onScan={() => openAdd()}
               onOpenTonight={() => goToOpenTonight()}
-              onFind={() => {
-                setMode("cava");
-                setMobilePanel("lista");
-                window.requestAnimationFrame(() => {
-                  const input = document.getElementById(
-                    "cellar-search"
-                  ) as HTMLInputElement | null;
-                  input?.focus();
-                  input?.scrollIntoView({ behavior: "smooth", block: "center" });
-                });
-              }}
+              onPairMeal={() => setFoodPairOpen(true)}
             />
             <p className="mt-2 text-center text-xs text-ink-soft sm:text-left">
               <button
@@ -1465,8 +1444,9 @@ export default function CavaPage() {
             <section className="panel-focus p-3 sm:p-4">
               <OpenTonightStrip
                 wines={wines}
-                onOpenTonight={goToOpenTonight}
                 onSelectWine={(w) => selectWine(w, true, "mapa")}
+                onLocateWine={(w) => locateWineOnMap(w)}
+                onOpenTonight={goToOpenTonight}
               />
               <div className="mb-3 flex items-baseline justify-between gap-3">
                 <h2 className="display text-xl text-ink sm:text-2xl">
@@ -1510,8 +1490,9 @@ export default function CavaPage() {
             <section className="panel-quiet flex flex-col p-3 sm:p-4">
               <OpenTonightStrip
                 wines={wines}
-                onOpenTonight={goToOpenTonight}
                 onSelectWine={(w) => selectWine(w, true, "lista")}
+                onLocateWine={(w) => locateWineOnMap(w)}
+                onOpenTonight={goToOpenTonight}
               />
               <div className="mb-3 flex items-baseline justify-between gap-3">
                 <h2 className="display text-xl text-ink sm:text-2xl">

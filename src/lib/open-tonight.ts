@@ -7,14 +7,38 @@ import {
 } from "@/lib/drink-window";
 import type { Wine } from "@/lib/types";
 
+export type OpenTonightReasonKey =
+  | "peak"
+  | "ready"
+  | "late"
+  | "highScore"
+  | "hasStory"
+  | "hasPairing";
+
 export type OpenTonightPick = {
   wine: Wine;
   score: number;
   status: DrinkStatus;
-  reasonKeys: Array<
-    "peak" | "ready" | "late" | "highScore" | "hasStory" | "hasPairing"
-  >;
+  reasonKeys: OpenTonightReasonKey[];
 };
+
+/** Plain-language “why this bottle” for Abrir hoy. */
+export function formatOpenTonightWhy(
+  pick: OpenTonightPick,
+  t: (key: string, vars?: Record<string, string | number>) => string
+): string | null {
+  if (pick.reasonKeys.length === 0) return null;
+  const parts = pick.reasonKeys.map((key) =>
+    t(`stats.openTonightReasonPhrase.${key}`)
+  );
+  if (parts.length === 1) {
+    return t("stats.openTonightWhyOne", { reason: parts[0]! });
+  }
+  return t("stats.openTonightWhyMany", {
+    reasons: parts.slice(0, -1).join(", "),
+    last: parts[parts.length - 1]!,
+  });
+}
 
 function preferBottle(a: Wine, b: Wine): Wine {
   const aC = a.cavataleRating ?? 0;

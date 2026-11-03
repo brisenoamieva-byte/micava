@@ -17,6 +17,7 @@ import { ImportCsvModal } from "@/components/ImportCsvModal";
 import { InstallAppHint } from "@/components/InstallAppHint";
 import { KimiUsageHint } from "@/components/KimiUsageHint";
 import { MoveWineSheet } from "@/components/MoveWineSheet";
+import { OpenTonightStrip } from "@/components/OpenTonightStrip";
 import { RecentHistory } from "@/components/RecentHistory";
 import { ResizableDesktopPanels } from "@/components/ResizableDesktopPanels";
 import { ShareCavaModal } from "@/components/ShareCavaModal";
@@ -400,6 +401,15 @@ export default function CavaPage() {
     setFormPrefill(opts?.prefill ?? null);
     setFormOpen(true);
     setMode("cava");
+  }
+
+  function goToOpenTonight() {
+    setMode("stats");
+    window.requestAnimationFrame(() => {
+      document
+        .getElementById("open-tonight")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }
 
   function openEncuentro() {
@@ -1136,14 +1146,7 @@ export default function CavaPage() {
           <>
             <CellarQuickActions
               onScan={() => openAdd()}
-              onOpenTonight={() => {
-                setMode("stats");
-                window.requestAnimationFrame(() => {
-                  document
-                    .getElementById("open-tonight")
-                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
-                });
-              }}
+              onOpenTonight={() => goToOpenTonight()}
               onFind={() => {
                 setMode("cava");
                 setMobilePanel("lista");
@@ -1443,6 +1446,11 @@ export default function CavaPage() {
         <div className="mobile-only mt-5 shrink-0">
           {mobilePanel === "mapa" && (
             <section className="panel-focus p-3 sm:p-4">
+              <OpenTonightStrip
+                wines={wines}
+                onOpenTonight={goToOpenTonight}
+                onSelectWine={(w) => selectWine(w, true, "mapa")}
+              />
               <div className="mb-3 flex items-baseline justify-between gap-3">
                 <h2 className="display text-xl text-ink sm:text-2xl">
                   {activeCellar ? activeCellar.name : t("cava.map")}
@@ -1483,6 +1491,11 @@ export default function CavaPage() {
 
           {mobilePanel === "lista" && (
             <section className="panel-quiet flex flex-col p-3 sm:p-4">
+              <OpenTonightStrip
+                wines={wines}
+                onOpenTonight={goToOpenTonight}
+                onSelectWine={(w) => selectWine(w, true, "lista")}
+              />
               <div className="mb-3 flex items-baseline justify-between gap-3">
                 <h2 className="display text-xl text-ink sm:text-2xl">
                   {t("cava.inventory")}

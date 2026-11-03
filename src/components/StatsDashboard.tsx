@@ -14,6 +14,7 @@ import {
 import { useLocale, useT, wineTypeLabel } from "@/lib/i18n";
 import {
   cellarValueSnapshot,
+  formatOpenTonightWhy,
   rankOpenTonight,
   winesNeedingPriceRefresh,
 } from "@/lib/open-tonight";
@@ -306,6 +307,14 @@ export function StatsDashboard({
                         {w.grape ? ` · ${w.grape}` : ""}
                         {w.slot ? ` · ${w.slot}` : ""}
                       </p>
+                      {(() => {
+                        const why = formatOpenTonightWhy(top, t);
+                        return why ? (
+                          <p className="mt-2 text-sm font-medium leading-snug text-[var(--wine-deep)]">
+                            {why}
+                          </p>
+                        ) : null;
+                      })()}
                       {top.reasonKeys.length > 0 ? (
                         <p className="mt-2 flex flex-wrap gap-1.5">
                           {top.reasonKeys.map((key) => (
@@ -399,6 +408,14 @@ export function StatsDashboard({
                                   {rw.slot ? ` · ${rw.slot}` : ""}
                                   {rPair ? ` · ${rPair}` : ""}
                                 </span>
+                                {(() => {
+                                  const why = formatOpenTonightWhy(pick, t);
+                                  return why ? (
+                                    <span className="mt-0.5 block text-xs text-[var(--wine-deep)] line-clamp-1">
+                                      {why}
+                                    </span>
+                                  ) : null;
+                                })()}
                               </span>
                               <span className="shrink-0 text-right">
                                 {rw.cavataleRating != null ? (

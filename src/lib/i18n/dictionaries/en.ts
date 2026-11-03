@@ -987,9 +987,14 @@ export const en = {
       "{count} imported · {unplaced} still need a map slot",
     placeNudgeTitle: "{count} still to place",
     placeNudgeBody:
-      "Pick furniture and slot now — or leave them Below and place later.",
-    placeNudgeCta: "Place on the map",
+      "Fill free slots in one go, or place them one by one on the map.",
+    placeNudgeCta: "One by one",
     placeNudgeLater: "Not now",
+    placeBulkCta: "Fill free slots",
+    placeBulkDone: "{count} placed on the map",
+    placeBulkPartial:
+      "{placed} placed · {left} still need a slot (furniture full)",
+    placeBulkNoSlots: "No free slots in your furniture",
   },
   export: {
     csv: "Export CSV",

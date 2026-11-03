@@ -974,9 +974,14 @@ export const es = {
       "{count} importadas · {unplaced} sin hueco en el mapa",
     placeNudgeTitle: "{count} sin acomodar",
     placeNudgeBody:
-      "Elígeles mueble y hueco ahora — o déjalas en Abajo y acomódalas después.",
-    placeNudgeCta: "Acomodar en el mapa",
+      "Llena los huecos libres de un golpe, o acomódalas una por una en el mapa.",
+    placeNudgeCta: "Una por una",
     placeNudgeLater: "Ahora no",
+    placeBulkCta: "Llenar huecos libres",
+    placeBulkDone: "{count} acomodadas en el mapa",
+    placeBulkPartial:
+      "{placed} acomodadas · {left} siguen sin hueco (mueble lleno)",
+    placeBulkNoSlots: "No hay huecos libres en tus muebles",
   },
   export: {
     csv: "Exportar CSV",

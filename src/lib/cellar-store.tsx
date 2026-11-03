@@ -176,6 +176,14 @@ type CellarContextValue = {
     targetLocation: string,
     targetCellarId?: string | null
   ) => void;
+  /** Place many bottles in one state update (avoids React batching collisions). */
+  placeWinesBatch: (
+    placements: Array<{
+      wineId: string;
+      location: string;
+      cellarId: string | null;
+    }>
+  ) => number;
   removeWine: (id: string) => void;
   departWine: (
     id: string,
@@ -1411,6 +1419,43 @@ export function CellarProvider({ children }: { children: ReactNode }) {
     [activeCellarId, upsertWineRemote]
   );
 
+  const placeWinesBatch = useCallback(
+    (
+      placements: Array<{
+        wineId: string;
+        location: string;
+        cellarId: string | null;
+      }>
+    ) => {
+      if (!placements.length) return 0;
+      const uid = userIdRef.current;
+      let placed = 0;
+      const touched: Wine[] = [];
+      setWines((prev) => {
+        const byId = new Map(prev.map((w) => [w.id, { ...w }]));
+        for (const p of placements) {
+          const wine = byId.get(p.wineId);
+          if (!wine) continue;
+          const loc = parseLocation(p.location);
+          if (!loc.slot || loc.slot === "abajo") continue;
+          wine.cellarId = p.cellarId;
+          wine.slot = loc.slot;
+          wine.col = loc.col;
+          wine.row = loc.row;
+          byId.set(p.wineId, wine);
+          touched.push(wine);
+          placed += 1;
+        }
+        return prev.map((w) => byId.get(w.id) ?? w);
+      });
+      if (uid) {
+        for (const w of touched) void upsertWineRemote(w, uid);
+      }
+      return placed;
+    },
+    [upsertWineRemote]
+  );
+
   const removeWine = useCallback(
     (id: string) => {
       setWines((prev) => prev.filter((w) => w.id !== id));
@@ -1730,6 +1775,7 @@ export function CellarProvider({ children }: { children: ReactNode }) {
       setLabelImageUrl,
       applyKimiResearch,
       moveWine,
+      placeWinesBatch,
       removeWine,
       departWine,
       saveEncounter,
@@ -1766,6 +1812,7 @@ export function CellarProvider({ children }: { children: ReactNode }) {
       setLabelImageUrl,
       applyKimiResearch,
       moveWine,
+      placeWinesBatch,
       removeWine,
       departWine,
       saveEncounter,

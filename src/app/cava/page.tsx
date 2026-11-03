@@ -92,6 +92,7 @@ export default function CavaPage() {
     applyKimiResearch,
     saveVerifiedPrice,
     moveWine,
+    placeWinesBatch,
     departWine,
     saveEncounter,
     removeEncounter,
@@ -440,6 +441,82 @@ export default function CavaPage() {
       setActiveCellarId(cellars[0].id);
     }
     setMoveSheetWine(next);
+  }
+
+  /** Fill free slots across furniture in one tap (import leftovers). */
+  function autoPlaceImportedBottles() {
+    importPlaceContinueRef.current = false;
+    setMoveSheetWine(null);
+
+    const pending = importPlaceIds
+      .map((id) => wines.find((w) => w.id === id))
+      .filter((w): w is Wine => Boolean(w && wineNeedsMapSlot(w)));
+    if (!pending.length) {
+      setImportPlaceIds([]);
+      return;
+    }
+
+    const units = [
+      ...(activeCellar ? [activeCellar] : []),
+      ...cellars.filter((c) => !activeCellar || c.id !== activeCellar.id),
+    ];
+    const placements: Array<{
+      wineId: string;
+      location: string;
+      cellarId: string | null;
+    }> = [];
+    let i = 0;
+    for (const unit of units) {
+      if (i >= pending.length) break;
+      const free = getEmptySlots(wines, unit.cols, unit.rows, unit.id);
+      for (const slot of free) {
+        if (i >= pending.length) break;
+        placements.push({
+          wineId: pending[i].id,
+          location: slot,
+          cellarId: unit.id,
+        });
+        i += 1;
+      }
+    }
+
+    if (!placements.length) {
+      if (addedToastTimerRef.current) {
+        window.clearTimeout(addedToastTimerRef.current);
+      }
+      setAddedToast(t("importCsv.placeBulkNoSlots"));
+      addedToastTimerRef.current = window.setTimeout(() => {
+        setAddedToast(null);
+        addedToastTimerRef.current = null;
+      }, 4500);
+      return;
+    }
+
+    const placed = placeWinesBatch(placements);
+    const placedIds = new Set(placements.map((p) => p.wineId));
+    const left = importPlaceIds.filter((id) => !placedIds.has(id));
+    setImportPlaceIds(left);
+    setMode("cava");
+    setMobilePanel("mapa");
+    setDetailReturn("mapa");
+    if (placements[0]?.cellarId) setActiveCellarId(placements[0].cellarId);
+    if (placements[0]) setSelectedId(placements[0].wineId);
+
+    if (addedToastTimerRef.current) {
+      window.clearTimeout(addedToastTimerRef.current);
+    }
+    setAddedToast(
+      left.length > 0
+        ? t("importCsv.placeBulkPartial", {
+            placed,
+            left: left.length,
+          })
+        : t("importCsv.placeBulkDone", { count: placed })
+    );
+    addedToastTimerRef.current = window.setTimeout(() => {
+      setAddedToast(null);
+      addedToastTimerRef.current = null;
+    }, 4500);
   }
 
   function handleMoveSheetConfirm(
@@ -1131,6 +1208,13 @@ export default function CavaPage() {
               <button
                 type="button"
                 className="btn btn-primary min-h-[40px] px-3 text-sm"
+                onClick={() => autoPlaceImportedBottles()}
+              >
+                {t("importCsv.placeBulkCta")}
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost min-h-[40px] border border-[var(--line)] px-3 text-sm"
                 onClick={() => openImportPlaceSheet(importPlaceIds)}
               >
                 {t("importCsv.placeNudgeCta")}

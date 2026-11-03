@@ -225,12 +225,8 @@ export function WineFormModal({
       cellarId: activeCellarId,
       location: initialSlot || "",
     };
-    // From a map cell: picking an existing wine adds a bottle there immediately.
-    if (initialSlot) {
-      onSubmit(next);
-      onClose();
-      return;
-    }
+    // Always open the form so a fat-finger on the catalog (often "1000 Stories"
+    // near the top alphabetically) cannot silently place the wrong bottle.
     setDraft(next);
     setFromExisting(true);
     setStep("form");
@@ -745,6 +741,9 @@ export function WineFormModal({
                   placeholder={t("wine.namePlaceholder")}
                   required
                   autoFocus={!fromExisting}
+                  autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck={false}
                 />
               </label>
 
@@ -756,6 +755,9 @@ export function WineFormModal({
                   className={fieldClass}
                   value={draft.winery}
                   onChange={(e) => patch("winery", e.target.value)}
+                  autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck={false}
                 />
               </label>
 

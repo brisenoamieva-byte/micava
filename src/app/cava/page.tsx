@@ -27,7 +27,6 @@ import { WineList } from "@/components/WineList";
 import { useCellar } from "@/lib/cellar-store";
 import { useAuth } from "@/lib/auth-store";
 import {
-  downloadCellarJson,
   downloadWinesCsv,
 } from "@/lib/export-cellar";
 import { useT, useLocale } from "@/lib/i18n";
@@ -1050,17 +1049,6 @@ export default function CavaPage() {
                     }}
                   >
                     {t("export.csv")}
-                  </button>
-                  <button
-                    type="button"
-                    className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)] disabled:opacity-45"
-                    disabled={!ready || wines.length === 0}
-                    onClick={() => {
-                      closeMoreMenu();
-                      downloadCellarJson(wines, cellars, history);
-                    }}
-                  >
-                    {t("export.json")}
                   </button>
                   <button
                     type="button"

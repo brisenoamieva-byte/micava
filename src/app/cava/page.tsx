@@ -1758,7 +1758,26 @@ export default function CavaPage() {
         onSaveDiscovery={(w, research) => saveKimiResearch(w.id, research)}
         onConfirm={(extras) => {
           if (!departWineTarget) return;
-          handleDepart(departWineTarget, departAction, extras);
+          const wine = departWineTarget;
+          void (async () => {
+            let photoUrl = wine.labelImageUrl ?? null;
+            if (extras.photoDataUrl && user?.id) {
+              try {
+                photoUrl = await uploadLabelImage(
+                  user.id,
+                  `taste-${wine.id}`,
+                  extras.photoDataUrl
+                );
+              } catch {
+                // Keep existing label path if upload fails.
+              }
+            }
+            handleDepart(wine, departAction, {
+              ...extras,
+              photoUrl,
+              photoDataUrl: null,
+            });
+          })();
         }}
       />
 

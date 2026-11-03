@@ -64,10 +64,11 @@ export type HistoryRow = {
   user_id: string;
   at: string;
   action: DepartAction;
-  /** Wine snapshot; may also carry myRating/note for taste memory. */
+  /** Wine snapshot; may also carry myRating/note/photo for taste memory. */
   wine: CellarLogEntry["wine"] & {
     myRating?: number | null;
     note?: string | null;
+    photoUrl?: string | null;
   };
 };
 
@@ -198,7 +199,12 @@ export function wineToRow(
 }
 
 export function historyFromRow(row: HistoryRow): CellarLogEntry {
-  const { myRating = null, note = null, ...wine } = row.wine ?? {
+  const {
+    myRating = null,
+    note = null,
+    photoUrl = null,
+    ...wine
+  } = row.wine ?? {
     id: "",
     name: "",
     winery: "",
@@ -210,7 +216,9 @@ export function historyFromRow(row: HistoryRow): CellarLogEntry {
     price: null,
     slot: null,
     grape: "",
+    labelImageUrl: null,
   };
+  const labelImageUrl = wine.labelImageUrl ?? null;
   return {
     id: row.id,
     at: row.at,
@@ -227,9 +235,11 @@ export function historyFromRow(row: HistoryRow): CellarLogEntry {
       price: wine.price,
       slot: wine.slot,
       grape: wine.grape,
+      labelImageUrl,
     },
     myRating: myRating ?? null,
     note: note ?? null,
+    photoUrl: photoUrl ?? labelImageUrl ?? null,
   };
 }
 
@@ -246,6 +256,7 @@ export function historyToRow(
       ...entry.wine,
       myRating: entry.myRating,
       note: entry.note,
+      photoUrl: entry.photoUrl,
     },
   };
 }

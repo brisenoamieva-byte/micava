@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { AiTheaterStatus } from "@/components/AiTheaterStatus";
 import type { KimiResearch } from "@/lib/kimi-research";
+import { resolveLabelImageUrl } from "@/lib/label-image";
+import { imageFileToDataUrl } from "@/lib/scan-label";
 import { buildWineShareText, shareOrCopyText } from "@/lib/share-wine";
 import type { DepartAction, DepartExtras, Wine } from "@/lib/types";
 import { useLocale, useT } from "@/lib/i18n";
@@ -46,8 +48,13 @@ export function DepartTasteModal({
 }: Props) {
   const t = useT();
   const { locale } = useLocale();
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
   const [myRating, setMyRating] = useState<number | null>(null);
   const [note, setNote] = useState("");
+  const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
+  const [existingLabelSrc, setExistingLabelSrc] = useState<string | null>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
   const [discovery, setDiscovery] = useState<DiscoveryBits>({
     story: null,
     curiosity: null,
@@ -80,17 +87,24 @@ export function DepartTasteModal({
     if (!open || !wine) return;
     setMyRating(null);
     setNote("");
+    setPhotoDataUrl(null);
     setStoryError("");
     setShareHint(null);
     const existing = bitsFromWine(wine);
     setDiscovery(existing);
 
+    let cancelled = false;
+    void resolveLabelImageUrl(wine.labelImageUrl).then((src) => {
+      if (!cancelled) setExistingLabelSrc(src);
+    });
+
     if (hasBits(existing) || action === "removed") {
       setLoadingStory(false);
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
 
-    let cancelled = false;
     setLoadingStory(true);
     const wineSnapshot = wine;
     void (async () => {
@@ -126,9 +140,7 @@ export function DepartTasteModal({
           };
         } catch {
           throw new Error(
-            res.ok
-              ? t("scan.unexpectedFormat")
-              : t("errors.generic")
+            res.ok ? t("scan.unexpectedFormat") : t("errors.generic")
           );
         }
         if (!res.ok || !payload.research) {
@@ -167,6 +179,7 @@ export function DepartTasteModal({
     onConfirm({
       myRating,
       note: note.trim() || null,
+      photoDataUrl: photoDataUrl || null,
     });
   }
 
@@ -184,7 +197,22 @@ export function DepartTasteModal({
     }
   }
 
+  async function onPickFile(file: File | null) {
+    if (!file) return;
+    setPhotoBusy(true);
+    try {
+      const { dataUrl } = await imageFileToDataUrl(file, 1280, 0.82);
+      setPhotoDataUrl(dataUrl);
+    } catch {
+      /* ignore bad image */
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
+
   const showDiscovery = action === "opened" || action === "gifted";
+  const showTaste = action !== "removed";
+  const previewSrc = photoDataUrl || existingLabelSrc;
 
   return (
     <div
@@ -208,6 +236,140 @@ export function DepartTasteModal({
           {t(titleKey)}
         </h2>
         <p className="mt-1 text-sm text-ink-soft">{t(leadKey)}</p>
+
+        {showTaste ? (
+          <div className="mt-5 space-y-4 rounded-[12px] border border-[rgba(110,31,44,0.18)] bg-[rgba(110,31,44,0.05)] p-3.5">
+            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--wine)]">
+              {action === "opened"
+                ? t("depart.tasteMemory")
+                : t("depart.ratingOptional")}
+            </p>
+
+            <fieldset>
+              <legend className="mb-2 text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                {action === "opened"
+                  ? t("depart.yourRating")
+                  : t("depart.ratingOptional")}
+              </legend>
+              <div className="flex flex-wrap gap-2">
+                {[1, 2, 3, 4, 5].map((n) => {
+                  const active = myRating === n;
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setMyRating(n)}
+                      className={[
+                        "min-h-[44px] min-w-[44px] rounded-[10px] border text-sm font-medium transition",
+                        active
+                          ? "border-[var(--wine)] bg-[rgba(110,31,44,0.12)] text-ink"
+                          : "border-[var(--line)] bg-[rgba(255,252,247,0.7)] text-ink-soft hover:border-[rgba(110,31,44,0.3)]",
+                      ].join(" ")}
+                      aria-pressed={active}
+                      aria-label={t("depart.ratingAria", { n })}
+                    >
+                      {n}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-1.5 text-xs text-ink-soft">
+                {action === "opened"
+                  ? t("depart.ratingScale")
+                  : t("depart.ratingMemory")}
+              </p>
+            </fieldset>
+
+            <label className="block">
+              <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                {t("depart.shortNote")}
+              </span>
+              <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value.slice(0, 220))}
+                rows={3}
+                placeholder={
+                  action === "opened"
+                    ? t("depart.openedNotePlaceholder")
+                    : t("depart.giftedNotePlaceholder")
+                }
+                className="w-full rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.95)] px-3 py-2.5 text-sm outline-none focus:border-[rgba(122,36,48,0.45)]"
+              />
+              <span className="mt-1 block text-right text-[10px] text-ink-soft">
+                {note.length}/220
+              </span>
+            </label>
+
+            {action === "opened" ? (
+              <div>
+                <p className="mb-1.5 text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                  {t("depart.tastePhoto")}
+                </p>
+                {previewSrc ? (
+                  <div className="relative overflow-hidden rounded-[10px] border border-[var(--line)] bg-[rgba(20,18,16,0.04)]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={previewSrc}
+                      alt={t("depart.tastePhotoAlt")}
+                      className="mx-auto max-h-40 w-full object-contain"
+                    />
+                    {photoDataUrl ? (
+                      <button
+                        type="button"
+                        className="absolute right-2 top-2 rounded-[8px] bg-[rgba(20,18,16,0.7)] px-2 py-1 text-[11px] text-white"
+                        onClick={() => setPhotoDataUrl(null)}
+                      >
+                        {t("common.remove")}
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-ghost min-h-[40px] border border-[var(--line)] px-3 text-sm"
+                    disabled={photoBusy}
+                    onClick={() => cameraRef.current?.click()}
+                  >
+                    {t("depart.photoCamera")}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost min-h-[40px] border border-[var(--line)] px-3 text-sm"
+                    disabled={photoBusy}
+                    onClick={() => galleryRef.current?.click()}
+                  >
+                    {t("depart.photoGallery")}
+                  </button>
+                </div>
+                <p className="mt-1.5 text-xs text-ink-soft">
+                  {t("depart.tastePhotoHint")}
+                </p>
+                <input
+                  ref={cameraRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={(e) => {
+                    void onPickFile(e.target.files?.[0] ?? null);
+                    e.target.value = "";
+                  }}
+                />
+                <input
+                  ref={galleryRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    void onPickFile(e.target.files?.[0] ?? null);
+                    e.target.value = "";
+                  }}
+                />
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         {showDiscovery ? (
           <div className="mt-5 space-y-3 border-t border-[var(--line)] pt-4">
@@ -251,7 +413,7 @@ export function DepartTasteModal({
                 ) : null}
                 <button
                   type="button"
-                  className="btn btn-primary min-h-[48px] w-full text-base"
+                  className="btn btn-ghost min-h-[44px] w-full border border-[var(--line)] text-sm"
                   onClick={() => void handleShareStory()}
                 >
                   {shareHint ?? t("depart.shareWhatsapp")}
@@ -262,65 +424,6 @@ export function DepartTasteModal({
               <p className="text-sm text-ink-soft">{t("depart.noStoryYet")}</p>
             ) : null}
           </div>
-        ) : null}
-
-        {action !== "removed" ? (
-          <>
-            <fieldset className="mt-5">
-              <legend className="mb-2 text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                {action === "opened"
-                  ? t("depart.yourRating")
-                  : t("depart.ratingOptional")}
-              </legend>
-              <div className="flex flex-wrap gap-2">
-                {[1, 2, 3, 4, 5].map((n) => {
-                  const active = myRating === n;
-                  return (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => setMyRating(n)}
-                      className={[
-                        "min-h-[44px] min-w-[44px] rounded-[10px] border text-sm font-medium transition",
-                        active
-                          ? "border-[var(--wine)] bg-[rgba(110,31,44,0.12)] text-ink"
-                          : "border-[var(--line)] bg-[rgba(255,252,247,0.7)] text-ink-soft hover:border-[rgba(110,31,44,0.3)]",
-                      ].join(" ")}
-                      aria-pressed={active}
-                      aria-label={t("depart.ratingAria", { n })}
-                    >
-                      {n}
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="mt-1.5 text-xs text-ink-soft">
-                {action === "opened"
-                  ? t("depart.ratingScale")
-                  : t("depart.ratingMemory")}
-              </p>
-            </fieldset>
-
-            <label className="mt-4 block">
-              <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                {t("depart.shortNote")}
-              </span>
-              <textarea
-                value={note}
-                onChange={(e) => setNote(e.target.value.slice(0, 180))}
-                rows={2}
-                placeholder={
-                  action === "opened"
-                    ? t("depart.openedNotePlaceholder")
-                    : t("depart.giftedNotePlaceholder")
-                }
-                className="w-full rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.95)] px-3 py-2.5 text-sm outline-none focus:border-[rgba(122,36,48,0.45)]"
-              />
-              <span className="mt-1 block text-right text-[10px] text-ink-soft">
-                {note.length}/180
-              </span>
-            </label>
-          </>
         ) : null}
 
         <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">

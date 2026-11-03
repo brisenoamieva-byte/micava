@@ -296,6 +296,7 @@ function snapshotWine(w: Wine): CellarLogEntry["wine"] {
     price: w.price,
     slot: w.slot,
     grape: w.grape,
+    labelImageUrl: w.labelImageUrl ?? null,
   };
 }
 
@@ -321,6 +322,11 @@ function loadHistoryLocal(): CellarLogEntry[] {
       ...e,
       myRating: e.myRating ?? null,
       note: e.note ?? null,
+      photoUrl: e.photoUrl ?? e.wine?.labelImageUrl ?? null,
+      wine: {
+        ...e.wine,
+        labelImageUrl: e.wine?.labelImageUrl ?? null,
+      },
     }));
   } catch {
     return [];
@@ -1512,13 +1518,19 @@ export function CellarProvider({ children }: { children: ReactNode }) {
       setWines((prev) => {
         const wine = prev.find((w) => w.id === id);
         if (!wine) return prev;
+        const snap = snapshotWine(wine);
+        const photoUrl =
+          extras?.photoUrl?.trim() ||
+          snap.labelImageUrl ||
+          null;
         const entry: CellarLogEntry = {
           id: `h-${Date.now()}-${id}`,
           at: new Date().toISOString(),
           action,
-          wine: snapshotWine(wine),
+          wine: snap,
           myRating: extras?.myRating ?? null,
           note: extras?.note?.trim() ? extras.note.trim() : null,
+          photoUrl,
         };
         setHistory((h) => [entry, ...h].slice(0, 100));
         if (uid) {

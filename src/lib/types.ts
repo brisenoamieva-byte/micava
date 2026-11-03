@@ -150,16 +150,23 @@ export type CellarLogEntry = {
     | "price"
     | "slot"
     | "grape"
+    | "labelImageUrl"
   >;
   /** Your taste after opening (1–5). Optional for gift/remove. */
   myRating: number | null;
   /** Short memory note — what you liked / would buy again. */
   note: string | null;
+  /** Optional taste/label photo path or data URL for the memory. */
+  photoUrl: string | null;
 };
 
 export type DepartExtras = {
   myRating?: number | null;
   note?: string | null;
+  /** New photo captured at depart (data URL); uploaded by the page. */
+  photoDataUrl?: string | null;
+  /** Resolved storage path / URL to persist on the history entry. */
+  photoUrl?: string | null;
 };
 
 /**

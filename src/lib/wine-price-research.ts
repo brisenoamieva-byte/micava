@@ -52,6 +52,10 @@ export type WinePriceResearchResult = {
   /** Local currency amount before conversion (if known). */
   priceLocal: number | null;
   currency: string | null;
+  /** local = user market retail; international = global fallback catalog. */
+  source: "local" | "international" | null;
+  /** Mapped from model high|medium|low → confirmed|likely|uncertain. */
+  confidence: "confirmed" | "likely" | "uncertain" | null;
   notes: string | null;
   usage: KimiTokenUsage | null;
   /** Non-null when lookup failed or returned no usable price. */
@@ -246,6 +250,28 @@ Usa $web_search y devuelve JSON con amount + currency (moneda original, sin conv
 Si el hit es otra crianza/línea/uva/añada → amount null.`;
 }
 
+function mapPriceConfidence(
+  raw: string | null | undefined
+): "confirmed" | "likely" | "uncertain" | null {
+  const c = (raw || "").toLowerCase().trim();
+  if (c === "high" || c === "confirmed") return "confirmed";
+  if (c === "medium" || c === "likely") return "likely";
+  if (c === "low" || c === "uncertain") return "uncertain";
+  return null;
+}
+
+function sourceFromMarket(
+  market: MarketGeo
+): "local" | "international" {
+  if (
+    market.countryCode === "XX" ||
+    market.marketLabel === "international"
+  ) {
+    return "international";
+  }
+  return "local";
+}
+
 function emptyResult(
   usage: KimiTokenUsage | null = null,
   error: string | null = null
@@ -254,6 +280,8 @@ function emptyResult(
     priceMxn: null,
     priceLocal: null,
     currency: null,
+    source: null,
+    confidence: null,
     notes: null,
     usage,
     error,
@@ -277,13 +305,14 @@ function emptyVerified(
 
 function parsePricePayload(raw: unknown): Omit<
   WinePriceResearchResult,
-  "usage" | "error"
+  "usage" | "error" | "source"
 > {
   if (!raw || typeof raw !== "object") {
     return {
       priceMxn: null,
       priceLocal: null,
       currency: null,
+      confidence: null,
       notes: null,
     };
   }
@@ -294,6 +323,7 @@ function parsePricePayload(raw: unknown): Omit<
   const priceLocal = asOptionalNumber(o.priceLocal ?? o.price_local);
   const currency = normalizeCurrency(o.currency);
   const notes = asString(o.notes) || null;
+  const confidence = mapPriceConfidence(asString(o.confidence));
   const localRounded =
     priceLocal != null && priceLocal > 0 ? Math.round(priceLocal) : null;
   const currencyOk = currency;
@@ -315,6 +345,7 @@ function parsePricePayload(raw: unknown): Omit<
     priceMxn,
     priceLocal: localRounded,
     currency: currencyOk,
+    confidence,
     notes,
   };
 }
@@ -381,16 +412,18 @@ async function researchWineRetailPriceOnce(options: {
 
   try {
     const parsed = parsePricePayload(extractJsonObject(result.content));
+    const source = sourceFromMarket(market);
     if (parsed.priceMxn == null) {
       return {
         ...parsed,
+        source,
         usage: result.usage,
         error:
           parsed.notes ||
           "La búsqueda no devolvió un precio MXN usable.",
       };
     }
-    return { ...parsed, usage: result.usage, error: null };
+    return { ...parsed, source, usage: result.usage, error: null };
   } catch (e) {
     return emptyResult(
       result.usage,
@@ -524,6 +557,8 @@ export async function researchWineRetailPrice(options: {
     priceMxn: null,
     priceLocal: second.priceLocal ?? first.priceLocal,
     currency: second.currency ?? first.currency,
+    source: second.source ?? first.source ?? sourceFromMarket(market),
+    confidence: second.confidence ?? first.confidence,
     notes: second.notes ?? first.notes,
     usage,
     error,

@@ -40,6 +40,10 @@ export type KimiResearch = {
   kimiPrice: number | null;
   /** ISO 4217 for kimiPrice; null → treat as MXN. */
   kimiPriceCurrency?: string | null;
+  /** Provenance for kimiPrice (market / verify / story). */
+  kimiPriceSource?: "local" | "international" | "research" | null;
+  kimiPriceConfidence?: MatchConfidence | null;
+  kimiPriceNotes?: string | null;
   kimiSummary: string | null;
   kimiCuriosity: string | null;
   kimiTalkHook: string | null;
@@ -58,6 +62,9 @@ export const emptyKimiResearch: KimiResearch = {
   kimiVivino: null,
   kimiPrice: null,
   kimiPriceCurrency: null,
+  kimiPriceSource: null,
+  kimiPriceConfidence: null,
+  kimiPriceNotes: null,
   kimiSummary: null,
   kimiCuriosity: null,
   kimiTalkHook: null,

@@ -146,6 +146,9 @@ type CellarContextValue = {
       | "kimiVivino"
       | "kimiPrice"
       | "kimiPriceCurrency"
+      | "kimiPriceSource"
+      | "kimiPriceConfidence"
+      | "kimiPriceNotes"
       | "kimiCheckedAt"
       | "kimiConfidence"
     >
@@ -1086,12 +1089,18 @@ export function CellarProvider({ children }: { children: ReactNode }) {
                 : w.kimiPriceCurrency,
             kimiPriceSource:
               research.kimiPrice != null
-                ? "research"
+                ? research.kimiPriceSource ?? "research"
                 : w.kimiPriceSource,
             kimiPriceConfidence:
               research.kimiPrice != null
-                ? research.kimiConfidence
+                ? research.kimiPriceConfidence ?? research.kimiConfidence
                 : w.kimiPriceConfidence,
+            kimiPriceNotes:
+              research.kimiPrice != null
+                ? research.kimiPriceNotes?.trim()
+                  ? research.kimiPriceNotes.trim().slice(0, 280)
+                  : w.kimiPriceNotes
+                : w.kimiPriceNotes,
             kimiPriceCheckedAt:
               research.kimiPrice != null
                 ? research.kimiCheckedAt
@@ -1137,6 +1146,9 @@ export function CellarProvider({ children }: { children: ReactNode }) {
         | "kimiVivino"
         | "kimiPrice"
         | "kimiPriceCurrency"
+        | "kimiPriceSource"
+        | "kimiPriceConfidence"
+        | "kimiPriceNotes"
         | "kimiCheckedAt"
         | "kimiConfidence"
       >
@@ -1148,6 +1160,7 @@ export function CellarProvider({ children }: { children: ReactNode }) {
         const key = wineIdentityKey(source);
         const nextList = prev.map((w) => {
           if (wineIdentityKey(w) !== key) return w;
+          const priceUpdated = patch.kimiPrice != null;
           return {
             ...w,
             cavataleRating:
@@ -1170,12 +1183,24 @@ export function CellarProvider({ children }: { children: ReactNode }) {
               patch.kimiVivino !== undefined
                 ? patch.kimiVivino
                 : w.kimiVivino,
-            kimiPrice:
-              patch.kimiPrice != null ? patch.kimiPrice : w.kimiPrice,
-            kimiPriceCurrency:
-              patch.kimiPrice != null
-                ? patch.kimiPriceCurrency ?? "MXN"
-                : w.kimiPriceCurrency,
+            kimiPrice: priceUpdated ? patch.kimiPrice : w.kimiPrice,
+            kimiPriceCurrency: priceUpdated
+              ? patch.kimiPriceCurrency ?? "MXN"
+              : w.kimiPriceCurrency,
+            kimiPriceSource: priceUpdated
+              ? patch.kimiPriceSource ?? w.kimiPriceSource ?? "research"
+              : w.kimiPriceSource,
+            kimiPriceConfidence: priceUpdated
+              ? patch.kimiPriceConfidence ?? w.kimiPriceConfidence
+              : w.kimiPriceConfidence,
+            kimiPriceNotes: priceUpdated
+              ? patch.kimiPriceNotes?.trim()
+                ? patch.kimiPriceNotes.trim().slice(0, 280)
+                : w.kimiPriceNotes
+              : w.kimiPriceNotes,
+            kimiPriceCheckedAt: priceUpdated
+              ? patch.kimiCheckedAt ?? new Date().toISOString()
+              : w.kimiPriceCheckedAt,
             kimiCheckedAt: patch.kimiCheckedAt ?? w.kimiCheckedAt,
             kimiConfidence:
               patch.kimiConfidence !== undefined

@@ -596,6 +596,10 @@ export async function POST(request: Request) {
           })
         : Promise.resolve({
             priceMxn: null as number | null,
+            priceLocal: null as number | null,
+            currency: null as string | null,
+            source: null as "local" | "international" | null,
+            confidence: null as "confirmed" | "likely" | "uncertain" | null,
             usage: null as KimiTokenUsage | null,
             error: "Sin KIMI_API_KEY para precio",
             notes: null as string | null,
@@ -681,6 +685,7 @@ export async function POST(request: Request) {
       consensusLookup.score ??
       body.kimiVivino ??
       null;
+    const checkedAt = new Date().toISOString();
 
     return NextResponse.json({
       research: {
@@ -690,12 +695,17 @@ export async function POST(request: Request) {
         kimiVivino,
         kimiPrice,
         kimiPriceCurrency: kimiPrice != null ? "MXN" : null,
+        kimiPriceSource:
+          kimiPrice != null ? priceLookup.source ?? "research" : null,
+        kimiPriceConfidence:
+          kimiPrice != null ? priceLookup.confidence ?? null : null,
+        kimiPriceNotes: kimiPrice != null ? priceLookup.notes ?? null : null,
         kimiSummary: null,
         kimiCuriosity: null,
         kimiTalkHook: null,
         kimiPairings: null,
         kimiPairingNote: null,
-        kimiCheckedAt: new Date().toISOString(),
+        kimiCheckedAt: checkedAt,
         kimiConfidence: consensusLookup.confidence,
       },
       refreshMode: "market",
@@ -733,6 +743,10 @@ export async function POST(request: Request) {
         })
       : Promise.resolve({
           priceMxn: null as number | null,
+          priceLocal: null as number | null,
+          currency: null as string | null,
+          source: null as "local" | "international" | null,
+          confidence: null as "confirmed" | "likely" | "uncertain" | null,
           usage: null as KimiTokenUsage | null,
           error: "Sin KIMI_API_KEY para precio",
           notes: null as string | null,
@@ -748,7 +762,7 @@ export async function POST(request: Request) {
               : body.vivino != null && Number.isFinite(body.vivino)
                 ? body.vivino
                 : null,
-        })
+          })
       : Promise.resolve({
           score: null as number | null,
           vivino: null as number | null,
@@ -962,6 +976,22 @@ export async function POST(request: Request) {
     kimiVivino,
     kimiPrice,
     kimiPriceCurrency: kimiPrice != null ? "MXN" : null,
+    kimiPriceSource:
+      kimiPrice != null
+        ? priceLookup.priceMxn != null
+          ? priceLookup.source ?? "research"
+          : "research"
+        : null,
+    kimiPriceConfidence:
+      kimiPrice != null
+        ? priceLookup.priceMxn != null
+          ? priceLookup.confidence ?? null
+          : finalized.research.kimiConfidence
+        : null,
+    kimiPriceNotes:
+      kimiPrice != null && priceLookup.priceMxn != null
+        ? priceLookup.notes ?? null
+        : null,
     kimiCheckedAt: new Date().toISOString(),
   };
   return NextResponse.json({

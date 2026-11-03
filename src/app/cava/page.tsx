@@ -525,6 +525,9 @@ export default function CavaPage() {
             | "kimiVivino"
             | "kimiPrice"
             | "kimiPriceCurrency"
+            | "kimiPriceSource"
+            | "kimiPriceConfidence"
+            | "kimiPriceNotes"
             | "kimiCheckedAt"
             | "kimiConfidence"
           >;
@@ -542,6 +545,9 @@ export default function CavaPage() {
           kimiVivino: research.kimiVivino ?? null,
           kimiPrice: research.kimiPrice ?? null,
           kimiPriceCurrency: research.kimiPriceCurrency ?? null,
+          kimiPriceSource: research.kimiPriceSource ?? null,
+          kimiPriceConfidence: research.kimiPriceConfidence ?? null,
+          kimiPriceNotes: research.kimiPriceNotes ?? null,
           kimiCheckedAt: research.kimiCheckedAt ?? new Date().toISOString(),
           kimiConfidence: research.kimiConfidence ?? null,
         });

@@ -1,7 +1,12 @@
 -- Expose safe story / pairing fields on public cellars (still no prices or layout).
 -- Idempotent — safe to re-run in Supabase SQL Editor.
+-- Must drop view + function first: OUT row type cannot change via CREATE OR REPLACE.
 
-create or replace function public.public_wines_rows()
+drop view if exists public.public_wines;
+
+drop function if exists public.public_wines_rows();
+
+create function public.public_wines_rows()
 returns table (
   id text,
   user_id uuid,
@@ -57,7 +62,6 @@ comment on function public.public_wines_rows() is
 revoke all on function public.public_wines_rows() from public;
 grant execute on function public.public_wines_rows() to anon, authenticated;
 
-drop view if exists public.public_wines;
 create view public.public_wines
 with (security_invoker = on)
 as

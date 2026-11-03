@@ -3,6 +3,7 @@
 import {
   useEffect,
   useMemo,
+  useState,
   type CSSProperties,
   type ReactNode,
 } from "react";
@@ -151,6 +152,8 @@ function ScoreRangeTitle({ name }: { name: string }) {
 export function FiltersBar({ filters, onChange, total, wines }: Props) {
   const t = useT();
   const { dict, locale } = useLocale();
+  /** Collapsed by default under xl (mapa/lista móvil); always expanded on desktop. */
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const sortOptions = useMemo(
     (): { value: SortOption; label: string }[] => [
@@ -319,193 +322,231 @@ export function FiltersBar({ filters, onChange, total, wines }: Props) {
     return map;
   }, [forMoment]);
 
+  const activeExtra =
+    (filters.country ? 1 : 0) +
+    (filters.type ? 1 : 0) +
+    (filters.grape ? 1 : 0) +
+    (filters.drinkMoment ? 1 : 0) +
+    (cavataleUnfiltered ? 0 : 1) +
+    (priceUnfiltered ? 0 : 1) +
+    (filters.sort !== "cavatale-desc" ? 1 : 0);
+
   return (
     <div className="panel-quiet p-2.5 sm:p-3">
       <div className="space-y-2.5 sm:space-y-3">
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6 lg:items-end">
-          <label className="col-span-2 min-w-0 sm:col-span-3 lg:col-span-2">
-            <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
-              {t("common.search")}
-            </span>
-            <input
-              id="cellar-search"
-              value={filters.query}
-              onChange={(e) => patch({ query: e.target.value })}
-              placeholder={t("filters.searchShortPlaceholder")}
-              className={fieldClass}
-              enterKeyHint="search"
-              autoCapitalize="off"
-              autoCorrect="off"
-            />
-          </label>
+        <label className="block min-w-0">
+          <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
+            {t("common.search")}
+          </span>
+          <input
+            id="cellar-search"
+            value={filters.query}
+            onChange={(e) => patch({ query: e.target.value })}
+            placeholder={t("filters.searchShortPlaceholder")}
+            className={fieldClass}
+            enterKeyHint="search"
+            autoCapitalize="off"
+            autoCorrect="off"
+          />
+        </label>
 
-          <label className="min-w-0">
-            <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
-              {t("filters.sort")}
-            </span>
-            <select
-              value={filters.sort}
-              onChange={(e) => patch({ sort: e.target.value as SortOption })}
-              className={fieldClass}
-            >
-              {sortOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="min-w-0">
-            <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
-              {t("filters.country")}
-            </span>
-            <select
-              value={filters.country}
-              onChange={(e) => patch({ country: e.target.value })}
-              className={fieldClass}
-            >
-              <option value="">{t("filters.all")}</option>
-              {countries.map((c) => (
-                <option key={c} value={c}>
-                  {countryFlagEmoji[c]
-                    ? `${countryFlagEmoji[c]} ${countryDisplayName(c, locale)}`
-                    : countryDisplayName(c, locale)}
-                  {` (${countryCounts.get(c) ?? 0})`}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="min-w-0">
-            <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
-              {t("filters.type")}
-            </span>
-            <select
-              value={filters.type}
-              onChange={(e) => patch({ type: e.target.value })}
-              className={fieldClass}
-            >
-              <option value="">{t("filters.all")}</option>
-              {types.map((typeValue) => (
-                <option key={typeValue} value={typeValue}>
-                  {wineTypeLabel(dict, typeValue)} ({typeCounts.get(typeValue) ?? 0})
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="min-w-0">
-            <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
-              {t("filters.grape")}
-            </span>
-            <select
-              value={filters.grape}
-              onChange={(e) => patch({ grape: e.target.value })}
-              className={fieldClass}
-            >
-              <option value="">{t("filters.allGrapes")}</option>
-              {grapes.map((g) => (
-                <option key={g.name} value={g.name}>
-                  {g.name} ({g.count})
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        <div>
-          <p className="mb-1.5 text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
-            {t("filters.moment")}
-          </p>
-          <div
-            className="flex flex-wrap gap-1.5"
-            role="group"
-            aria-label={t("filters.moment")}
+        <div className="flex items-center justify-between gap-3 xl:hidden">
+          <button
+            type="button"
+            className="inline-flex min-h-[40px] items-center gap-2 rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.55)] px-3 text-sm font-medium text-ink"
+            aria-expanded={moreOpen}
+            onClick={() => setMoreOpen((open) => !open)}
           >
-            <button
-              type="button"
-              className={[
-                "inline-flex min-h-[32px] items-center rounded-[8px] border px-2.5 text-[11px] font-medium uppercase tracking-[0.06em] transition",
-                filters.drinkMoment === ""
-                  ? "border-[rgba(110,31,44,0.45)] bg-[rgba(110,31,44,0.12)] text-[var(--wine-deep)]"
-                  : "border-[var(--line)] bg-[rgba(255,252,247,0.55)] text-ink-soft hover:border-[rgba(110,31,44,0.28)] hover:text-ink",
-              ].join(" ")}
-              aria-pressed={filters.drinkMoment === ""}
-              onClick={() => patch({ drinkMoment: "" })}
-            >
-              {t("filters.momentAll")}
-            </button>
-            {DRINK_STATUS_ORDER.map((status) => {
-              const count = momentCounts.get(status) ?? 0;
-              const active = filters.drinkMoment === status;
-              return (
-                <button
-                  key={status}
-                  type="button"
-                  disabled={count === 0 && !active}
-                  className={[
-                    "inline-flex min-h-[32px] items-center gap-1.5 rounded-[8px] border px-2.5 text-[11px] font-medium uppercase tracking-[0.06em] transition disabled:cursor-default disabled:opacity-40",
-                    active
-                      ? DRINK_STATUS_CLASS[status]
-                      : "border-[var(--line)] bg-[rgba(255,252,247,0.55)] text-ink-soft hover:border-[rgba(110,31,44,0.28)] hover:text-ink",
-                  ].join(" ")}
-                  aria-pressed={active}
-                  title={t(`drinkWindow.hint.${status}`)}
-                  onClick={() =>
-                    patch({ drinkMoment: active ? "" : status })
-                  }
-                >
-                  <span
-                    className={[
-                      "inline-block h-1.5 w-1.5 shrink-0 rounded-full",
-                      DRINK_STATUS_DOT[status],
-                    ].join(" ")}
-                    aria-hidden
-                  />
-                  {t(`drinkWindow.status.${status}`)}
-                  <span className="tabular-nums opacity-70">({count})</span>
-                </button>
-              );
-            })}
+            <span>{moreOpen ? t("filters.hideMore") : t("filters.showMore")}</span>
+            {activeExtra > 0 ? (
+              <span className="rounded-full bg-[rgba(110,31,44,0.14)] px-2 py-0.5 text-[11px] font-medium text-[var(--wine-deep)]">
+                {t("filters.activeCount", { count: activeExtra })}
+              </span>
+            ) : null}
+            <span className="text-ink-soft" aria-hidden>
+              {moreOpen ? "▴" : "▾"}
+            </span>
+          </button>
+          <p className="shrink-0 text-sm text-ink-soft">
+            {t("filters.results", { count: total })}
+          </p>
+        </div>
+
+        <div
+          className={[
+            "space-y-2.5 sm:space-y-3",
+            moreOpen ? "block" : "hidden xl:block",
+          ].join(" ")}
+        >
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5 lg:items-end">
+            <label className="min-w-0">
+              <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
+                {t("filters.sort")}
+              </span>
+              <select
+                value={filters.sort}
+                onChange={(e) => patch({ sort: e.target.value as SortOption })}
+                className={fieldClass}
+              >
+                {sortOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="min-w-0">
+              <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
+                {t("filters.country")}
+              </span>
+              <select
+                value={filters.country}
+                onChange={(e) => patch({ country: e.target.value })}
+                className={fieldClass}
+              >
+                <option value="">{t("filters.all")}</option>
+                {countries.map((c) => (
+                  <option key={c} value={c}>
+                    {countryFlagEmoji[c]
+                      ? `${countryFlagEmoji[c]} ${countryDisplayName(c, locale)}`
+                      : countryDisplayName(c, locale)}
+                    {` (${countryCounts.get(c) ?? 0})`}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="min-w-0">
+              <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
+                {t("filters.type")}
+              </span>
+              <select
+                value={filters.type}
+                onChange={(e) => patch({ type: e.target.value })}
+                className={fieldClass}
+              >
+                <option value="">{t("filters.all")}</option>
+                {types.map((typeValue) => (
+                  <option key={typeValue} value={typeValue}>
+                    {wineTypeLabel(dict, typeValue)} ({typeCounts.get(typeValue) ?? 0})
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="min-w-0">
+              <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
+                {t("filters.grape")}
+              </span>
+              <select
+                value={filters.grape}
+                onChange={(e) => patch({ grape: e.target.value })}
+                className={fieldClass}
+              >
+                <option value="">{t("filters.allGrapes")}</option>
+                {grapes.map((g) => (
+                  <option key={g.name} value={g.name}>
+                    {g.name} ({g.count})
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
+
+          <div>
+            <p className="mb-1.5 text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
+              {t("filters.moment")}
+            </p>
+            <div
+              className="flex flex-wrap gap-1.5"
+              role="group"
+              aria-label={t("filters.moment")}
+            >
+              <button
+                type="button"
+                className={[
+                  "inline-flex min-h-[32px] items-center rounded-[8px] border px-2.5 text-[11px] font-medium uppercase tracking-[0.06em] transition",
+                  filters.drinkMoment === ""
+                    ? "border-[rgba(110,31,44,0.45)] bg-[rgba(110,31,44,0.12)] text-[var(--wine-deep)]"
+                    : "border-[var(--line)] bg-[rgba(255,252,247,0.55)] text-ink-soft hover:border-[rgba(110,31,44,0.28)] hover:text-ink",
+                ].join(" ")}
+                aria-pressed={filters.drinkMoment === ""}
+                onClick={() => patch({ drinkMoment: "" })}
+              >
+                {t("filters.momentAll")}
+              </button>
+              {DRINK_STATUS_ORDER.map((status) => {
+                const count = momentCounts.get(status) ?? 0;
+                const active = filters.drinkMoment === status;
+                return (
+                  <button
+                    key={status}
+                    type="button"
+                    disabled={count === 0 && !active}
+                    className={[
+                      "inline-flex min-h-[32px] items-center gap-1.5 rounded-[8px] border px-2.5 text-[11px] font-medium uppercase tracking-[0.06em] transition disabled:cursor-default disabled:opacity-40",
+                      active
+                        ? DRINK_STATUS_CLASS[status]
+                        : "border-[var(--line)] bg-[rgba(255,252,247,0.55)] text-ink-soft hover:border-[rgba(110,31,44,0.28)] hover:text-ink",
+                    ].join(" ")}
+                    aria-pressed={active}
+                    title={t(`drinkWindow.hint.${status}`)}
+                    onClick={() =>
+                      patch({ drinkMoment: active ? "" : status })
+                    }
+                  >
+                    <span
+                      className={[
+                        "inline-block h-1.5 w-1.5 shrink-0 rounded-full",
+                        DRINK_STATUS_DOT[status],
+                      ].join(" ")}
+                      aria-hidden
+                    />
+                    {t(`drinkWindow.status.${status}`)}
+                    <span className="tabular-nums opacity-70">({count})</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Rangos: Calificación Cavatale · Precio */}
+          <div className="grid grid-cols-1 items-stretch gap-x-2.5 gap-y-4 sm:grid-cols-2 sm:gap-y-2.5">
+            <DualRangeField
+              label={<ScoreRangeTitle name={t("wine.rating")} />}
+              bounds={cavataleBounds}
+              minValue={cavataleMin}
+              maxValue={cavataleMax}
+              step={0.1}
+              displayLabel={cavataleLabel}
+              formatBound={(n) => n.toFixed(1)}
+              onMin={onMinCavataleSlide}
+              onMax={onMaxCavataleSlide}
+              minAria={t("filters.minCavataleAria")}
+              maxAria={t("filters.maxCavataleAria")}
+            />
+
+            <DualRangeField
+              label={t("wine.price")}
+              bounds={priceBounds}
+              minValue={minValue}
+              maxValue={maxValue}
+              step={priceBounds.step}
+              displayLabel={priceLabel}
+              formatBound={formatPrice}
+              maxBoundSuffix="+"
+              onMin={onMinPriceSlide}
+              onMax={onMaxPriceSlide}
+              minAria={t("filters.minPriceAria")}
+              maxAria={t("filters.maxPriceAria")}
+            />
+          </div>
+
+          <p className="hidden text-sm text-ink-soft xl:block">
+            {t("filters.results", { count: total })}
+          </p>
         </div>
-
-        {/* Rangos: Calificación Cavatale · Precio */}
-        <div className="grid grid-cols-1 items-stretch gap-x-2.5 gap-y-4 sm:grid-cols-2 sm:gap-y-2.5">
-          <DualRangeField
-            label={<ScoreRangeTitle name={t("wine.rating")} />}
-            bounds={cavataleBounds}
-            minValue={cavataleMin}
-            maxValue={cavataleMax}
-            step={0.1}
-            displayLabel={cavataleLabel}
-            formatBound={(n) => n.toFixed(1)}
-            onMin={onMinCavataleSlide}
-            onMax={onMaxCavataleSlide}
-            minAria={t("filters.minCavataleAria")}
-            maxAria={t("filters.maxCavataleAria")}
-          />
-
-          <DualRangeField
-            label={t("wine.price")}
-            bounds={priceBounds}
-            minValue={minValue}
-            maxValue={maxValue}
-            step={priceBounds.step}
-            displayLabel={priceLabel}
-            formatBound={formatPrice}
-            maxBoundSuffix="+"
-            onMin={onMinPriceSlide}
-            onMax={onMaxPriceSlide}
-            minAria={t("filters.minPriceAria")}
-            maxAria={t("filters.maxPriceAria")}
-          />
-        </div>
-
-        <p className="text-sm text-ink-soft">
-          {t("filters.results", { count: total })}
-        </p>
       </div>
     </div>
   );

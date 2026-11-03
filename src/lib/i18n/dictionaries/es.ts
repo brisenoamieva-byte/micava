@@ -962,6 +962,14 @@ export const es = {
     moreOk: "+{count} más listas",
     confirm: "Importar {count}",
     toast: "{count} botellas importadas",
+    toastUnplaced: "{count} importadas · sin hueco aún",
+    toastPartialPlace:
+      "{count} importadas · {unplaced} sin hueco en el mapa",
+    placeNudgeTitle: "{count} sin acomodar",
+    placeNudgeBody:
+      "Elígeles mueble y hueco ahora — o déjalas en Abajo y acomódalas después.",
+    placeNudgeCta: "Acomodar en el mapa",
+    placeNudgeLater: "Ahora no",
   },
   export: {
     csv: "Exportar CSV",

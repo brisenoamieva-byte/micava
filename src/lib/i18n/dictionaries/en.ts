@@ -975,6 +975,14 @@ export const en = {
     moreOk: "+{count} more ready",
     confirm: "Import {count}",
     toast: "{count} bottles imported",
+    toastUnplaced: "{count} imported · no slot yet",
+    toastPartialPlace:
+      "{count} imported · {unplaced} still need a map slot",
+    placeNudgeTitle: "{count} still to place",
+    placeNudgeBody:
+      "Pick furniture and slot now — or leave them Below and place later.",
+    placeNudgeCta: "Place on the map",
+    placeNudgeLater: "Not now",
   },
   export: {
     csv: "Export CSV",

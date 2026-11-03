@@ -137,9 +137,12 @@ export default function CavaPage() {
   const [locateTargetId, setLocateTargetId] = useState<string | null>(null);
   const [locateToken, setLocateToken] = useState(0);
   const [locateToast, setLocateToast] = useState<string | null>(null);
+  /** After CSV/Excel import: ids still waiting for a map slot. */
+  const [importPlaceIds, setImportPlaceIds] = useState<string[]>([]);
   const moreMenuRef = useRef<HTMLDetailsElement>(null);
   const addedToastTimerRef = useRef<number | null>(null);
   const locateToastTimerRef = useRef<number | null>(null);
+  const importPlaceContinueRef = useRef(false);
 
   function closeMoreMenu() {
     if (moreMenuRef.current) moreMenuRef.current.open = false;
@@ -391,17 +394,69 @@ export default function CavaPage() {
     setMovingWineId(null);
   }
 
+  function wineNeedsMapSlot(w: Wine): boolean {
+    return !w.slot || w.slot === "abajo";
+  }
+
+  function openImportPlaceSheet(ids: string[]) {
+    const next = ids
+      .map((id) => wines.find((w) => w.id === id))
+      .find((w): w is Wine => Boolean(w && wineNeedsMapSlot(w)));
+    if (!next) {
+      setImportPlaceIds([]);
+      return;
+    }
+    setMode("cava");
+    setMobilePanel("mapa");
+    setDetailReturn("mapa");
+    setSelectedId(next.id);
+    if (next.cellarId) setActiveCellarId(next.cellarId);
+    else if (activeCellarId) {
+      /* keep current mueble for empty slots */
+    } else if (cellars[0]) {
+      setActiveCellarId(cellars[0].id);
+    }
+    setMoveSheetWine(next);
+  }
+
   function handleMoveSheetConfirm(
     targetLocation: string,
     targetCellarId: string | null
   ) {
     if (!moveSheetWine) return;
-    moveWine(moveSheetWine.id, targetLocation, targetCellarId);
+    const placedId = moveSheetWine.id;
+    moveWine(placedId, targetLocation, targetCellarId);
     if (targetCellarId) setActiveCellarId(targetCellarId);
-    setSelectedId(moveSheetWine.id);
+    setSelectedId(placedId);
     setMoveSheetWine(null);
     setMovingWineId(null);
+    if (
+      importPlaceIds.includes(placedId) &&
+      targetLocation &&
+      targetLocation !== "abajo"
+    ) {
+      const left = importPlaceIds.filter((id) => id !== placedId);
+      setImportPlaceIds(left);
+      if (left.length > 0) {
+        importPlaceContinueRef.current = true;
+      }
+    }
   }
+
+  useEffect(() => {
+    if (!importPlaceContinueRef.current) return;
+    if (moveSheetWine) return;
+    if (importPlaceIds.length === 0) {
+      importPlaceContinueRef.current = false;
+      return;
+    }
+    importPlaceContinueRef.current = false;
+    const timer = window.setTimeout(() => {
+      openImportPlaceSheet(importPlaceIds);
+    }, 220);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only chain after a successful place
+  }, [importPlaceIds, moveSheetWine, wines]);
 
   function openEdit(wine: Wine) {
     setEditing(wine);
@@ -1043,6 +1098,34 @@ export default function CavaPage() {
           </p>
         ) : null}
 
+        {importPlaceIds.length > 0 ? (
+          <div className="mt-3 rounded-[12px] border border-[rgba(110,31,44,0.22)] bg-[rgba(110,31,44,0.06)] p-4 text-sm text-ink">
+            <p className="font-medium">
+              {t("importCsv.placeNudgeTitle", { count: importPlaceIds.length })}
+            </p>
+            <p className="mt-1 text-ink-soft">{t("importCsv.placeNudgeBody")}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="btn btn-primary min-h-[40px] px-3 text-sm"
+                onClick={() => openImportPlaceSheet(importPlaceIds)}
+              >
+                {t("importCsv.placeNudgeCta")}
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost min-h-[40px] px-3 text-sm"
+                onClick={() => {
+                  importPlaceContinueRef.current = false;
+                  setImportPlaceIds([]);
+                }}
+              >
+                {t("importCsv.placeNudgeLater")}
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         {mode === "stats" ? (
           <div className="mt-6 space-y-5">
             <div id="bitacora">
@@ -1507,17 +1590,30 @@ export default function CavaPage() {
         onClose={() => setImportCsvOpen(false)}
         onImport={(drafts) => {
           const created = addWines(drafts);
+          const unplaced = created.filter((w) => wineNeedsMapSlot(w));
           if (addedToastTimerRef.current) {
             window.clearTimeout(addedToastTimerRef.current);
           }
-          setAddedToast(t("importCsv.toast", { count: created.length }));
+          setAddedToast(
+            unplaced.length > 0 && unplaced.length === created.length
+              ? t("importCsv.toastUnplaced", { count: created.length })
+              : unplaced.length > 0
+                ? t("importCsv.toastPartialPlace", {
+                    count: created.length,
+                    unplaced: unplaced.length,
+                  })
+                : t("importCsv.toast", { count: created.length })
+          );
           addedToastTimerRef.current = window.setTimeout(() => {
             setAddedToast(null);
             addedToastTimerRef.current = null;
           }, 4500);
+          setImportPlaceIds(unplaced.map((w) => w.id));
+          importPlaceContinueRef.current = false;
           if (created[0]) {
             setSelectedId(created[0].id);
-            setMobilePanel("lista");
+            setMode("cava");
+            setMobilePanel(unplaced.length > 0 ? "mapa" : "lista");
           }
         }}
       />
@@ -1539,7 +1635,10 @@ export default function CavaPage() {
           wine={moveSheetWine}
           cellars={cellars}
           wines={wines}
-          onClose={() => setMoveSheetWine(null)}
+          onClose={() => {
+            importPlaceContinueRef.current = false;
+            setMoveSheetWine(null);
+          }}
           onConfirm={handleMoveSheetConfirm}
         />
       ) : null}

@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { ThinkingIndicator } from "@/components/ThinkingIndicator";
 import { useT } from "@/lib/i18n";
 import {
+  compressImageSourceToDataUrl,
   imageFileToDataUrl,
   MAX_SCAN_LABEL_IMAGES,
 } from "@/lib/scan-label";
@@ -198,13 +199,7 @@ export function LabelPhotoCapture({
 
     setStaging(true);
     try {
-      const canvas = document.createElement("canvas");
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      ctx.drawImage(video, 0, 0, w, h);
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
+      const dataUrl = compressImageSourceToDataUrl(video, w, h);
       onImagesChange(placeImage(images, dataUrl, targetSlot));
       setTargetSlot("next");
       closeLiveCamera();

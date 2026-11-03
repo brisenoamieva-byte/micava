@@ -427,8 +427,12 @@ export default function CavaPage() {
 
   async function refreshCellarPrices(targets: Wine[]): Promise<number> {
     const countryCode = clientCountryCodeHint();
+    const unique = uniqueWinesByIdentity(targets);
     let updated = 0;
-    for (const wine of targets) {
+    let nextIndex = 0;
+    const concurrency = 2;
+
+    async function runOne(wine: Wine) {
       try {
         const res = await fetch("/api/verify-wine-price", {
           method: "POST",
@@ -445,7 +449,7 @@ export default function CavaPage() {
             ...(countryCode ? { countryCode } : {}),
           }),
         });
-        if (!res.ok) continue;
+        if (!res.ok) return;
         const payload = (await res.json()) as {
           amount?: number | null;
           currency?: string | null;
@@ -453,7 +457,7 @@ export default function CavaPage() {
           confidence?: "confirmed" | "likely" | "uncertain" | null;
           notes?: string | null;
         };
-        if (payload.amount == null || !payload.currency) continue;
+        if (payload.amount == null || !payload.currency) return;
         saveVerifiedPrice(wine.id, {
           amount: payload.amount,
           currency: payload.currency,
@@ -466,6 +470,20 @@ export default function CavaPage() {
         /* continue batch */
       }
     }
+
+    async function worker() {
+      while (true) {
+        const i = nextIndex++;
+        if (i >= unique.length) return;
+        await runOne(unique[i]!);
+      }
+    }
+
+    await Promise.all(
+      Array.from({ length: Math.min(concurrency, unique.length) }, () =>
+        worker()
+      )
+    );
     return updated;
   }
 
@@ -1178,6 +1196,7 @@ export default function CavaPage() {
                 selectedId={selected?.id ?? null}
                 onSelect={(w) => selectWine(w)}
                 inventoryCount={wines.length}
+                onClearFilters={() => setFilters(initialFilters)}
               />
             </section>
           }
@@ -1242,6 +1261,7 @@ export default function CavaPage() {
                 onSelect={(w) => selectWine(w, true, "lista")}
                 compact
                 inventoryCount={wines.length}
+                onClearFilters={() => setFilters(initialFilters)}
               />
             </section>
           )}

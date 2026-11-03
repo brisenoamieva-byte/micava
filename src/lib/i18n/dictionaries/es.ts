@@ -359,6 +359,7 @@ export const es = {
     emptyCellar:
       "Tu cava está vacía. Agrega tu primera botella con una foto de la etiqueta.",
     noFilterMatches: "Ningún vino coincide con los filtros.",
+    clearFilters: "Limpiar filtros",
     year: "Año",
     location: "Ubicación",
     belowOut: "Abajo / fuera",
@@ -514,6 +515,27 @@ export const es = {
     tooManyRequests: "Demasiadas consultas. Espera un momento y reintenta.",
     couldNotIdentify:
       "No identifiqué el vino con certeza. Completa o corrige a mano.",
+    confHigh: "Alta confianza",
+    confMedium: "Revisa los datos",
+    confLow: "Baja confianza — corrige a mano",
+    proposedPrice: "Precio propuesto {price} (editable)",
+    missingFields: "Falta completar: {fields}",
+    cardComplete: "Ficha completa (revisa igual)",
+    lowConfidenceNotes: "Baja confianza · {notes}",
+    lowConfidenceFix: "Baja confianza — revisa y completa los campos",
+    serverScanError: "Error del servidor al escanear. Reintenta.",
+    field: {
+      name: "nombre",
+      winery: "bodega",
+      country: "país",
+      region: "región",
+      type: "tipo",
+      grape: "uva",
+      aging: "añejamiento",
+      vintage: "año",
+      vivino: "vivino",
+      price: "precio",
+    },
   },
   share: {
     title: "Compartir cava",
@@ -618,7 +640,7 @@ export const es = {
     openTonightCta: "Ver ficha",
     openTonightNoScore: "Cuenta su historia",
     openTonightEmpty:
-      "Aún no hay una recomendación clara. Suma añada y tipo, o actualiza precios en Pulso.",
+      "Falta añada (y tipo) en tus botellas para estimar cuándo abrir. Completa eso en la ficha.",
     openTonightReason: {
       peak: "En pico",
       ready: "En su punto",

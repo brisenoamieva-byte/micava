@@ -371,6 +371,7 @@ export const en = {
     emptyCellar:
       "Your cellar is empty. Add your first bottle with a photo of the label.",
     noFilterMatches: "No wines match the filters.",
+    clearFilters: "Clear filters",
     year: "Year",
     location: "Location",
     belowOut: "Below / out",
@@ -526,6 +527,27 @@ export const en = {
     tooManyRequests: "Too many requests. Wait a moment and retry.",
     couldNotIdentify:
       "Couldn’t identify the wine with confidence. Complete or correct by hand.",
+    confHigh: "High confidence",
+    confMedium: "Review the details",
+    confLow: "Low confidence — fix by hand",
+    proposedPrice: "Proposed price {price} (editable)",
+    missingFields: "Still need: {fields}",
+    cardComplete: "Card complete (still review)",
+    lowConfidenceNotes: "Low confidence · {notes}",
+    lowConfidenceFix: "Low confidence — review and complete the fields",
+    serverScanError: "Server error while scanning. Try again.",
+    field: {
+      name: "name",
+      winery: "winery",
+      country: "country",
+      region: "region",
+      type: "type",
+      grape: "grape",
+      aging: "aging",
+      vintage: "vintage",
+      vivino: "vivino",
+      price: "price",
+    },
   },
   share: {
     title: "Share cellar",
@@ -630,7 +652,7 @@ export const en = {
     openTonightCta: "Open card",
     openTonightNoScore: "Tell its story",
     openTonightEmpty:
-      "No clear pick yet. Add vintage and type, or refresh prices in Pulse.",
+      "Add vintage (and type) on your bottles so we can estimate when to open. Edit that on the card.",
     openTonightReason: {
       peak: "At peak",
       ready: "Ready now",

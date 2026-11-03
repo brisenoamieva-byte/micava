@@ -188,25 +188,33 @@ export function mergeScanPatchIntoDraft(
 }
 
 /** Labels for empty catalog fields after a scan (UI hint). */
+/** Catalog keys still empty after a scan (for localized “faltan…” hints). */
+export function missingScanFieldKeys(
+  fields: ScanLabelFields
+): Array<(typeof SCAN_CATALOG_KEYS)[number]> {
+  return SCAN_CATALOG_KEYS.filter((key) => {
+    if (key === "vivino") return false;
+    const v = fields[key];
+    if (key === "country") return !v || v === "Otro";
+    return v == null || v === "";
+  });
+}
+
+/** @deprecated prefer missingScanFieldKeys + i18n */
 export function missingScanFieldLabels(fields: ScanLabelFields): string[] {
-  const labels: { key: (typeof SCAN_CATALOG_KEYS)[number]; label: string }[] = [
-    { key: "name", label: "nombre" },
-    { key: "winery", label: "bodega" },
-    { key: "country", label: "país" },
-    { key: "region", label: "región" },
-    { key: "type", label: "tipo" },
-    { key: "grape", label: "uva" },
-    { key: "aging", label: "añejamiento" },
-    { key: "vintage", label: "año" },
-    { key: "price", label: "precio" },
-  ];
-  return labels
-    .filter(({ key }) => {
-      const v = fields[key];
-      if (key === "country") return !v || v === "Otro";
-      return v == null || v === "";
-    })
-    .map((x) => x.label);
+  const labels: Record<(typeof SCAN_CATALOG_KEYS)[number], string> = {
+    name: "nombre",
+    winery: "bodega",
+    country: "país",
+    region: "región",
+    type: "tipo",
+    grape: "uva",
+    aging: "añejamiento",
+    vintage: "año",
+    vivino: "vivino",
+    price: "precio",
+  };
+  return missingScanFieldKeys(fields).map((k) => labels[k]);
 }
 
 export type ScanLabelEnrichHint = {
@@ -306,6 +314,26 @@ export async function fetchEnrichLabel(
   return payload.fields ?? null;
 }
 
+/** Draw + downscale any frame (camera snap or bitmap) for cheaper vision calls. */
+export function compressImageSourceToDataUrl(
+  source: CanvasImageSource,
+  srcW: number,
+  srcH: number,
+  maxSide = 1280,
+  quality = 0.82
+): string {
+  const scale = Math.min(1, maxSide / Math.max(srcW, srcH));
+  const w = Math.max(1, Math.round(srcW * scale));
+  const h = Math.max(1, Math.round(srcH * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("No se pudo procesar la imagen.");
+  ctx.drawImage(source, 0, 0, w, h);
+  return canvas.toDataURL("image/jpeg", quality);
+}
+
 /** Resize + JPEG-compress for cheaper vision calls. */
 export async function imageFileToDataUrl(
   file: File,
@@ -317,21 +345,16 @@ export async function imageFileToDataUrl(
   }
 
   const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
-  const w = Math.max(1, Math.round(bitmap.width * scale));
-  const h = Math.max(1, Math.round(bitmap.height * scale));
-
-  const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) {
+  try {
+    const dataUrl = compressImageSourceToDataUrl(
+      bitmap,
+      bitmap.width,
+      bitmap.height,
+      maxSide,
+      quality
+    );
+    return { dataUrl, mimeType: "image/jpeg" };
+  } finally {
     bitmap.close();
-    throw new Error("No se pudo procesar la imagen.");
   }
-  ctx.drawImage(bitmap, 0, 0, w, h);
-  bitmap.close();
-
-  const dataUrl = canvas.toDataURL("image/jpeg", quality);
-  return { dataUrl, mimeType: "image/jpeg" };
 }

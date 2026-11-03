@@ -16,7 +16,7 @@ import {
   fetchEnrichLabel,
   fetchScanLabel,
   mergeScanPatchIntoDraft,
-  missingScanFieldLabels,
+  missingScanFieldKeys,
   scanFieldsToDraftPatch,
   type ScanLabelFields,
 } from "@/lib/scan-label";
@@ -267,20 +267,22 @@ export function WineFormModal({
     ) {
       const conf =
         fields.confidence === "high"
-          ? "Alta confianza"
+          ? t("scan.confHigh")
           : fields.confidence === "medium"
-            ? "Revisa los datos"
-            : "Baja confianza — corrige a mano";
-      const missing = missingScanFieldLabels(fields);
+            ? t("scan.confMedium")
+            : t("scan.confLow");
+      const missing = missingScanFieldKeys(fields).map((k) =>
+        t(`scan.field.${k}`)
+      );
       setScanHint(
         [
           conf,
           proposedPrice != null
-            ? `Precio propuesto ${formatPrice(proposedPrice)} (editable)`
+            ? t("scan.proposedPrice", { price: formatPrice(proposedPrice) })
             : null,
           missing.length
-            ? `Falta completar: ${missing.join(", ")}`
-            : "Ficha completa (revisa igual)",
+            ? t("scan.missingFields", { fields: missing.join(", ") })
+            : t("scan.cardComplete"),
           fields.notes || null,
           suffix || null,
         ]
@@ -310,28 +312,25 @@ export function WineFormModal({
         setLabelImageDataUrl(primaryLabel);
         setFromExisting(false);
         setStep("form");
-        setError(
-          payload.error ||
-            "No identifiqué el vino con certeza. Completa o corrige a mano."
-        );
+        setError(payload.error || t("scan.couldNotIdentify"));
         setScanHint(
           payload.fields.notes
-            ? `Baja confianza · ${payload.fields.notes}`
-            : "Baja confianza — revisa y completa los campos"
+            ? t("scan.lowConfidenceNotes", { notes: payload.fields.notes })
+            : t("scan.lowConfidenceFix")
         );
         return;
       }
 
       if (status !== 200 || !payload.fields?.name) {
-        const msg = payload.error || "No se pudo leer la etiqueta.";
+        const msg = payload.error || t("scan.failed");
         if (status === 429) {
-          throw new Error("Demasiadas consultas. Espera un momento y reintenta.");
+          throw new Error(t("scan.tooManyRequests"));
         }
         if (status >= 500) {
           throw new Error(
             msg.includes("Kimi") || msg.includes("API")
               ? msg
-              : "Error del servidor al escanear. Reintenta."
+              : t("scan.serverScanError")
           );
         }
         throw new Error(msg);

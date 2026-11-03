@@ -18,6 +18,8 @@ type Props = {
   compact?: boolean;
   /** Total bottles in cellar (before filters). Distinguishes empty inventory. */
   inventoryCount?: number;
+  /** Reset filters when the list is empty because of filters. */
+  onClearFilters?: () => void;
 };
 
 export function WineList({
@@ -26,17 +28,28 @@ export function WineList({
   onSelect,
   compact = false,
   inventoryCount,
+  onClearFilters,
 }: Props) {
   const t = useT();
   const { locale } = useLocale();
 
   if (wines.length === 0) {
+    const filteredOut = (inventoryCount ?? 0) > 0;
     return (
-      <p className="py-10 text-center text-sm text-ink-soft">
-        {inventoryCount === 0
-          ? t("wine.emptyCellar")
-          : t("wine.noFilterMatches")}
-      </p>
+      <div className="flex flex-col items-center gap-3 py-10 text-center">
+        <p className="text-sm text-ink-soft">
+          {filteredOut ? t("wine.noFilterMatches") : t("wine.emptyCellar")}
+        </p>
+        {filteredOut && onClearFilters ? (
+          <button
+            type="button"
+            className="btn btn-ghost min-h-[40px] border border-[var(--line)] px-3 text-sm"
+            onClick={onClearFilters}
+          >
+            {t("wine.clearFilters")}
+          </button>
+        ) : null}
+      </div>
     );
   }
 

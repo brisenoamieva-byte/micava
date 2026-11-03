@@ -55,6 +55,8 @@ type Props = {
     }
   ) => number | void;
   onMove?: (wine: Wine) => void;
+  /** Jump to map and pulse this bottle’s slot. */
+  onLocate?: (wine: Wine) => void;
 };
 
 export function WineDetail({
@@ -70,6 +72,7 @@ export function WineDetail({
   onApplyKimiResearch,
   onSaveVerifiedPrice,
   onMove,
+  onLocate,
 }: Props) {
   const t = useT();
   const { dict, locale } = useLocale();
@@ -963,7 +966,7 @@ export function WineDetail({
         </p>
       </div>
 
-      {(onOpened || onEdit || onRemove || onMove) && (
+      {(onOpened || onEdit || onRemove || onMove || onLocate) && (
         <div className="mt-6 min-w-0 space-y-2 border-t border-[var(--line)] pt-4">
           {onOpened ? (
             <button
@@ -974,8 +977,17 @@ export function WineDetail({
               {t("wine.opened")}
             </button>
           ) : null}
-          {(onEdit || onRemove || onMove) && (
+          {(onEdit || onRemove || onMove || onLocate) && (
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {onLocate ? (
+                <button
+                  type="button"
+                  className="btn btn-ghost min-h-[44px] min-w-0 w-full px-3"
+                  onClick={() => onLocate(wine)}
+                >
+                  {t("cava.takeToMap")}
+                </button>
+              ) : null}
               {onMove ? (
                 <button
                   type="button"

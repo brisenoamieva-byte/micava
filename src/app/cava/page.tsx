@@ -134,8 +134,12 @@ export default function CavaPage() {
   const [shareNudgeDismissed, setShareNudgeDismissed] = useState(true);
   const [clearing, setClearing] = useState(false);
   const [addedToast, setAddedToast] = useState<string | null>(null);
+  const [locateTargetId, setLocateTargetId] = useState<string | null>(null);
+  const [locateToken, setLocateToken] = useState(0);
+  const [locateToast, setLocateToast] = useState<string | null>(null);
   const moreMenuRef = useRef<HTMLDetailsElement>(null);
   const addedToastTimerRef = useRef<number | null>(null);
+  const locateToastTimerRef = useRef<number | null>(null);
 
   function closeMoreMenu() {
     if (moreMenuRef.current) moreMenuRef.current.open = false;
@@ -233,10 +237,49 @@ export default function CavaPage() {
     return visible[0]?.id ?? null;
   }, [filters.query, visible]);
 
+  const mapFocusWineId = locateTargetId ?? searchFocusWineId;
+
+  function locateWineOnMap(wine: Wine) {
+    setMode("cava");
+    setMobilePanel("mapa");
+    setDetailReturn("mapa");
+    setSelectedId(wine.id);
+    if (wine.cellarId) setActiveCellarId(wine.cellarId);
+    setFilters((prev) => ({
+      ...prev,
+      query: wine.name,
+    }));
+    setLocateTargetId(wine.id);
+    setLocateToken((n) => n + 1);
+
+    const mueble =
+      wine.cellarId != null
+        ? cellars.find((c) => c.id === wine.cellarId)?.name
+        : null;
+    const where =
+      !wine.slot || wine.slot === "abajo"
+        ? t("cava.foundBelow")
+        : mueble
+          ? `${mueble} · ${wine.slot}`
+          : wine.slot;
+    if (locateToastTimerRef.current) {
+      window.clearTimeout(locateToastTimerRef.current);
+    }
+    setLocateToast(t("cava.foundOnMap", { where }));
+    locateToastTimerRef.current = window.setTimeout(() => {
+      setLocateToast(null);
+      locateToastTimerRef.current = null;
+    }, 4200);
+  }
+
   // Search → jump to the furniture that holds the first match (≤3s find).
   useEffect(() => {
     const q = filters.query.trim();
-    if (!q || visible.length === 0) return;
+    if (!q) {
+      setLocateTargetId(null);
+      return;
+    }
+    if (visible.length === 0) return;
     const first = visible[0];
     if (first?.cellarId && first.cellarId !== activeCellarId) {
       setActiveCellarId(first.cellarId);
@@ -423,6 +466,7 @@ export default function CavaPage() {
       }
     ) => saveVerifiedPrice(w.id, result),
     onMove: (w: Wine) => setMoveSheetWine(w),
+    onLocate: (w: Wine) => locateWineOnMap(w),
   };
 
   async function refreshCellarPrices(targets: Wine[]): Promise<number> {
@@ -990,6 +1034,15 @@ export default function CavaPage() {
           </p>
         ) : null}
 
+        {locateToast ? (
+          <p
+            className="mt-3 rounded-[10px] border border-[rgba(110,31,44,0.28)] bg-[rgba(110,31,44,0.1)] px-3 py-2 text-sm font-medium text-[var(--wine-deep)]"
+            role="status"
+          >
+            {locateToast}
+          </p>
+        ) : null}
+
         {mode === "stats" ? (
           <div className="mt-6 space-y-5">
             <div id="bitacora">
@@ -1004,17 +1057,7 @@ export default function CavaPage() {
               cellars={cellars}
               history={history}
               onSelectWine={(w) => selectWine(w, true, "lista")}
-              onLocateWine={(w) => {
-                selectWine(w, false, "mapa");
-                setMode("cava");
-                setMobilePanel("mapa");
-                setDetailReturn("mapa");
-                if (w.cellarId) setActiveCellarId(w.cellarId);
-                setFilters((prev) => ({
-                  ...prev,
-                  query: w.name,
-                }));
-              }}
+              onLocateWine={(w) => locateWineOnMap(w)}
               onRefreshPrices={refreshCellarPrices}
               onRefreshMarket={refreshCellarMarket}
             />
@@ -1176,7 +1219,8 @@ export default function CavaPage() {
                   title={activeCellar.name}
                   highlightedIds={new Set(visible.map((w) => w.id))}
                   selectedId={selected?.id ?? null}
-                  focusWineId={searchFocusWineId}
+                  focusWineId={mapFocusWineId}
+                  focusToken={locateToken}
                   movingWineId={movingWineId}
                   onSelect={(w) => selectWine(w)}
                   onEmptySlot={(slot) => openAdd(slot)}
@@ -1238,7 +1282,8 @@ export default function CavaPage() {
                   title={activeCellar.name}
                   highlightedIds={new Set(visible.map((w) => w.id))}
                   selectedId={selected?.id ?? null}
-                  focusWineId={searchFocusWineId}
+                  focusWineId={mapFocusWineId}
+                  focusToken={locateToken}
                   movingWineId={movingWineId}
                   onSelect={(w) => selectWine(w, true, "mapa")}
                   onEmptySlot={(slot) => openAdd(slot)}

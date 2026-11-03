@@ -162,6 +162,8 @@ export const en = {
     addedToast: "Saved{slot} · tell the story whenever you want",
     addedToastSlot: " in {slot}",
     takeToMap: "Take me to the map",
+    foundOnMap: "Found · {where}",
+    foundBelow: "Below / off grid",
     bitacora: "Logbook",
     stats: "Stats",
     invite: "Invite",

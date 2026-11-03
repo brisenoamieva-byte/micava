@@ -30,6 +30,8 @@ type Props = {
   selectedId: string | null;
   /** Scroll/pulse this bottle after search jumps to its furniture. */
   focusWineId?: string | null;
+  /** Bump to re-run scroll/pulse when locating the same bottle again. */
+  focusToken?: number;
   /** Shown in the fullscreen overlay header. */
   title?: string;
   /** Wine currently being relocated (pick-and-place; survives mueble switch). */
@@ -324,6 +326,7 @@ export function CellarMap({
   highlightedIds,
   selectedId,
   focusWineId = null,
+  focusToken = 0,
   title,
   movingWineId = null,
   onSelect,
@@ -396,11 +399,14 @@ export function CellarMap({
       ) as HTMLElement | null;
       if (!el) return;
       el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+      el.classList.remove("map-focus-pulse");
+      // Restart CSS animation if the same bottle is located again.
+      void el.offsetWidth;
       el.classList.add("map-focus-pulse");
-      window.setTimeout(() => el.classList.remove("map-focus-pulse"), 1200);
-    }, 80);
+      window.setTimeout(() => el.classList.remove("map-focus-pulse"), 2600);
+    }, 120);
     return () => window.clearTimeout(id);
-  }, [focusWineId, cellarId, cols, rows]);
+  }, [focusWineId, focusToken, cellarId, cols, rows]);
 
   function dismissMoveHint() {
     setShowMoveHint(false);
@@ -586,6 +592,7 @@ export function CellarMap({
     wines,
     highlightedIds,
     selectedId,
+    focusWineId,
     activeMoveId,
     overTarget,
     didDrag,
@@ -814,6 +821,7 @@ export function CellarMap({
             ) : (
               abajo.map((wine) => {
                 const active = wine.id === selectedId;
+                const located = wine.id === focusWineId;
                 const dimmed =
                   highlightedIds.size > 0 && !highlightedIds.has(wine.id);
                 const isMoving = activeMoveId === wine.id;
@@ -863,6 +871,7 @@ export function CellarMap({
                         : "border-[var(--line)] bg-[rgba(255,252,247,0.55)] text-ink hover:border-[rgba(122,36,48,0.35)]",
                       dimmed ? "opacity-35" : "",
                       isMoving ? "ring-2 ring-[var(--wine)] opacity-90" : "",
+                      located ? "map-cell--located" : "",
                     ].join(" ")}
                   >
                     <CountryFlag country={wine.country} size="sm" />
@@ -1179,6 +1188,7 @@ function Row({
   wines,
   highlightedIds,
   selectedId,
+  focusWineId,
   activeMoveId,
   overTarget,
   didDrag,
@@ -1200,6 +1210,7 @@ function Row({
   wines: Wine[];
   highlightedIds: Set<string>;
   selectedId: string | null;
+  focusWineId: string | null;
   activeMoveId: string | null;
   overTarget: string | null;
   didDrag: MutableRefObject<boolean>;
@@ -1231,6 +1242,7 @@ function Row({
         const slot = `${col}${row}`;
         const wine = getWineBySlot(wines, slot, cellarId);
         const active = wine?.id === selectedId;
+        const located = wine?.id === focusWineId;
         const isOver = overTarget === slot || (pickMode && !wine);
         const dimmed =
           wine != null &&
@@ -1397,6 +1409,7 @@ function Row({
               dimmed ? "opacity-30" : "hover:border-[var(--wine)]",
               isMoving ? "ring-2 ring-[var(--wine)] opacity-95" : "",
               pickMode && !isMoving ? "opacity-80" : "",
+              located ? "map-cell--located" : "",
             ].join(" ")}
             style={{
               borderLeftColor: typeAccent(wine.type),

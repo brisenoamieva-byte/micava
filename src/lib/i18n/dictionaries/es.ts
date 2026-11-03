@@ -151,6 +151,8 @@ export const es = {
     addedToast: "Listo{slot} · la historia, cuando quieras",
     addedToastSlot: " en {slot}",
     takeToMap: "Llévame al mapa",
+    foundOnMap: "Encontrada · {where}",
+    foundBelow: "Abajo / fuera",
     bitacora: "Bitácora",
     stats: "Estadísticas",
     invite: "Invitar",

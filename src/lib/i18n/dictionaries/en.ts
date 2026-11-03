@@ -681,6 +681,19 @@ export const en = {
     openTonightEmptyMissing:
       "{count} bottles missing vintage. Add the year on the card for Open tonight.",
     openTonightFixVintage: "Add a vintage",
+    openOccasionLabel: "Occasion",
+    openOccasion: {
+      week: "This week",
+      everyday: "Everyday",
+      friends: "Friends",
+      special: "Special",
+    },
+    openOccasionLead: {
+      week: "Window + score + story for what to open soon.",
+      everyday: "Ready, approachable, and pairable for the week.",
+      friends: "Story and table talk to share.",
+      special: "Peak and high score for celebrating.",
+    },
     missingVintageTitle: "{count} missing vintage",
     missingVintageBody:
       "Without a year we can’t estimate the drink window or Open tonight. Add it here.",
@@ -695,6 +708,9 @@ export const en = {
       highScore: "High score",
       hasStory: "Has story",
       hasPairing: "Has pairing",
+      everydayFit: "Everyday fit",
+      friendsFit: "Friends fit",
+      specialFit: "Special fit",
     },
     openTonightReasonPhrase: {
       peak: "it's at peak",
@@ -703,6 +719,9 @@ export const en = {
       highScore: "it has a high score",
       hasStory: "it has a table story",
       hasPairing: "it has a pairing",
+      everydayFit: "it fits an everyday pour",
+      friendsFit: "it fits friends at the table",
+      specialFit: "it fits a special occasion",
     },
     byMoment: "By moment",
     byMomentEmpty: "Add vintage and type to estimate the drinking window.",

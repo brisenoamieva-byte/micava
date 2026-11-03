@@ -13,13 +13,27 @@ export type OpenTonightReasonKey =
   | "late"
   | "highScore"
   | "hasStory"
-  | "hasPairing";
+  | "hasPairing"
+  | "everydayFit"
+  | "friendsFit"
+  | "specialFit";
+
+/** Default = Abrir hoy / esta semana; occasions reweight moment + score + table. */
+export type OpenOccasion = "week" | "everyday" | "friends" | "special";
+
+export const OPEN_OCCASIONS: OpenOccasion[] = [
+  "week",
+  "everyday",
+  "friends",
+  "special",
+];
 
 export type OpenTonightPick = {
   wine: Wine;
   score: number;
   status: DrinkStatus;
   reasonKeys: OpenTonightReasonKey[];
+  occasion: OpenOccasion;
 };
 
 /** Plain-language “why this bottle” for Abrir hoy. */
@@ -57,13 +71,79 @@ function uniqueByIdentity(wines: Wine[]): Wine[] {
   return [...map.values()];
 }
 
+function applyOccasionWeight(
+  wine: Wine,
+  status: DrinkStatus,
+  score: number,
+  reasonKeys: OpenTonightReasonKey[],
+  occasion: OpenOccasion
+): number {
+  const rating = wine.cavataleRating;
+  const price = wine.price ?? wine.kimiPrice;
+  const hasStory = Boolean(wine.kimiSummary || wine.kimiTalkHook);
+  const hasPairing = Boolean(wine.kimiPairings && wine.kimiPairings.length > 0);
+
+  if (occasion === "everyday") {
+    // Weeknight: ready over trophy peak, mid score, pairing, not the priciest.
+    if (status === "ready") score += 2.2;
+    if (status === "peak") score += 0.6;
+    if (status === "late") score -= 0.8;
+    if (rating != null) {
+      if (rating >= 3.2 && rating <= 4.15) score += 1.4;
+      else if (rating > 4.3) score -= 0.6;
+    }
+    if (hasPairing) score += 1.1;
+    if (price != null) {
+      if (price <= 550) score += 1.0;
+      else if (price <= 900) score += 0.35;
+      else score -= 0.9;
+    }
+    if (status === "ready" || status === "peak") {
+      reasonKeys.push("everydayFit");
+    }
+    return score;
+  }
+
+  if (occasion === "friends") {
+    // Table talk: story + pairing + solid score in window.
+    if (hasStory) score += 2.0;
+    if (wine.kimiTalkHook) score += 0.9;
+    if (hasPairing) score += 1.6;
+    if (status === "ready" || status === "peak") score += 1.2;
+    if (rating != null && rating >= 3.5) score += 1.0;
+    if (hasStory || hasPairing) reasonKeys.push("friendsFit");
+    return score;
+  }
+
+  if (occasion === "special") {
+    // Celebrate: peak + high score + story; higher price OK.
+    if (status === "peak") score += 2.8;
+    if (status === "ready") score += 0.8;
+    if (status === "late") score += 0.5;
+    if (rating != null && rating >= 3.9) score += 1.8;
+    if (hasStory) score += 1.2;
+    if (price != null && price >= 700) score += 0.9;
+    if (
+      status === "peak" ||
+      (rating != null && rating >= 3.9) ||
+      hasStory
+    ) {
+      reasonKeys.push("specialFit");
+    }
+    return score;
+  }
+
+  return score;
+}
+
 /**
- * Rank bottles to open tonight / this week.
- * Prefer peak → ready → late; hide young when better options exist.
+ * Rank bottles to open tonight / this week, optionally reweighted by occasion
+ * (everyday · friends · special).
  */
 export function rankOpenTonight(
   wines: Wine[],
-  limit = 5
+  limit = 5,
+  occasion: OpenOccasion = "week"
 ): OpenTonightPick[] {
   const year = new Date().getFullYear();
   const unique = uniqueByIdentity(wines);
@@ -80,7 +160,7 @@ export function rankOpenTonight(
     if (hasActionable && status === "young") continue;
     if (status === "unknown") continue;
 
-    const reasonKeys: OpenTonightPick["reasonKeys"] = [];
+    const reasonKeys: OpenTonightReasonKey[] = [];
     let score = 0;
 
     if (status === "peak") {
@@ -129,7 +209,9 @@ export function rankOpenTonight(
       score *= 0.55;
     }
 
-    picks.push({ wine, score, status, reasonKeys });
+    score = applyOccasionWeight(wine, status, score, reasonKeys, occasion);
+
+    picks.push({ wine, score, status, reasonKeys, occasion });
   }
 
   // If everything was filtered (only young/unknown), fall back to best young.
@@ -142,6 +224,7 @@ export function rankOpenTonight(
         score: (wine.cavataleRating ?? 2) + (status === "young" ? 0.3 : 0),
         status,
         reasonKeys: [],
+        occasion,
       });
     }
   }

@@ -669,6 +669,19 @@ export const es = {
     openTonightEmptyMissing:
       "{count} botellas sin añada. Completa el año en la ficha para Abrir hoy.",
     openTonightFixVintage: "Completar una añada",
+    openOccasionLabel: "Ocasión",
+    openOccasion: {
+      week: "Esta semana",
+      everyday: "Diario",
+      friends: "Amigos",
+      special: "Especial",
+    },
+    openOccasionLead: {
+      week: "Ventana + score + historia para descorchar pronto.",
+      everyday: "En su punto, asequible y con maridaje para la semana.",
+      friends: "Historia y mesa para compartir.",
+      special: "Pico y score alto para celebrar.",
+    },
     missingVintageTitle: "{count} sin añada",
     missingVintageBody:
       "Sin año no estimamos ventana ni Abrir hoy. Pon el año aquí.",
@@ -683,6 +696,9 @@ export const es = {
       highScore: "Score alto",
       hasStory: "Con historia",
       hasPairing: "Con maridaje",
+      everydayFit: "Para diario",
+      friendsFit: "Para amigos",
+      specialFit: "Para especial",
     },
     openTonightReasonPhrase: {
       peak: "está en pico",
@@ -691,6 +707,9 @@ export const es = {
       highScore: "tiene score alto",
       hasStory: "tiene historia para la mesa",
       hasPairing: "tiene maridaje",
+      everydayFit: "encaja para un diario",
+      friendsFit: "encaja para amigos",
+      specialFit: "encaja para una ocasión especial",
     },
     byMoment: "Por momento",
     byMomentEmpty: "Añade añada y tipo para estimar la ventana de consumo.",

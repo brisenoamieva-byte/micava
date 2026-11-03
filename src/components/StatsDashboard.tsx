@@ -15,8 +15,10 @@ import { useLocale, useT, wineTypeLabel } from "@/lib/i18n";
 import {
   cellarValueSnapshot,
   formatOpenTonightWhy,
+  OPEN_OCCASIONS,
   rankOpenTonight,
   winesNeedingPriceRefresh,
+  type OpenOccasion,
 } from "@/lib/open-tonight";
 import {
   countryDisplayName,
@@ -74,7 +76,11 @@ export function StatsDashboard({
     () => buildInsights(wines, cellars, history),
     [wines, cellars, history]
   );
-  const openTonight = useMemo(() => rankOpenTonight(wines, 5), [wines]);
+  const [occasion, setOccasion] = useState<OpenOccasion>("week");
+  const openTonight = useMemo(
+    () => rankOpenTonight(wines, 5, occasion),
+    [wines, occasion]
+  );
   const missingVintage = useMemo(() => {
     return uniqueWinesByIdentity(wines).filter((w) => w.vintage == null);
   }, [wines]);
@@ -276,6 +282,42 @@ export function StatsDashboard({
       </div>
 
       <section id="open-tonight" className="space-y-3">
+        <div className="px-0.5">
+          <p className="mb-1.5 text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+            {t("stats.openOccasionLabel")}
+          </p>
+          <div
+            className="flex flex-wrap gap-1.5"
+            role="group"
+            aria-label={t("stats.openOccasionLabel")}
+          >
+            {OPEN_OCCASIONS.map((key) => {
+              const active = occasion === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  aria-pressed={active}
+                  className={[
+                    "inline-flex min-h-[36px] items-center rounded-[8px] border px-2.5 text-[11px] font-medium uppercase tracking-[0.06em] transition",
+                    active
+                      ? "border-[rgba(110,31,44,0.45)] bg-[rgba(110,31,44,0.12)] text-[var(--wine-deep)]"
+                      : "border-[var(--line)] bg-[rgba(255,252,247,0.55)] text-ink-soft hover:border-[rgba(110,31,44,0.28)] hover:text-ink",
+                  ].join(" ")}
+                  onClick={() => setOccasion(key)}
+                >
+                  {t(`stats.openOccasion.${key}`)}
+                </button>
+              );
+            })}
+          </div>
+          {t(`stats.openOccasionLead.${occasion}`) ? (
+            <p className="mt-1.5 text-xs text-ink-soft">
+              {t(`stats.openOccasionLead.${occasion}`)}
+            </p>
+          ) : null}
+        </div>
+
         {openTonight.length > 0 ? (
           (() => {
             const top = openTonight[0];
@@ -294,7 +336,9 @@ export function StatsDashboard({
                     className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-[var(--wine)]"
                   />
                   <p className="relative micro-label text-[var(--wine)]">
-                    {t("stats.openTonight")}
+                    {occasion === "week"
+                      ? t("stats.openTonight")
+                      : t(`stats.openOccasion.${occasion}`)}
                   </p>
                   <div className="relative mt-4 flex flex-wrap items-end justify-between gap-3">
                     <div className="min-w-0">

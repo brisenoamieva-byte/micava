@@ -512,7 +512,14 @@ export const es = {
     identifyPhotos: "Identificar etiqueta",
     twoPhotosMax: "Máximo 2 fotos. Puedes quitar o repetir alguna.",
     addBackOptional:
-      "Puedes agregar la contraetiqueta o identificar solo con el frente.",
+      "La añada suele estar en la contraetiqueta — súmala si puedes.",
+    backNudgeTitle: "¿Sumar el reverso?",
+    backNudgeBody:
+      "Ahí suele ir la añada. Con frente + reverso el escaneo acierta más a la primera.",
+    backNudgeAdd: "Tomar contraetiqueta",
+    backNudgeSkip: "Identificar solo con el frente",
+    vintageMissingAfterScan:
+      "Revisa la añada — sin año, Abrir hoy no sabe qué descorchar.",
     storySubtitle: "Historia de esta botella.",
     fixIdentity: "Corregir identidad",
     thisBottle: "Esta botella",

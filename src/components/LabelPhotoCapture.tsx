@@ -48,6 +48,8 @@ export function LabelPhotoCapture({
   const [liveOpen, setLiveOpen] = useState(false);
   const [liveError, setLiveError] = useState<string | null>(null);
   const [portalReady, setPortalReady] = useState(false);
+  /** Soft gate: añada usually lives on the back label. */
+  const [needBackNudge, setNeedBackNudge] = useState(false);
 
   useEffect(() => {
     setPortalReady(true);
@@ -73,6 +75,10 @@ export function LabelPhotoCapture({
       document.body.style.overflow = prev;
     };
   }, [liveOpen]);
+
+  useEffect(() => {
+    if (images.length !== 1) setNeedBackNudge(false);
+  }, [images.length]);
 
   function stopLiveStream() {
     const stream = streamRef.current;
@@ -417,40 +423,83 @@ export function LabelPhotoCapture({
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          <button
-            type="button"
-            className="btn btn-primary flex min-h-[48px] w-full items-center justify-center disabled:opacity-60"
-            disabled={!canIdentify}
-            onClick={() => onIdentify(images)}
-          >
-            {identifyLabel ?? t("scan.identifyPhotos")}
-          </button>
-          <div className="grid grid-cols-2 gap-2">
+          {needBackNudge && images.length === 1 ? (
+            <div className="rounded-[12px] border border-[rgba(110,31,44,0.22)] bg-[rgba(110,31,44,0.06)] p-3">
+              <p className="text-sm font-medium text-ink">
+                {t("scan.backNudgeTitle")}
+              </p>
+              <p className="mt-1 text-xs leading-snug text-ink-soft">
+                {t("scan.backNudgeBody")}
+              </p>
+              <div className="mt-3 flex flex-col gap-2">
+                <button
+                  type="button"
+                  className="btn btn-primary min-h-[44px] w-full text-sm"
+                  disabled={busy || liveOpen}
+                  onClick={() => {
+                    setNeedBackNudge(false);
+                    void openRearCamera(1);
+                  }}
+                >
+                  {t("scan.backNudgeAdd")}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost min-h-[44px] w-full border border-[var(--line)] text-sm"
+                  disabled={!canIdentify}
+                  onClick={() => {
+                    setNeedBackNudge(false);
+                    onIdentify(images);
+                  }}
+                >
+                  {t("scan.backNudgeSkip")}
+                </button>
+              </div>
+            </div>
+          ) : (
             <button
               type="button"
-              className="btn btn-ghost flex min-h-[44px] w-full items-center justify-center border border-[var(--line)] disabled:opacity-60"
-              disabled={busy || liveOpen}
-              onClick={() => void openRearCamera("next")}
-            >
-              {t("scan.takePhoto")}
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost flex min-h-[44px] w-full items-center justify-center border border-[var(--line)] disabled:opacity-60"
-              disabled={busy || liveOpen}
+              className="btn btn-primary flex min-h-[48px] w-full items-center justify-center disabled:opacity-60"
+              disabled={!canIdentify}
               onClick={() => {
-                setTargetSlot("next");
-                galleryInputRef.current?.click();
+                if (images.length === 1) {
+                  setNeedBackNudge(true);
+                  return;
+                }
+                onIdentify(images);
               }}
             >
-              {t("scan.upload")}
+              {identifyLabel ?? t("scan.identifyPhotos")}
             </button>
-          </div>
+          )}
+          {!needBackNudge ? (
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                className="btn btn-ghost flex min-h-[44px] w-full items-center justify-center border border-[var(--line)] disabled:opacity-60"
+                disabled={busy || liveOpen}
+                onClick={() => void openRearCamera("next")}
+              >
+                {t("scan.takePhoto")}
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost flex min-h-[44px] w-full items-center justify-center border border-[var(--line)] disabled:opacity-60"
+                disabled={busy || liveOpen}
+                onClick={() => {
+                  setTargetSlot("next");
+                  galleryInputRef.current?.click();
+                }}
+              >
+                {t("scan.upload")}
+              </button>
+            </div>
+          ) : null}
           {images.length >= MAX_SCAN_LABEL_IMAGES ? (
             <p className="text-center text-[11px] text-ink-soft">
               {t("scan.twoPhotosMax")}
             </p>
-          ) : images.length === 1 ? (
+          ) : images.length === 1 && !needBackNudge ? (
             <p className="text-center text-[11px] text-ink-soft">
               {t("scan.addBackOptional")}
             </p>

@@ -524,7 +524,14 @@ export const en = {
     identifyPhotos: "Identify label",
     twoPhotosMax: "Max 2 photos. You can remove or retake either one.",
     addBackOptional:
-      "You can add the back label or identify with the front only.",
+      "The vintage is usually on the back label — add it if you can.",
+    backNudgeTitle: "Add the back label?",
+    backNudgeBody:
+      "That’s where the vintage usually is. Front + back gets identity right more often on the first try.",
+    backNudgeAdd: "Capture back label",
+    backNudgeSkip: "Identify with front only",
+    vintageMissingAfterScan:
+      "Check the vintage — without a year, Open tonight can’t rank this bottle.",
     storySubtitle: "This bottle’s story.",
     fixIdentity: "Fix identity",
     thisBottle: "This bottle",

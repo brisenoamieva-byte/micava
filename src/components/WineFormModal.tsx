@@ -273,6 +273,7 @@ export function WineFormModal({
       );
       setScanHint(
         [
+          fields.vintage == null ? t("scan.vintageMissingAfterScan") : null,
           conf,
           proposedPrice != null
             ? t("scan.proposedPrice", { price: formatPrice(proposedPrice) })
@@ -829,16 +830,24 @@ export function WineFormModal({
                   ) : null}
                 </span>
                 <input
-                  className={fieldClass}
+                  className={[
+                    fieldClass,
+                    draft.vintage == null
+                      ? "border-[rgba(110,31,44,0.45)] bg-[rgba(110,31,44,0.04)]"
+                      : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
                   inputMode="numeric"
                   value={draft.vintage ?? ""}
                   onChange={(e) =>
                     patch("vintage", parseOptionalNumber(e.target.value))
                   }
                   placeholder="2021"
+                  autoFocus={Boolean(scanHint && draft.vintage == null)}
                 />
                 {draft.vintage == null ? (
-                  <span className="mt-1 block text-xs text-ink-soft">
+                  <span className="mt-1 block text-xs text-[var(--wine-deep)]">
                     {t("wine.vintageHint")}
                   </span>
                 ) : null}

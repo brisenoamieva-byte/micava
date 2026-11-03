@@ -30,6 +30,7 @@ Reglas:
 - Busca primero en Vivino / sitios de vino / tiendas (${market.retailersHint}).
 - IDENTIDAD ESTRICTA: confirma la MISMA línea + crianza/designación + uva + cosecha cuando constan en la ficha.
   No sustituyas por otra variante de la misma bodega (Joven≠Reserva; otra uva = otro vino).
+- Si el escaneo ya trae vintage (cosecha leída en etiqueta), NO lo cambies por otra añada del catálogo. Solo rellena vintage si venía null.
 - country: exactamente uno de: ${COUNTRY_PROMPT}. Usa el nombre en español de la lista.
 - vivino: número 1–5 (un decimal ok) SOLO si el hit es esa SKU/cosecha; si solo hay all-vintages u otra variante, null.
 - price: entero en ${market.currency} de menudeo típico de ESA variante; si el precio es de otra crianza/línea, null. Si solo hay otra moneda, convierte aprox. a ${market.currency}.
@@ -99,7 +100,8 @@ export function mergeEnrichment(
     type: enriched.type || base.type,
     grape: pickStr(base.grape, enriched.grape),
     aging: pickStr(base.aging, enriched.aging),
-    vintage: pickNum(base.vintage, enriched.vintage),
+    // Label OCR vintage wins: web catalogs often mix harvest years.
+    vintage: base.vintage != null ? base.vintage : enriched.vintage,
     vivino: pickNum(base.vivino, enriched.vivino),
     price: pickNum(base.price, enriched.price),
     confidence:

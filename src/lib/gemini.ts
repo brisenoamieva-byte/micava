@@ -248,6 +248,40 @@ export async function geminiGenerateJson(options: {
   return { content, usage };
 }
 
+/** Schema for label vision / scan-label JSON. */
+export const SCAN_LABEL_RESPONSE_SCHEMA: Record<string, unknown> = {
+  type: "OBJECT",
+  properties: {
+    name: { type: "STRING" },
+    winery: { type: "STRING" },
+    country: { type: "STRING" },
+    region: { type: "STRING" },
+    type: { type: "STRING" },
+    grape: { type: "STRING" },
+    aging: { type: "STRING" },
+    vintage: { type: "NUMBER", nullable: true },
+    vivino: { type: "NUMBER", nullable: true },
+    price: { type: "NUMBER", nullable: true },
+    confidence: { type: "STRING", enum: ["high", "medium", "low"] },
+    notes: { type: "STRING" },
+    matchMethod: { type: "STRING", enum: ["text", "visual", "mixed"] },
+    searchQuery: { type: "STRING" },
+  },
+  required: [
+    "name",
+    "winery",
+    "country",
+    "region",
+    "type",
+    "grape",
+    "aging",
+    "confidence",
+    "notes",
+    "matchMethod",
+    "searchQuery",
+  ],
+};
+
 /** Schema for Contar historia / research-wine JSON. */
 export const RESEARCH_WINE_RESPONSE_SCHEMA: Record<string, unknown> = {
   type: "OBJECT",

@@ -174,6 +174,7 @@ export function scanFieldsToDraftPatch(
 /**
  * Apply scan/AI catalog fields onto a draft.
  * Never overwrite a price (or score) the user already typed with null or a new estimate.
+ * Keep a vision/OCR vintage once set — enrich must not swap harvest years.
  */
 export function mergeScanPatchIntoDraft(
   prev: WineDraft,
@@ -182,6 +183,7 @@ export function mergeScanPatchIntoDraft(
   return {
     ...prev,
     ...patch,
+    vintage: prev.vintage != null ? prev.vintage : patch.vintage,
     vivino: prev.vivino != null ? prev.vivino : patch.vivino,
     price: prev.price != null ? prev.price : patch.price,
   };

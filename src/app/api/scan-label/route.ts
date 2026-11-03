@@ -4,6 +4,7 @@ import {
   geminiGenerateJson,
   resolveKimiFallback,
   resolvePrimaryLlm,
+  SCAN_LABEL_RESPONSE_SCHEMA,
 } from "@/lib/gemini";
 import {
   addKimiUsage,
@@ -62,13 +63,13 @@ Definiciones:
 - type (string): exactamente Tinto | Blanco | Rosado | Espumoso.
 - grape (string): uva(s) si se leen o son conocidas para ESE vino; si no, "".
 - aging (string): Joven/Crianza/Reserva/etc. si aplica; si no, "".
-- vintage (number|null): año de cosecha si se ve; no confundir con año de embotellado; si no, null.
+- vintage (number|null): SOLO el año de COSECHA / vintage impreso en etiqueta o contraetiqueta. NUNCA inventes una añada “típica” de la marca. NO uses año de embotellado, lotes, ni códigos. Si no se lee claramente → null.
 - vivino (number|null): score típico Vivino 1–5 SOLO si identificaste el vino concreto con certeza razonable. Si no, null (se buscará después). NUNCA inventes.
 - price (number|null): precio menudeo típico en MXN (entero) si conoces ese vino en México con certeza; si no, null.
-- confidence ("high"|"medium"|"low"): certeza de la IDENTIDAD del vino (no de la foto).
-- notes (string): breve: qué viste (ej. "frente ilustración + contraetiqueta con Tempranillo 2018") y qué es dudoso.
+- confidence ("high"|"medium"|"low"): certeza de la IDENTIDAD del vino (nombre+bodega+línea). Si la añada no se lee, baja un grado salvo que el resto sea inequívoco.
+- notes (string): breve: qué viste (ej. "frente ilustración + contraetiqueta con Tempranillo 2018") y qué es dudoso (añada ilegible, etc.).
 - matchMethod ("text"|"visual"|"mixed"): text=principalmente OCR; visual=casi sin texto / por diseño; mixed=ambos.
-- searchQuery (string): 1 consulta corta en inglés o español para buscar en internet ese vino exacto + Vivino/precio (ej. "Monte Xanic Cabernet 2020 Vivino price Mexico"). Si name="", arma query con pistas visuales.
+- searchQuery (string): 1 consulta corta en inglés o español para buscar en internet ese vino exacto + Vivino/precio (ej. "Monte Xanic Cabernet 2020 Vivino price Mexico"). Incluye vintage SOLO si lo leíste. Si name="", arma query con pistas visuales.
 
 Si ninguna imagen parece una etiqueta de vino, name="" y confidence="low".`;
 
@@ -188,8 +189,8 @@ async function visionIdentify(
 }> {
   const multi = imageDataUrls.length > 1;
   const userText = multi
-    ? "Hay 2 fotos de la misma botella: la primera es el FRENTE (etiqueta) y la segunda el REVERSO (contraetiqueta). Combina ambas. Si casi no hay texto en el frente, usa la huella visual y lee la contraetiqueta. Completa el JSON incluyendo matchMethod, searchQuery, y vivino/price solo si estás seguro; si no, null."
-    : "Identifica este vino. Si casi no hay texto, usa la huella visual (arte, colores, logo). Completa el JSON incluyendo matchMethod, searchQuery, y vivino/price solo si estás seguro; si no, null.";
+    ? "Hay 2 fotos de la misma botella: la primera es el FRENTE (etiqueta) y la segunda el REVERSO (contraetiqueta). Combina ambas. Prioriza la contraetiqueta para grape/aging/vintage. Si no lees la añada con claridad, vintage=null (no inventes). Completa el JSON con matchMethod y searchQuery; vivino/price solo si estás seguro."
+    : "Identifica este vino por el frente. Si casi no hay texto, usa la huella visual (arte, colores, logo). Si no ves la añada impresa, vintage=null — no inventes un año típico. Completa el JSON con matchMethod y searchQuery; vivino/price solo si estás seguro.";
 
   let content: string;
   let usage: KimiTokenUsage | null;
@@ -203,6 +204,7 @@ async function visionIdentify(
       images: imageDataUrls,
       maxTokens: 2048,
       temperature: 0.6,
+      responseSchema: SCAN_LABEL_RESPONSE_SCHEMA,
     });
     content = out.content;
     usage = out.usage;

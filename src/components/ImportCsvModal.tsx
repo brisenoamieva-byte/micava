@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import {
   csvTemplateContent,
+  downloadExcelTemplate,
   fileToImportCsvText,
   importWinesFromCsv,
   type CsvImportResult,
@@ -31,6 +32,7 @@ export function ImportCsvModal({
   const [result, setResult] = useState<CsvImportResult | null>(null);
   const [fileName, setFileName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [templateBusy, setTemplateBusy] = useState(false);
 
   if (!open) return null;
 
@@ -108,21 +110,8 @@ export function ImportCsvModal({
           </button>
         </div>
 
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <button
-            type="button"
-            className="btn btn-ghost min-h-[44px] flex-1 border border-[var(--line)] text-sm"
-            onClick={() =>
-              downloadTextFile(
-                csvTemplateContent(),
-                "cavatale-plantilla.csv",
-                "text/csv;charset=utf-8"
-              )
-            }
-          >
-            {t("importCsv.downloadTemplate")}
-          </button>
-          <label className="btn btn-primary min-h-[44px] flex-1 cursor-pointer text-center text-sm">
+        <div className="flex flex-col gap-2">
+          <label className="btn btn-primary min-h-[44px] w-full cursor-pointer text-center text-sm">
             {busy ? t("importCsv.reading") : t("importCsv.chooseFile")}
             <input
               ref={inputRef}
@@ -133,6 +122,40 @@ export function ImportCsvModal({
               onChange={(e) => void onFile(e.target.files?.[0] ?? null)}
             />
           </label>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button
+              type="button"
+              className="btn btn-ghost min-h-[44px] flex-1 border border-[var(--line)] text-sm disabled:opacity-50"
+              disabled={templateBusy}
+              onClick={() => {
+                void (async () => {
+                  setTemplateBusy(true);
+                  try {
+                    await downloadExcelTemplate();
+                  } finally {
+                    setTemplateBusy(false);
+                  }
+                })();
+              }}
+            >
+              {templateBusy
+                ? t("importCsv.preparingTemplate")
+                : t("importCsv.downloadExcel")}
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost min-h-[44px] flex-1 border border-[var(--line)] text-sm"
+              onClick={() =>
+                downloadTextFile(
+                  csvTemplateContent(),
+                  "cavatale-plantilla.csv",
+                  "text/csv;charset=utf-8"
+                )
+              }
+            >
+              {t("importCsv.downloadTemplate")}
+            </button>
+          </div>
         </div>
 
         {fileName ? (

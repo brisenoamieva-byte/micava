@@ -31,8 +31,9 @@ const PROFILES: Record<string, MarketProfile> = {
   MX: {
     currency: "MXN",
     marketLabel: "México",
-    retailersHint: "La Europea, Vinoteca, Amazon MX, Liverpool, Sam's Club México",
-    searchPriceHint: "precio México MXN",
+    retailersHint:
+      "La Europea, Vinoteca, Amazon MX, Liverpool, Sam's Club México, Cava del Sommelier, Bodegas Alianza",
+    searchPriceHint: "precio México MXN botella",
     pairingCuisineHint:
       "Comida realista de mesa en México: asados y cortes a la parrilla, pollo rostizado, pasta, mariscos, quesos, guisos cotidianos, cena de restaurante o casa. NO te bases solo en platillos típicos/folclóricos (birria, mole, carnitas, antojitos de feria); a lo sumo uno si encaja de verdad con la botella.",
   },
@@ -95,32 +96,84 @@ const PROFILES: Record<string, MarketProfile> = {
   AR: {
     currency: "ARS",
     marketLabel: "Argentina",
-    retailersHint: "Vivino Argentina, tiendas de vinos locales",
-    searchPriceHint: "precio Argentina ARS",
+    retailersHint:
+      "Vivino Argentina, Wine.com.ar, Vinoteca, Jumbo, Disco, tiendas de vinos locales",
+    searchPriceHint: "precio Argentina ARS botella",
     pairingCuisineHint:
       "Comida realista de mesa en Argentina: asado/cortes, pasta, pollo, quesos — no solo empanadas/provoleta de postal. Evita platillos solo-mexicanos.",
   },
   CL: {
     currency: "CLP",
     marketLabel: "Chile",
-    retailersHint: "Vivino Chile, tiendas de vinos locales",
-    searchPriceHint: "precio Chile CLP",
+    retailersHint:
+      "Vivino Chile, Wine.cl, Jumbo, Líder, tiendas de vinos locales",
+    searchPriceHint: "precio Chile CLP botella",
     pairingCuisineHint:
       "Comida realista de mesa en Chile: asados, pescados/mariscos, pasta, pollo. Evita platillos solo-mexicanos. No bases la lista solo en tipismos.",
   },
   CO: {
     currency: "COP",
     marketLabel: "Colombia",
-    retailersHint: "Vivino Colombia, tiendas de vinos locales",
-    searchPriceHint: "precio Colombia COP",
+    retailersHint:
+      "Vivino Colombia, Éxito, Carulla, tiendas de vinos locales, importadoras",
+    searchPriceHint: "precio Colombia COP botella",
     pairingCuisineHint:
       "Comida realista de mesa en Colombia: carne a la parrilla, pollo, pasta, pescado, quesos. Evita platillos solo-mexicanos. No llenes con tipismos.",
+  },
+  PE: {
+    currency: "PEN",
+    marketLabel: "Perú",
+    retailersHint:
+      "Vivino Perú, Wong, Metro, tiendas de vinos locales, importadoras",
+    searchPriceHint: "precio Perú PEN botella",
+    pairingCuisineHint:
+      "Comida realista de mesa en Perú: pescados/mariscos, carnes a la parrilla, pasta, pollo, quesos. Evita platillos solo-mexicanos. No bases la lista solo en tipismos (ceviche a lo sumo uno si encaja).",
+  },
+  UY: {
+    currency: "UYU",
+    marketLabel: "Uruguay",
+    retailersHint: "Vivino Uruguay, tiendas de vinos locales, supermercados",
+    searchPriceHint: "precio Uruguay UYU botella",
+    pairingCuisineHint:
+      "Comida realista de mesa en Uruguay: asado/cortes, pasta, pollo, quesos. Evita platillos solo-mexicanos.",
+  },
+  EC: {
+    currency: "USD",
+    marketLabel: "Ecuador",
+    retailersHint: "Vivino Ecuador, Supermaxi, tiendas de vinos locales",
+    searchPriceHint: "precio Ecuador USD botella vino",
+    pairingCuisineHint:
+      "Comida realista de mesa en Ecuador: pescados/mariscos, carnes, pasta, pollo. Evita platillos solo-mexicanos.",
+  },
+  CR: {
+    currency: "CRC",
+    marketLabel: "Costa Rica",
+    retailersHint: "Vivino Costa Rica, Auto Mercado, tiendas de vinos locales",
+    searchPriceHint: "precio Costa Rica CRC botella",
+    pairingCuisineHint:
+      "Comida realista de mesa en Costa Rica: carnes a la parrilla, pollo, pasta, pescado. Evita platillos solo-mexicanos.",
+  },
+  PA: {
+    currency: "USD",
+    marketLabel: "Panamá",
+    retailersHint: "Vivino Panamá, Riba Smith, tiendas de vinos locales",
+    searchPriceHint: "precio Panamá USD botella vino",
+    pairingCuisineHint:
+      "Comida realista de mesa en Panamá: carnes, pasta, mariscos, pollo. Evita platillos solo-mexicanos.",
+  },
+  GT: {
+    currency: "GTQ",
+    marketLabel: "Guatemala",
+    retailersHint: "Vivino Guatemala, La Torre, tiendas de vinos locales",
+    searchPriceHint: "precio Guatemala GTQ botella",
+    pairingCuisineHint:
+      "Comida realista de mesa en Guatemala: carnes, pollo, pasta, quesos. Evita platillos solo-mexicanos como única base.",
   },
   BR: {
     currency: "BRL",
     marketLabel: "Brasil",
-    retailersHint: "Vivino Brasil, Wine.com.br, lojas locais",
-    searchPriceHint: "preço Brasil BRL",
+    retailersHint: "Vivino Brasil, Wine.com.br, Evino, lojas locais",
+    searchPriceHint: "preço Brasil BRL garrafa",
     pairingCuisineHint:
       "Realistic Brazilian everyday table food (grilled meats, pasta, seafood, cheese). Avoid Mexico-only dishes.",
   },
@@ -237,11 +290,49 @@ export function resolveMarketGeoFromRequest(
   });
 }
 
-/** Client hint from navigator.language region (e.g. es-MX → MX). */
+/** Weak timezone → country for LATAM when language has no region. */
+const TZ_COUNTRY: Record<string, string> = {
+  "America/Mexico_City": "MX",
+  "America/Monterrey": "MX",
+  "America/Merida": "MX",
+  "America/Cancun": "MX",
+  "America/Tijuana": "MX",
+  "America/Hermosillo": "MX",
+  "America/Chihuahua": "MX",
+  "America/Bogota": "CO",
+  "America/Lima": "PE",
+  "America/Santiago": "CL",
+  "America/Punta_Arenas": "CL",
+  "America/Argentina/Buenos_Aires": "AR",
+  "America/Argentina/Cordoba": "AR",
+  "America/Argentina/Mendoza": "AR",
+  "America/Montevideo": "UY",
+  "America/Guayaquil": "EC",
+  "America/Sao_Paulo": "BR",
+  "America/Fortaleza": "BR",
+  "America/Manaus": "BR",
+  "America/Costa_Rica": "CR",
+  "America/Panama": "PA",
+  "America/Guatemala": "GT",
+};
+
+function countryFromTimezone(): string | null {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return TZ_COUNTRY[tz] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Client hint: language region first (es-MX → MX), then timezone for LATAM.
+ */
 export function clientCountryCodeHint(): string | null {
   if (typeof navigator === "undefined") return null;
   return (
     countryFromLanguageTag(navigator.language) ||
-    countryFromLanguageTag(navigator.languages?.[0])
+    countryFromLanguageTag(navigator.languages?.[0]) ||
+    countryFromTimezone()
   );
 }

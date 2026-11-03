@@ -219,15 +219,52 @@ function emptyDraft(): WineDraft {
   };
 }
 
+const TEMPLATE_HEADERS = [
+  "name",
+  "winery",
+  "country",
+  "region",
+  "type",
+  "grape",
+  "aging",
+  "vintage",
+  "price",
+  "slot",
+] as const;
+
+const TEMPLATE_SAMPLE = [
+  "Viña Alberdi",
+  "La Rioja Alta",
+  "España",
+  "Rioja",
+  "Tinto",
+  "Tempranillo",
+  "Reserva",
+  "2019",
+  "650",
+  "11F",
+] as const;
+
 export function csvTemplateContent(): string {
   return (
     "\uFEFF" +
-    [
-      "name,winery,country,region,type,grape,aging,vintage,price,slot",
-      "Viña Alberdi,La Rioja Alta,España,Rioja,Tinto,Tempranillo,Reserva,2019,650,11F",
-    ].join("\n") +
+    [TEMPLATE_HEADERS.join(","), TEMPLATE_SAMPLE.join(",")].join("\n") +
     "\n"
   );
+}
+
+/** Browser download of an .xlsx plantilla (same columns as CSV). */
+export async function downloadExcelTemplate(
+  filename = "cavatale-plantilla.xlsx"
+): Promise<void> {
+  const XLSX = await import("xlsx");
+  const ws = XLSX.utils.aoa_to_sheet([
+    [...TEMPLATE_HEADERS],
+    [...TEMPLATE_SAMPLE],
+  ]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Cava");
+  XLSX.writeFile(wb, filename);
 }
 
 /**

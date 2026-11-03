@@ -946,28 +946,39 @@ export default function CavaPage() {
         ) : null}
 
         {ready && wines.length > 0 ? (
-          <CellarQuickActions
-            onScan={() => openAdd()}
-            onOpenTonight={() => {
-              setMode("stats");
-              window.requestAnimationFrame(() => {
-                document
-                  .getElementById("open-tonight")
-                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
-              });
-            }}
-            onFind={() => {
-              setMode("cava");
-              setMobilePanel("lista");
-              window.requestAnimationFrame(() => {
-                const input = document.getElementById(
-                  "cellar-search"
-                ) as HTMLInputElement | null;
-                input?.focus();
-                input?.scrollIntoView({ behavior: "smooth", block: "center" });
-              });
-            }}
-          />
+          <>
+            <CellarQuickActions
+              onScan={() => openAdd()}
+              onOpenTonight={() => {
+                setMode("stats");
+                window.requestAnimationFrame(() => {
+                  document
+                    .getElementById("open-tonight")
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                });
+              }}
+              onFind={() => {
+                setMode("cava");
+                setMobilePanel("lista");
+                window.requestAnimationFrame(() => {
+                  const input = document.getElementById(
+                    "cellar-search"
+                  ) as HTMLInputElement | null;
+                  input?.focus();
+                  input?.scrollIntoView({ behavior: "smooth", block: "center" });
+                });
+              }}
+            />
+            <p className="mt-2 text-center text-xs text-ink-soft sm:text-left">
+              <button
+                type="button"
+                className="underline-offset-2 hover:text-ink hover:underline"
+                onClick={() => setImportCsvOpen(true)}
+              >
+                {t("cava.importLink")}
+              </button>
+            </p>
+          </>
         ) : null}
 
         {addedToast ? (

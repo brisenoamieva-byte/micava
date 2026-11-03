@@ -285,12 +285,17 @@ export async function fetchScanLabel(
 export async function fetchEnrichLabel(
   fields: ScanLabelFields,
   enrichHint?: ScanLabelEnrichHint,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  countryCode?: string | null
 ): Promise<ScanLabelFields | null> {
   const res = await fetch("/api/enrich-label", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ fields, enrichHint }),
+    body: JSON.stringify({
+      fields,
+      enrichHint,
+      ...(countryCode ? { countryCode } : {}),
+    }),
     signal,
   });
   if (!res.ok) return null;

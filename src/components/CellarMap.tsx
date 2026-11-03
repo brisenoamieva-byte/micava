@@ -28,6 +28,8 @@ type Props = {
   cellarId: string | null;
   highlightedIds: Set<string>;
   selectedId: string | null;
+  /** Scroll/pulse this bottle after search jumps to its furniture. */
+  focusWineId?: string | null;
   /** Shown in the fullscreen overlay header. */
   title?: string;
   /** Wine currently being relocated (pick-and-place; survives mueble switch). */
@@ -321,6 +323,7 @@ export function CellarMap({
   cellarId,
   highlightedIds,
   selectedId,
+  focusWineId = null,
   title,
   movingWineId = null,
   onSelect,
@@ -384,6 +387,20 @@ export function CellarMap({
       setShowMoveHint(true);
     }
   }, []);
+
+  useEffect(() => {
+    if (!focusWineId) return;
+    const id = window.setTimeout(() => {
+      const el = document.querySelector(
+        `[data-wine-id="${CSS.escape(focusWineId)}"]`
+      ) as HTMLElement | null;
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+      el.classList.add("map-focus-pulse");
+      window.setTimeout(() => el.classList.remove("map-focus-pulse"), 1200);
+    }, 80);
+    return () => window.clearTimeout(id);
+  }, [focusWineId, cellarId, cols, rows]);
 
   function dismissMoveHint() {
     setShowMoveHint(false);
@@ -806,6 +823,7 @@ export function CellarMap({
                     role="button"
                     tabIndex={0}
                     data-slot="abajo"
+                    data-wine-id={wine.id}
                     draggable={!touchUi && !pickMode && Boolean(onMoveWine)}
                     onPointerDown={(e) => beginPress(wine, e)}
                     onPointerMove={updatePress}
@@ -1109,6 +1127,7 @@ export function CellarMap({
                               role="button"
                               tabIndex={0}
                               data-slot="abajo"
+                              data-wine-id={wine.id}
                               onPointerDown={(e) => beginPress(wine, e)}
                               onPointerMove={updatePress}
                               onPointerUp={endPress}
@@ -1334,6 +1353,7 @@ function Row({
             role="button"
             tabIndex={0}
             data-slot={slot}
+            data-wine-id={wine.id}
             title={tip}
             draggable={!touchUi && !pickMode}
             {...dropHandlers}

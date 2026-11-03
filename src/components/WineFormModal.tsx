@@ -22,6 +22,7 @@ import {
 } from "@/lib/scan-label";
 import { LabelPhotoCapture } from "@/components/LabelPhotoCapture";
 import { useLocale, useT, wineTypeLabel } from "@/lib/i18n";
+import { clientCountryCodeHint } from "@/lib/market-geo";
 
 type Props = {
   open: boolean;
@@ -118,6 +119,8 @@ export function WineFormModal({
   const [step, setStep] = useState<"pick" | "form">("pick");
   const [catalogQuery, setCatalogQuery] = useState("");
   const [fromExisting, setFromExisting] = useState(false);
+  /** User chose to save before market enrich finishes. */
+  const [skipPriceWait, setSkipPriceWait] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [enriching, setEnriching] = useState(false);
   const [scanHint, setScanHint] = useState("");
@@ -174,6 +177,7 @@ export function WineFormModal({
     setError("");
     setCatalogQuery("");
     setFromExisting(false);
+    setSkipPriceWait(false);
     setScanning(false);
     setEnriching(false);
     setScanHint("");
@@ -348,14 +352,24 @@ export function WineFormModal({
       });
       setLabelImageDataUrl(primaryLabel);
       setFromExisting(false);
+      setSkipPriceWait(false);
       setStep("form");
+      // Identity is ready — stop the camera spinner; price enrich is separate.
+      setScanning(false);
+      window.clearTimeout(timeoutId);
+      if (scanAbortRef.current === abort) scanAbortRef.current = null;
+
+      // Prefer a market price before the user saves: enrich whenever vision
+      // left price/vivino incomplete (or the API flagged needsEnrich).
+      const shouldEnrich =
+        payload.needsEnrich || fields.price == null || fields.vivino == null;
       applyFieldsHint(
         fields,
         proposedPrice,
-        payload.needsEnrich ? "Buscando precio de referencia…" : undefined
+        shouldEnrich ? t("wine.priceLookingUp") : undefined
       );
 
-      if (payload.needsEnrich) {
+      if (shouldEnrich) {
         const enrichAbort = new AbortController();
         enrichAbortRef.current = enrichAbort;
         setEnriching(true);
@@ -363,14 +377,14 @@ export function WineFormModal({
           () => enrichAbort.abort(),
           35_000
         );
-        void (async () => {
-          try {
-            const enriched = await fetchEnrichLabel(
-              fields,
-              payload.enrichHint,
-              enrichAbort.signal
-            );
-            if (!enriched || enrichAbort.signal.aborted) return;
+        try {
+          const enriched = await fetchEnrichLabel(
+            fields,
+            payload.enrichHint,
+            enrichAbort.signal,
+            clientCountryCodeHint()
+          );
+          if (enriched && !enrichAbort.signal.aborted) {
             const enrichPatch = scanFieldsToDraftPatch(enriched);
             let newPrice: number | null = null;
             setDraft((prev) => {
@@ -381,17 +395,18 @@ export function WineFormModal({
               return mergeScanPatchIntoDraft(prev, enrichPatch);
             });
             applyFieldsHint(enriched, newPrice);
-          } catch {
-            /* keep vision-only result */
-          } finally {
-            window.clearTimeout(enrichTimeout);
-            if (enrichAbortRef.current === enrichAbort) {
-              enrichAbortRef.current = null;
-            }
-            setEnriching(false);
           }
-        })();
+        } catch {
+          /* keep vision-only result — user can still save */
+        } finally {
+          window.clearTimeout(enrichTimeout);
+          if (enrichAbortRef.current === enrichAbort) {
+            enrichAbortRef.current = null;
+          }
+          setEnriching(false);
+        }
       }
+      return;
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") {
         setError(
@@ -725,6 +740,106 @@ export function WineFormModal({
 
               <label>
                 <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                  {t("wine.year")}
+                </span>
+                <input
+                  className={fieldClass}
+                  inputMode="numeric"
+                  value={draft.vintage ?? ""}
+                  onChange={(e) =>
+                    patch("vintage", parseOptionalNumber(e.target.value))
+                  }
+                  placeholder="2021"
+                />
+              </label>
+
+              <label>
+                <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                  {t("wine.priceMxn")}
+                  {enriching && !skipPriceWait ? (
+                    <span className="ml-1 normal-case tracking-normal text-[var(--wine)]">
+                      · {t("wine.priceLookingUp")}
+                    </span>
+                  ) : null}
+                </span>
+                <input
+                  className={fieldClass}
+                  inputMode="numeric"
+                  value={draft.price ?? ""}
+                  onChange={(e) =>
+                    patch("price", parseOptionalNumber(e.target.value))
+                  }
+                  placeholder={
+                    enriching && !skipPriceWait
+                      ? t("wine.priceLookingUp")
+                      : t("wine.pricePlaceholder")
+                  }
+                />
+              </label>
+
+              {!editing ? (
+                <>
+                  <label className="sm:col-span-2">
+                    <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                      {t("wine.furniture")}
+                    </span>
+                    <select
+                      className={fieldClass}
+                      value={draft.cellarId ?? activeCellarId ?? ""}
+                      onChange={(e) => {
+                        const nextId = e.target.value ? e.target.value : null;
+                        setDraft((prev) => {
+                          const loc = parseLocation(prev.location);
+                          if (!loc.slot || loc.slot === "abajo") {
+                            return { ...prev, cellarId: nextId };
+                          }
+                          const unit = cellars.find((c) => c.id === nextId);
+                          if (!unit) return { ...prev, cellarId: nextId };
+                          const stillFree = getEmptySlots(
+                            wines,
+                            unit.cols,
+                            unit.rows,
+                            unit.id
+                          ).includes(loc.slot);
+                          return {
+                            ...prev,
+                            cellarId: nextId,
+                            location: stillFree ? prev.location : "",
+                          };
+                        });
+                      }}
+                    >
+                      {cellars.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} ({c.cols}×{c.rows.length})
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="sm:col-span-2">
+                    <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                      {t("wine.location")}
+                    </span>
+                    <select
+                      className={fieldClass}
+                      value={draft.location}
+                      onChange={(e) => patch("location", e.target.value)}
+                    >
+                      <option value="">{t("wine.noSlot")}</option>
+                      <option value="abajo">{t("wine.belowOut")}</option>
+                      {emptySlots.map((slot) => (
+                        <option key={slot} value={slot}>
+                          {t("wine.slotLabel", { slot })}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </>
+              ) : null}
+
+              <label>
+                <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
                   {t("wine.country")} *
                 </span>
                 <select
@@ -776,95 +891,69 @@ export function WineFormModal({
                 />
               </label>
 
-              <label>
-                <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                  {t("wine.year")}
-                </span>
-                <input
-                  className={fieldClass}
-                  inputMode="numeric"
-                  value={draft.vintage ?? ""}
-                  onChange={(e) =>
-                    patch("vintage", parseOptionalNumber(e.target.value))
-                  }
-                  placeholder="2021"
-                />
-              </label>
+              {editing ? (
+                <>
+                  <label className="sm:col-span-2">
+                    <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                      {t("wine.furniture")}
+                    </span>
+                    <select
+                      className={fieldClass}
+                      value={draft.cellarId ?? activeCellarId ?? ""}
+                      onChange={(e) => {
+                        const nextId = e.target.value ? e.target.value : null;
+                        setDraft((prev) => {
+                          const loc = parseLocation(prev.location);
+                          if (!loc.slot || loc.slot === "abajo") {
+                            return { ...prev, cellarId: nextId };
+                          }
+                          const unit = cellars.find((c) => c.id === nextId);
+                          if (!unit) return { ...prev, cellarId: nextId };
+                          const stillFree = getEmptySlots(
+                            wines,
+                            unit.cols,
+                            unit.rows,
+                            unit.id
+                          ).includes(loc.slot);
+                          const keepOwn =
+                            editing.cellarId === unit.id &&
+                            editing.slot === loc.slot;
+                          return {
+                            ...prev,
+                            cellarId: nextId,
+                            location: stillFree || keepOwn ? prev.location : "",
+                          };
+                        });
+                      }}
+                    >
+                      {cellars.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} ({c.cols}×{c.rows.length})
+                        </option>
+                      ))}
+                    </select>
+                  </label>
 
-              <label>
-                <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                  {t("wine.priceMxn")}
-                </span>
-                <input
-                  className={fieldClass}
-                  inputMode="numeric"
-                  value={draft.price ?? ""}
-                  onChange={(e) =>
-                    patch("price", parseOptionalNumber(e.target.value))
-                  }
-                  placeholder={t("wine.pricePlaceholder")}
-                />
-              </label>
-
-              <label className="sm:col-span-2">
-                <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                  {t("wine.furniture")}
-                </span>
-                <select
-                  className={fieldClass}
-                  value={draft.cellarId ?? activeCellarId ?? ""}
-                  onChange={(e) => {
-                    const nextId = e.target.value ? e.target.value : null;
-                    setDraft((prev) => {
-                      const loc = parseLocation(prev.location);
-                      if (!loc.slot || loc.slot === "abajo") {
-                        return { ...prev, cellarId: nextId };
-                      }
-                      const unit = cellars.find((c) => c.id === nextId);
-                      if (!unit) return { ...prev, cellarId: nextId };
-                      const stillFree = getEmptySlots(
-                        wines,
-                        unit.cols,
-                        unit.rows,
-                        unit.id
-                      ).includes(loc.slot);
-                      const keepOwn =
-                        editing?.cellarId === unit.id &&
-                        editing.slot === loc.slot;
-                      return {
-                        ...prev,
-                        cellarId: nextId,
-                        location: stillFree || keepOwn ? prev.location : "",
-                      };
-                    });
-                  }}
-                >
-                  {cellars.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.cols}×{c.rows.length})
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="sm:col-span-2">
-                <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                  {t("wine.location")}
-                </span>
-                <select
-                  className={fieldClass}
-                  value={draft.location}
-                  onChange={(e) => patch("location", e.target.value)}
-                >
-                  <option value="">{t("wine.noSlot")}</option>
-                  <option value="abajo">{t("wine.belowOut")}</option>
-                  {emptySlots.map((slot) => (
-                    <option key={slot} value={slot}>
-                      {t("wine.slotLabel", { slot })}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  <label className="sm:col-span-2">
+                    <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                      {t("wine.location")}
+                    </span>
+                    <select
+                      className={fieldClass}
+                      value={draft.location}
+                      onChange={(e) => patch("location", e.target.value)}
+                    >
+                      <option value="">{t("wine.noSlot")}</option>
+                      <option value="abajo">{t("wine.belowOut")}</option>
+                      {emptySlots.map((slot) => (
+                        <option key={slot} value={slot}>
+                          {t("wine.slotLabel", { slot })}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </>
+              ) : null}
             </div>
 
             {error ? (
@@ -882,12 +971,30 @@ export function WineFormModal({
               >
                 {t("common.cancel")}
               </button>
+              {!editing && enriching && !skipPriceWait ? (
+                <button
+                  type="button"
+                  className="btn btn-ghost min-h-[44px]"
+                  onClick={() => {
+                    setSkipPriceWait(true);
+                    enrichAbortRef.current?.abort();
+                  }}
+                >
+                  {t("wine.addWithoutPrice")}
+                </button>
+              ) : null}
               <button
                 type="submit"
                 className="btn btn-primary min-h-[44px]"
-                disabled={scanning}
+                disabled={
+                  scanning || (!editing && enriching && !skipPriceWait)
+                }
               >
-                {editing ? t("wine.saveChanges") : t("wine.addToCellar")}
+                {editing
+                  ? t("wine.saveChanges")
+                  : enriching && !skipPriceWait
+                    ? t("wine.addWhileEnriching")
+                    : t("wine.addToCellar")}
               </button>
             </div>
           </form>

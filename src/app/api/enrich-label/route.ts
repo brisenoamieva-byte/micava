@@ -23,6 +23,7 @@ type Body = {
   fields?: unknown;
   matchMethod?: string;
   searchQuery?: string;
+  countryCode?: string | null;
   enrichHint?: EnrichHint;
 };
 
@@ -71,6 +72,8 @@ export async function POST(request: Request) {
       body.enrichHint?.matchMethod || body.matchMethod || undefined,
     searchQuery:
       body.enrichHint?.searchQuery || body.searchQuery || undefined,
+    countryCode:
+      body.enrichHint?.countryCode || body.countryCode || undefined,
   };
 
   let sessionUsage: KimiTokenUsage | null = null;

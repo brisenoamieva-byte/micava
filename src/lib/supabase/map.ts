@@ -44,6 +44,10 @@ export type WineRow = {
   kimi_vivino: number | null;
   kimi_price: number | null;
   kimi_price_currency?: string | null;
+  kimi_price_source?: string | null;
+  kimi_price_confidence?: string | null;
+  kimi_price_notes?: string | null;
+  kimi_price_checked_at?: string | null;
   kimi_summary: string | null;
   kimi_curiosity: string | null;
   kimi_talk_hook: string | null;
@@ -105,6 +109,15 @@ export function wineFromRow(row: WineRow): Wine {
       kimiVivino: row.kimi_vivino ?? null,
       kimiPrice: row.kimi_price ?? null,
       kimiPriceCurrency: row.kimi_price_currency ?? null,
+      kimiPriceSource:
+        row.kimi_price_source === "local" ||
+        row.kimi_price_source === "international" ||
+        row.kimi_price_source === "research"
+          ? row.kimi_price_source
+          : null,
+      kimiPriceConfidence: (row.kimi_price_confidence as Wine["kimiPriceConfidence"]) ?? null,
+      kimiPriceNotes: row.kimi_price_notes ?? null,
+      kimiPriceCheckedAt: row.kimi_price_checked_at ?? null,
       kimiSummary: row.kimi_summary ?? null,
       kimiCuriosity: row.kimi_curiosity ?? null,
       kimiTalkHook: row.kimi_talk_hook ?? null,
@@ -161,6 +174,10 @@ export function wineToRow(
     base.kimi_vivino = wine.kimiVivino;
     base.kimi_price = wine.kimiPrice;
     base.kimi_price_currency = wine.kimiPriceCurrency;
+    base.kimi_price_source = wine.kimiPriceSource;
+    base.kimi_price_confidence = wine.kimiPriceConfidence;
+    base.kimi_price_notes = wine.kimiPriceNotes;
+    base.kimi_price_checked_at = wine.kimiPriceCheckedAt;
     base.kimi_summary = wine.kimiSummary;
     base.kimi_curiosity = wine.kimiCuriosity;
     base.kimi_talk_hook = wine.kimiTalkHook;

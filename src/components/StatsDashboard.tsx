@@ -303,6 +303,23 @@ export function StatsDashboard({
                         {w.vintage != null ? ` · ${w.vintage}` : ""}
                         {w.slot ? ` · ${w.slot}` : ""}
                       </p>
+                      {top.reasonKeys.length > 0 ? (
+                        <p className="mt-2 flex flex-wrap gap-1.5">
+                          {top.reasonKeys.map((key) => (
+                            <span
+                              key={key}
+                              className="rounded-[6px] border border-[rgba(110,31,44,0.2)] bg-[rgba(110,31,44,0.06)] px-1.5 py-0.5 text-[11px] text-[var(--wine-deep)]"
+                            >
+                              {t(`stats.openTonightReason.${key}`)}
+                            </span>
+                          ))}
+                        </p>
+                      ) : null}
+                      {t("stats.openTonightHeroLead") ? (
+                        <p className="mt-2 text-xs text-ink-soft">
+                          {t("stats.openTonightHeroLead")}
+                        </p>
+                      ) : null}
                       {pairing ? (
                         <p className="mt-3 text-sm leading-snug text-ink">
                           {t("stats.openTonightPairing", { dish: pairing })}

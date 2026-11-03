@@ -177,7 +177,8 @@ export function EncuentroModal({
               const enriched = await fetchEnrichLabel(
                 baseFields,
                 payload.enrichHint,
-                enrichAbort.signal
+                enrichAbort.signal,
+                clientCountryCodeHint()
               );
               if (!enriched || enrichAbort.signal.aborted) return;
               const enrichPatch = scanFieldsToDraftPatch(enriched);
@@ -352,7 +353,11 @@ export function EncuentroModal({
     });
     setSaved(true);
     if (alsoAdd && onAlsoAddToCava) {
-      onAlsoAddToCava(toWineDraft(identity));
+      onAlsoAddToCava({
+        ...toWineDraft(identity),
+        price: research.kimiPrice,
+        vivino: research.kimiVivino,
+      });
     } else {
       onClose();
     }

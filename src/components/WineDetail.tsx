@@ -14,7 +14,7 @@ import { resolvePairingsForWine } from "@/lib/pairings";
 import { confidenceLabel, formatCheckedAt } from "@/lib/rating-verify";
 import { formatCavataleRating, formatPrice, resolvePriceCurrency, typeAccent } from "@/lib/wines";
 import { DrinkWindowBadge } from "@/components/DrinkWindowBadge";
-import { computeDrinkWindow } from "@/lib/drink-window";
+import { computeDrinkWindow, drinkStatus } from "@/lib/drink-window";
 import { buildWineShareText, shareOrCopyText } from "@/lib/share-wine";
 import { useLocale, useT, wineTypeLabel } from "@/lib/i18n";
 import { clientCountryCodeHint } from "@/lib/market-geo";
@@ -42,7 +42,13 @@ type Props = {
   /** Persist price-only verify result (no story/rating refresh). */
   onSaveVerifiedPrice?: (
     wine: Wine,
-    result: { amount: number; currency: string }
+    result: {
+      amount: number;
+      currency: string;
+      source?: "local" | "international" | "research" | null;
+      confidence?: "confirmed" | "likely" | "uncertain" | null;
+      notes?: string | null;
+    }
   ) => number | void;
   onMove?: (wine: Wine) => void;
 };
@@ -227,6 +233,7 @@ export function WineDetail({
         amount?: number | null;
         currency?: string | null;
         source?: string | null;
+        confidence?: string | null;
         notes?: string | null;
       } = {};
       try {
@@ -241,20 +248,43 @@ export function WineDetail({
         throw new Error(payload.error || t("wine.priceVerifyFailed"));
       }
       const currency = payload.currency.toUpperCase();
+      const source =
+        payload.source === "international" || payload.source === "local"
+          ? payload.source
+          : null;
+      const confidence =
+        payload.confidence === "confirmed" ||
+        payload.confidence === "likely" ||
+        payload.confidence === "uncertain"
+          ? payload.confidence
+          : payload.confidence === "high"
+            ? "confirmed"
+            : payload.confidence === "medium"
+              ? "likely"
+              : payload.confidence === "low"
+                ? "uncertain"
+                : null;
       onSaveVerifiedPrice(wine, {
         amount: Math.round(payload.amount),
         currency,
+        source,
+        confidence,
+        notes: payload.notes ?? null,
       });
       const sourceLabel =
-        payload.source === "international"
+        source === "international"
           ? t("wine.priceSourceIntl")
-          : payload.source === "local"
+          : source === "local"
             ? t("wine.priceSourceLocal")
             : null;
       setApplyHint(
-        `${formatPrice(payload.amount, currency)}${
-          sourceLabel ? ` · ${sourceLabel}` : ""
-        }`
+        [
+          formatPrice(payload.amount, currency),
+          sourceLabel,
+          confidence ? confidenceLabel[confidence] : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")
       );
       window.setTimeout(() => setApplyHint(null), 5000);
     } catch (e) {
@@ -526,14 +556,21 @@ export function WineDetail({
       </div>
       {(() => {
         const win = computeDrinkWindow(wine);
-        if (!win) return null;
+        const status = drinkStatus(wine);
+        const hint =
+          status !== "unknown" ? t(`drinkWindow.hint.${status}`) : "";
+        if (!win && !hint) return null;
         return (
           <p className="mt-1.5 text-xs text-ink-soft">
-            {t("drinkWindow.range", {
-              from: win.drinkFrom,
-              peak: win.drinkPeak,
-              by: win.drinkBy,
-            })}
+            {win
+              ? t("drinkWindow.range", {
+                  from: win.drinkFrom,
+                  peak: win.drinkPeak,
+                  by: win.drinkBy,
+                })
+              : null}
+            {win && hint ? " · " : null}
+            {hint || null}
           </p>
         );
       })()}
@@ -628,6 +665,13 @@ export function WineDetail({
                   <p className="display mt-2 text-[1.3rem] leading-snug sm:text-[1.45rem]">
                     {wine.kimiTalkHook}
                   </p>
+                  <button
+                    type="button"
+                    className="btn btn-ghost mt-3 min-h-[40px] w-full px-3 text-sm sm:w-auto"
+                    onClick={() => void handleShare()}
+                  >
+                    {shareHint ?? t("wine.shareStory")}
+                  </button>
                 </div>
               ) : null}
               {wine.kimiSummary ? (
@@ -810,6 +854,34 @@ export function WineDetail({
                     : "—"}
                 </p>
               )}
+              {wine.kimiPrice != null &&
+              (wine.kimiPriceSource ||
+                wine.kimiPriceConfidence ||
+                wine.kimiPriceCheckedAt ||
+                wine.kimiPriceNotes) ? (
+                <p className="text-xs text-ink-soft">
+                  {[
+                    wine.kimiPriceSource === "international"
+                      ? t("wine.priceSourceIntl")
+                      : wine.kimiPriceSource === "local"
+                        ? t("wine.priceSourceLocal")
+                        : wine.kimiPriceSource === "research"
+                          ? t("wine.priceSourceResearch")
+                          : null,
+                    wine.kimiPriceConfidence
+                      ? confidenceLabel[wine.kimiPriceConfidence]
+                      : null,
+                    wine.kimiPriceCheckedAt
+                      ? formatCheckedAt(wine.kimiPriceCheckedAt)
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                  {wine.kimiPriceNotes ? (
+                    <span className="mt-0.5 block">{wine.kimiPriceNotes}</span>
+                  ) : null}
+                </p>
+              ) : null}
               {onSaveVerifiedPrice ? (
                 <button
                   type="button"

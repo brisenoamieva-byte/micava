@@ -303,6 +303,22 @@ select {
   animation: slotPulse 1.8s ease-in-out infinite;
 }
 
+@keyframes mapFocusPulse {
+  0%,
+  100% {
+    outline: 2px solid rgba(122, 36, 48, 0.35);
+    outline-offset: 2px;
+  }
+  50% {
+    outline: 2px solid rgba(122, 36, 48, 0.85);
+    outline-offset: 3px;
+  }
+}
+
+.map-focus-pulse {
+  animation: mapFocusPulse 0.6s ease-in-out 2;
+}
+
 /* AI / scan “thinking” — mark pulse + soft spark + staggered dots */
 @keyframes thinkingMarkPulse {
   0%,

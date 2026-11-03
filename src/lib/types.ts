@@ -42,6 +42,14 @@ export type Wine = {
   kimiPrice: number | null;
   /** ISO 4217 for `kimiPrice`; null treated as MXN (legacy Contar historia). */
   kimiPriceCurrency: string | null;
+  /** Where the reference price came from: local | international | research. */
+  kimiPriceSource: "local" | "international" | "research" | null;
+  /** Confidence of the reference price (not story confidence). */
+  kimiPriceConfidence: MatchConfidence | null;
+  /** Short provenance note from verify/enrich (no long URLs). */
+  kimiPriceNotes: string | null;
+  /** ISO timestamp of last price verify / market pass. */
+  kimiPriceCheckedAt: string | null;
   /** Short story / discovery note from research IA. */
   kimiSummary: string | null;
   /** One memorable curiosity about the wine. */

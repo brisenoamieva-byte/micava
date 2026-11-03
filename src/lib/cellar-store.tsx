@@ -43,6 +43,7 @@ import type {
   DepartAction,
   DepartExtras,
   Encounter,
+  MatchConfidence,
   Wine,
   WineDraft,
 } from "@/lib/types";
@@ -152,7 +153,13 @@ type CellarContextValue = {
   /** Price-only verify: update kimiPrice + currency without touching story. */
   saveVerifiedPrice: (
     id: string,
-    result: { amount: number; currency: string }
+    result: {
+      amount: number;
+      currency: string;
+      source?: "local" | "international" | "research" | null;
+      confidence?: MatchConfidence | null;
+      notes?: string | null;
+    }
   ) => number;
   setLabelImageUrl: (id: string, labelImageUrl: string | null) => void;
   applyKimiResearch: (
@@ -234,6 +241,10 @@ function draftToWine(draft: WineDraft, id: string, existing?: Wine): Wine {
     kimiVivino: existing?.kimiVivino ?? null,
     kimiPrice: existing?.kimiPrice ?? null,
     kimiPriceCurrency: existing?.kimiPriceCurrency ?? null,
+    kimiPriceSource: existing?.kimiPriceSource ?? null,
+    kimiPriceConfidence: existing?.kimiPriceConfidence ?? null,
+    kimiPriceNotes: existing?.kimiPriceNotes ?? null,
+    kimiPriceCheckedAt: existing?.kimiPriceCheckedAt ?? null,
     kimiSummary: existing?.kimiSummary ?? null,
     kimiCuriosity: existing?.kimiCuriosity ?? null,
     kimiTalkHook: existing?.kimiTalkHook ?? null,
@@ -419,6 +430,7 @@ export function CellarProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const priceCurrencyColumnsRef = useRef(true);
+  const priceMetaColumnsRef = useRef(true);
 
   const upsertWineRemote = useCallback(async (wine: Wine, userId: string) => {
     if (!isSupabaseConfigured()) return;
@@ -431,7 +443,8 @@ export function CellarProvider({ children }: { children: ReactNode }) {
         includePairings: boolean,
         includeUserNote: boolean,
         includePriceCurrency: boolean,
-        includeCavataleBreakdown: boolean
+        includeCavataleBreakdown: boolean,
+        includePriceMeta: boolean
       ): Promise<{ error: SyncErr }> => {
         try {
           const row = wineToRow(wine, userId, {
@@ -449,6 +462,12 @@ export function CellarProvider({ children }: { children: ReactNode }) {
             delete row.price_currency;
             delete row.kimi_price_currency;
           }
+          if (!includePriceMeta) {
+            delete row.kimi_price_source;
+            delete row.kimi_price_confidence;
+            delete row.kimi_price_notes;
+            delete row.kimi_price_checked_at;
+          }
           const result = await supabase
             .from("wines")
             .upsert(row, { onConflict: "user_id,id" });
@@ -461,13 +480,15 @@ export function CellarProvider({ children }: { children: ReactNode }) {
       let includePairings = true;
       let includeUserNote = true;
       let includePriceCurrency = priceCurrencyColumnsRef.current;
+      let includePriceMeta = priceMetaColumnsRef.current;
       let includeCavataleBreakdown = cavataleBreakdownColumnsRef.current;
       let { error } = await tryUpsert(
         kimiColumnsRef.current,
         includePairings,
         includeUserNote,
         includePriceCurrency,
-        includeCavataleBreakdown
+        includeCavataleBreakdown,
+        includePriceMeta
       );
 
       for (let attempt = 1; error && isTransientFetchError(error) && attempt <= 2; attempt++) {
@@ -477,7 +498,8 @@ export function CellarProvider({ children }: { children: ReactNode }) {
           includePairings,
           includeUserNote,
           includePriceCurrency,
-          includeCavataleBreakdown
+          includeCavataleBreakdown,
+          includePriceMeta
         ));
       }
 
@@ -493,6 +515,25 @@ export function CellarProvider({ children }: { children: ReactNode }) {
           includePairings,
           includeUserNote,
           includePriceCurrency,
+          false,
+          includePriceMeta
+        ));
+      }
+      if (
+        error &&
+        includePriceMeta &&
+        /kimi_price_source|kimi_price_confidence|kimi_price_notes|kimi_price_checked_at/i.test(
+          error.message ?? ""
+        )
+      ) {
+        includePriceMeta = false;
+        priceMetaColumnsRef.current = false;
+        ({ error } = await tryUpsert(
+          kimiColumnsRef.current,
+          includePairings,
+          includeUserNote,
+          includePriceCurrency,
+          includeCavataleBreakdown,
           false
         ));
       }
@@ -508,7 +549,8 @@ export function CellarProvider({ children }: { children: ReactNode }) {
           includePairings,
           includeUserNote,
           false,
-          includeCavataleBreakdown
+          includeCavataleBreakdown,
+          includePriceMeta
         ));
       }
       if (
@@ -522,7 +564,8 @@ export function CellarProvider({ children }: { children: ReactNode }) {
           includePairings,
           false,
           includePriceCurrency,
-          includeCavataleBreakdown
+          includeCavataleBreakdown,
+          includePriceMeta
         ));
       }
       if (
@@ -536,7 +579,8 @@ export function CellarProvider({ children }: { children: ReactNode }) {
           false,
           includeUserNote,
           includePriceCurrency,
-          includeCavataleBreakdown
+          includeCavataleBreakdown,
+          includePriceMeta
         ));
       }
       if (
@@ -550,7 +594,8 @@ export function CellarProvider({ children }: { children: ReactNode }) {
           false,
           false,
           includePriceCurrency,
-          includeCavataleBreakdown
+          includeCavataleBreakdown,
+          includePriceMeta
         ));
       }
       if (error) {
@@ -1006,6 +1051,18 @@ export function CellarProvider({ children }: { children: ReactNode }) {
               research.kimiPrice != null
                 ? research.kimiPriceCurrency ?? "MXN"
                 : w.kimiPriceCurrency,
+            kimiPriceSource:
+              research.kimiPrice != null
+                ? "research"
+                : w.kimiPriceSource,
+            kimiPriceConfidence:
+              research.kimiPrice != null
+                ? research.kimiConfidence
+                : w.kimiPriceConfidence,
+            kimiPriceCheckedAt:
+              research.kimiPrice != null
+                ? research.kimiCheckedAt
+                : w.kimiPriceCheckedAt,
             kimiSummary: research.kimiSummary,
             kimiCuriosity: research.kimiCuriosity,
             kimiTalkHook: research.kimiTalkHook,
@@ -1153,9 +1210,19 @@ export function CellarProvider({ children }: { children: ReactNode }) {
   );
 
   const saveVerifiedPrice = useCallback(
-    (id: string, result: { amount: number; currency: string }) => {
+    (
+      id: string,
+      result: {
+        amount: number;
+        currency: string;
+        source?: "local" | "international" | "research" | null;
+        confidence?: MatchConfidence | null;
+        notes?: string | null;
+      }
+    ) => {
       let touched: Wine[] = [];
       const currency = result.currency.trim().toUpperCase() || "MXN";
+      const checkedAt = new Date().toISOString();
       setWines((prev) => {
         const source = prev.find((w) => w.id === id);
         if (!source) return prev;
@@ -1166,6 +1233,14 @@ export function CellarProvider({ children }: { children: ReactNode }) {
             ...w,
             kimiPrice: result.amount,
             kimiPriceCurrency: currency,
+            kimiPriceSource: result.source ?? w.kimiPriceSource ?? null,
+            kimiPriceConfidence:
+              result.confidence ?? w.kimiPriceConfidence ?? null,
+            kimiPriceNotes: result.notes?.trim()
+              ? result.notes.trim().slice(0, 280)
+              : w.kimiPriceNotes,
+            kimiPriceCheckedAt: checkedAt,
+            lastCheckedAt: checkedAt,
           };
         });
         touched = nextList.filter((w) => wineIdentityKey(w) === key);

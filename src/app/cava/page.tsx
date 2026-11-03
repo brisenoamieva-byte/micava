@@ -208,6 +208,25 @@ export default function CavaPage() {
   }, [wines, selectedId]);
 
   const visible = useMemo(() => filterWines(wines, filters), [wines, filters]);
+  const searchFocusWineId = useMemo(() => {
+    const q = filters.query.trim();
+    if (!q || visible.length === 0) return null;
+    return visible[0]?.id ?? null;
+  }, [filters.query, visible]);
+
+  // Search → jump to the furniture that holds the first match (≤3s find).
+  useEffect(() => {
+    const q = filters.query.trim();
+    if (!q || visible.length === 0) return;
+    const first = visible[0];
+    if (first?.cellarId && first.cellarId !== activeCellarId) {
+      setActiveCellarId(first.cellarId);
+    }
+    if (visible.length === 1) {
+      setSelectedId(first.id);
+    }
+  }, [filters.query, visible, activeCellarId, setActiveCellarId]);
+
   const selected =
     visible.find((w) => w.id === selectedId) ??
     wines.find((w) => w.id === selectedId) ??
@@ -376,7 +395,13 @@ export default function CavaPage() {
     ) => applyKimiResearch(w.id, fields),
     onSaveVerifiedPrice: (
       w: Wine,
-      result: { amount: number; currency: string }
+      result: {
+        amount: number;
+        currency: string;
+        source?: "local" | "international" | "research" | null;
+        confidence?: "confirmed" | "likely" | "uncertain" | null;
+        notes?: string | null;
+      }
     ) => saveVerifiedPrice(w.id, result),
     onMove: (w: Wine) => setMoveSheetWine(w),
   };
@@ -670,16 +695,16 @@ export default function CavaPage() {
                 type="button"
                 className="btn btn-primary min-h-[40px] px-3 text-sm"
                 onClick={() => openAdd()}
+                title={t("cava.scanTitle")}
               >
-                + {t("cava.add")}
+                {t("cava.scanBottle")}
               </button>
               <button
                 type="button"
                 className="btn btn-ghost min-h-[40px] px-3 text-sm"
-                onClick={openEncuentro}
-                title={t("cava.scanTitle")}
+                onClick={() => openAdd("", { step: "form" })}
               >
-                {t("cava.scanBottle")}
+                + {t("cava.add")}
               </button>
               <button
                 type="button"
@@ -695,6 +720,16 @@ export default function CavaPage() {
                   {t("common.more")}
                 </summary>
                 <div className="absolute right-0 z-20 mt-1 min-w-[10.5rem] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.98)] p-1.5 shadow-sm backdrop-blur-sm">
+                  <button
+                    type="button"
+                    className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
+                    onClick={() => {
+                      closeMoreMenu();
+                      openEncuentro();
+                    }}
+                  >
+                    {t("cava.scanForBitacora")}
+                  </button>
                   <button
                     type="button"
                     className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
@@ -998,6 +1033,7 @@ export default function CavaPage() {
                   title={activeCellar.name}
                   highlightedIds={new Set(visible.map((w) => w.id))}
                   selectedId={selected?.id ?? null}
+                  focusWineId={searchFocusWineId}
                   movingWineId={movingWineId}
                   onSelect={(w) => selectWine(w)}
                   onEmptySlot={(slot) => openAdd(slot)}
@@ -1058,6 +1094,7 @@ export default function CavaPage() {
                   title={activeCellar.name}
                   highlightedIds={new Set(visible.map((w) => w.id))}
                   selectedId={selected?.id ?? null}
+                  focusWineId={searchFocusWineId}
                   movingWineId={movingWineId}
                   onSelect={(w) => selectWine(w, true, "mapa")}
                   onEmptySlot={(slot) => openAdd(slot)}

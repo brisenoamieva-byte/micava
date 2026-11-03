@@ -77,8 +77,16 @@ export function WineList({
                 <DrinkWindowBadge wine={wine} />
               </span>
               <span className="mt-0.5 block truncate text-xs text-ink-soft">
-                {countryDisplayName(wine.country, locale)} · {wine.region} ·{" "}
-                {wine.vintage ?? t("wine.naVintage")}
+                {[
+                  wine.grape || null,
+                  countryDisplayName(wine.country, locale),
+                  wine.region || null,
+                  wine.vintage != null
+                    ? String(wine.vintage)
+                    : t("wine.naVintage"),
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
               </span>
             </span>
             <span className="shrink-0 text-right text-xs text-ink-soft">

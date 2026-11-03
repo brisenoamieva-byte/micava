@@ -513,6 +513,47 @@ export function WineFormModal({
                       : t("wine.copiedDataHint")
                     : t("wine.completeNewWine")}
             </p>
+            {!editing ? (
+              <ol className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px] uppercase tracking-[0.12em] text-ink-soft">
+                {(
+                  [
+                    {
+                      key: "photo",
+                      label: t("wine.addStepPhoto"),
+                      active: showingPick || Boolean(labelImageDataUrl),
+                      done: Boolean(draft.name && !showingPick),
+                    },
+                    {
+                      key: "price",
+                      label: t("wine.addStepPrice"),
+                      active: !showingPick && (enriching || draft.price != null),
+                      done: draft.price != null,
+                    },
+                    {
+                      key: "slot",
+                      label: t("wine.addStepSlot"),
+                      active: !showingPick && Boolean(draft.location),
+                      done: Boolean(draft.location),
+                    },
+                  ] as const
+                ).map((s, i) => (
+                  <li key={s.key} className="inline-flex items-center gap-1.5">
+                    {i > 0 ? <span aria-hidden>·</span> : null}
+                    <span
+                      className={
+                        s.done
+                          ? "font-medium text-[var(--wine)]"
+                          : s.active
+                            ? "font-medium text-ink"
+                            : undefined
+                      }
+                    >
+                      {s.label}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            ) : null}
           </div>
           <button
             type="button"

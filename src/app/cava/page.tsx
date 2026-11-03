@@ -5,6 +5,7 @@ import { BrandMark } from "@/components/BrandMark";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { BitacoraPanel } from "@/components/BitacoraPanel";
 import { CellarMap } from "@/components/CellarMap";
+import { CellarQuickActions } from "@/components/CellarQuickActions";
 import { CellarUnitsBar } from "@/components/CellarUnitsBar";
 import { DepartTasteModal } from "@/components/DepartTasteModal";
 import { DisplayNameEditor } from "@/components/DisplayNameEditor";
@@ -125,7 +126,9 @@ export default function CavaPage() {
   const [shareCavaOpen, setShareCavaOpen] = useState(false);
   const [shareNudgeDismissed, setShareNudgeDismissed] = useState(true);
   const [clearing, setClearing] = useState(false);
+  const [addedToast, setAddedToast] = useState<string | null>(null);
   const moreMenuRef = useRef<HTMLDetailsElement>(null);
+  const addedToastTimerRef = useRef<number | null>(null);
 
   function closeMoreMenu() {
     if (moreMenuRef.current) moreMenuRef.current.open = false;
@@ -699,27 +702,32 @@ export default function CavaPage() {
               >
                 {t("cava.scanBottle")}
               </button>
-              <button
-                type="button"
-                className="btn btn-ghost min-h-[40px] px-3 text-sm"
-                onClick={() => openAdd("", { step: "form" })}
-              >
-                + {t("cava.add")}
-              </button>
-              <button
-                type="button"
-                className="btn btn-ghost min-h-[40px] px-3 text-sm"
-                onClick={() => setFoodPairOpen(true)}
-                disabled={!ready || wines.length === 0}
-                title={t("cava.pairMealTitle")}
-              >
-                {t("cava.pairMeal")}
-              </button>
               <details ref={moreMenuRef} className="relative">
                 <summary className="flex min-h-[40px] cursor-pointer list-none items-center px-1 text-sm underline-offset-2 hover:text-ink hover:underline [&::-webkit-details-marker]:hidden">
                   {t("common.more")}
                 </summary>
                 <div className="absolute right-0 z-20 mt-1 min-w-[10.5rem] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.98)] p-1.5 shadow-sm backdrop-blur-sm">
+                  <button
+                    type="button"
+                    className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
+                    onClick={() => {
+                      closeMoreMenu();
+                      openAdd("", { step: "form" });
+                    }}
+                  >
+                    + {t("cava.add")}
+                  </button>
+                  <button
+                    type="button"
+                    className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)] disabled:opacity-45"
+                    disabled={!ready || wines.length === 0}
+                    onClick={() => {
+                      closeMoreMenu();
+                      setFoodPairOpen(true);
+                    }}
+                  >
+                    {t("cava.pairMeal")}
+                  </button>
                   <button
                     type="button"
                     className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
@@ -859,6 +867,40 @@ export default function CavaPage() {
           </p>
         ) : null}
 
+        {ready && wines.length > 0 ? (
+          <CellarQuickActions
+            onScan={() => openAdd()}
+            onOpenTonight={() => {
+              setMode("stats");
+              window.requestAnimationFrame(() => {
+                document
+                  .getElementById("open-tonight")
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
+              });
+            }}
+            onFind={() => {
+              setMode("cava");
+              setMobilePanel("lista");
+              window.requestAnimationFrame(() => {
+                const input = document.getElementById(
+                  "cellar-search"
+                ) as HTMLInputElement | null;
+                input?.focus();
+                input?.scrollIntoView({ behavior: "smooth", block: "center" });
+              });
+            }}
+          />
+        ) : null}
+
+        {addedToast ? (
+          <p
+            className="mt-3 rounded-[10px] border border-[rgba(110,31,44,0.22)] bg-[rgba(110,31,44,0.07)] px-3 py-2 text-sm text-[var(--wine-deep)]"
+            role="status"
+          >
+            {addedToast}
+          </p>
+        ) : null}
+
         {mode === "stats" ? (
           <div className="mt-6 space-y-5">
             <div id="bitacora">
@@ -873,6 +915,17 @@ export default function CavaPage() {
               cellars={cellars}
               history={history}
               onSelectWine={(w) => selectWine(w, true, "lista")}
+              onLocateWine={(w) => {
+                selectWine(w, false, "mapa");
+                setMode("cava");
+                setMobilePanel("mapa");
+                setDetailReturn("mapa");
+                if (w.cellarId) setActiveCellarId(w.cellarId);
+                setFilters((prev) => ({
+                  ...prev,
+                  query: w.name,
+                }));
+              }}
               onRefreshPrices={refreshCellarPrices}
               onRefreshMarket={refreshCellarMarket}
             />
@@ -1256,6 +1309,18 @@ export default function CavaPage() {
               wineId = created.id;
               setSelectedId(created.id);
               if (!formSlot) setMobilePanel("detalle");
+              const slotLabel =
+                draft.location && draft.location !== "abajo"
+                  ? t("cava.addedToastSlot", { slot: draft.location })
+                  : "";
+              if (addedToastTimerRef.current) {
+                window.clearTimeout(addedToastTimerRef.current);
+              }
+              setAddedToast(t("cava.addedToast", { slot: slotLabel }));
+              addedToastTimerRef.current = window.setTimeout(() => {
+                setAddedToast(null);
+                addedToastTimerRef.current = null;
+              }, 4500);
             }
 
             const dataUrl = extras?.labelImageDataUrl;

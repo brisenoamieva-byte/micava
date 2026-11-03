@@ -39,6 +39,8 @@ type Props = {
   cellars?: CellarUnit[];
   history?: CellarLogEntry[];
   onSelectWine?: (wine: Wine) => void;
+  /** Jump to map focused on this bottle. */
+  onLocateWine?: (wine: Wine) => void;
   /** Refresh reference prices for up to N stale bottles (AI). */
   onRefreshPrices?: (wines: Wine[]) => Promise<number> | number;
   /**
@@ -58,6 +60,7 @@ export function StatsDashboard({
   cellars = [],
   history = [],
   onSelectWine,
+  onLocateWine,
   onRefreshPrices,
   onRefreshMarket,
 }: Props) {
@@ -266,7 +269,7 @@ export function StatsDashboard({
       </div>
 
       {openTonight.length > 0 ? (
-        <section className="space-y-3">
+        <section id="open-tonight" className="space-y-3">
           {(() => {
             const top = openTonight[0];
             const w = top.wine;
@@ -274,11 +277,7 @@ export function StatsDashboard({
             const rest = openTonight.slice(1);
             return (
               <>
-                <button
-                  type="button"
-                  onClick={() => onSelectWine?.(w)}
-                  className="panel-focus relative w-full overflow-hidden px-4 py-5 text-left transition hover:border-[rgba(110,31,44,0.35)] sm:px-6 sm:py-6"
-                >
+                <div className="panel-focus relative w-full overflow-hidden px-4 py-5 sm:px-6 sm:py-6">
                   <div
                     aria-hidden
                     className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(110,31,44,0.1)_0%,transparent_45%,rgba(184,129,74,0.06)_100%)]"
@@ -301,6 +300,7 @@ export function StatsDashboard({
                       <p className="mt-2 text-sm text-ink-soft">
                         {w.winery || t("stats.noWinery")}
                         {w.vintage != null ? ` · ${w.vintage}` : ""}
+                        {w.grape ? ` · ${w.grape}` : ""}
                         {w.slot ? ` · ${w.slot}` : ""}
                       </p>
                       {top.reasonKeys.length > 0 ? (
@@ -329,9 +329,24 @@ export function StatsDashboard({
                           {w.kimiTalkHook}
                         </p>
                       ) : null}
-                      <span className="mt-4 inline-flex min-h-[40px] items-center text-sm font-medium text-[var(--wine)]">
-                        {t("stats.openTonightCta")} →
-                      </span>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          className="btn btn-primary min-h-[40px] px-3 text-sm"
+                          onClick={() => onSelectWine?.(w)}
+                        >
+                          {t("stats.openTonightCta")} →
+                        </button>
+                        {onLocateWine ? (
+                          <button
+                            type="button"
+                            className="btn btn-ghost min-h-[40px] border border-[var(--line)] px-3 text-sm"
+                            onClick={() => onLocateWine(w)}
+                          >
+                            {t("cava.takeToMap")}
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
                     <div className="shrink-0 text-right">
                       {w.cavataleRating != null ? (
@@ -350,7 +365,7 @@ export function StatsDashboard({
                       )}
                     </div>
                   </div>
-                </button>
+                </div>
 
                 {rest.length > 0 ? (
                   <div className="panel-quiet px-3 py-3 sm:px-4">

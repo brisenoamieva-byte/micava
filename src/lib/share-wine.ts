@@ -67,6 +67,33 @@ export function buildWineShareText(
   return lines.join("\n");
 }
 
+/** Short “at the table” share — hook + one pairing + brand. */
+export function buildMesaShareText(
+  wine: Pick<
+    Wine,
+    | "name"
+    | "winery"
+    | "vintage"
+    | "kimiTalkHook"
+    | "kimiCuriosity"
+    | "kimiPairings"
+    | "slot"
+  >
+): string {
+  const pairing = wine.kimiPairings?.[0];
+  return [
+    wine.name,
+    [wine.winery, wine.vintage].filter(Boolean).join(" · "),
+    wine.slot ? `Hueco ${wine.slot}` : null,
+    wine.kimiTalkHook ? `\n${wine.kimiTalkHook}` : null,
+    wine.kimiCuriosity ? `\nDato: ${wine.kimiCuriosity}` : null,
+    pairing ? `\nMesa: ${pairing}` : null,
+    `\n${CAVATALE_URL}`,
+  ]
+    .filter((line): line is string => Boolean(line))
+    .join("\n");
+}
+
 /** Short WhatsApp-friendly invite to a public cellar link. */
 export function buildPublicCellarShareText(url: string): string {
   return [`Te comparto mi cava en Cavatale.`, "", url].join("\n");

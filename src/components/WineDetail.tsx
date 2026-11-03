@@ -15,7 +15,11 @@ import { confidenceLabel, formatCheckedAt } from "@/lib/rating-verify";
 import { formatCavataleRating, formatPrice, resolvePriceCurrency, typeAccent } from "@/lib/wines";
 import { DrinkWindowBadge } from "@/components/DrinkWindowBadge";
 import { computeDrinkWindow, drinkStatus } from "@/lib/drink-window";
-import { buildWineShareText, shareOrCopyText } from "@/lib/share-wine";
+import {
+  buildMesaShareText,
+  buildWineShareText,
+  shareOrCopyText,
+} from "@/lib/share-wine";
 import { useLocale, useT, wineTypeLabel } from "@/lib/i18n";
 import { clientCountryCodeHint } from "@/lib/market-geo";
 import { AiTheaterStatus } from "@/components/AiTheaterStatus";
@@ -310,9 +314,10 @@ export function WineDetail({
     }
   }
 
-  async function handleShare() {
+  async function handleShare(kind: "full" | "mesa" = "full") {
     if (!wine) return;
-    const text = buildWineShareText(wine);
+    const text =
+      kind === "mesa" ? buildMesaShareText(wine) : buildWineShareText(wine);
     const result = await shareOrCopyText(text, wine.name);
     if (result === "copied") {
       setShareHint(t("common.copied"));
@@ -657,23 +662,34 @@ export function WineDetail({
 
           {hasDiscoveryStory ? (
             <div className="mt-4 space-y-4">
-              {wine.kimiTalkHook ? (
-                <div className="tale-hook">
-                  <p className="tale-hook-label text-[11px] uppercase tracking-[0.16em]">
-                    {t("wine.talkHook")}
-                  </p>
-                  <p className="display mt-2 text-[1.3rem] leading-snug sm:text-[1.45rem]">
+              <div className="rounded-[14px] border border-[rgba(110,31,44,0.2)] bg-[rgba(110,31,44,0.05)] px-3 py-3 sm:px-4 sm:py-4">
+                <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--wine)]">
+                  {t("wine.mesaLabel")}
+                </p>
+                {wine.kimiTalkHook ? (
+                  <p className="display mt-2 text-[1.35rem] leading-snug text-ink sm:text-[1.5rem]">
                     {wine.kimiTalkHook}
                   </p>
-                  <button
-                    type="button"
-                    className="btn btn-ghost mt-3 min-h-[40px] w-full px-3 text-sm sm:w-auto"
-                    onClick={() => void handleShare()}
-                  >
-                    {shareHint ?? t("wine.shareStory")}
-                  </button>
-                </div>
-              ) : null}
+                ) : null}
+                {wine.kimiPairings?.[0] ? (
+                  <p className="mt-2 text-sm text-ink">
+                    <span className="text-ink-soft">{t("wine.suggestedPairing")}: </span>
+                    {wine.kimiPairings[0]}
+                  </p>
+                ) : null}
+                {wine.kimiCuriosity ? (
+                  <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+                    {wine.kimiCuriosity}
+                  </p>
+                ) : null}
+                <button
+                  type="button"
+                  className="btn btn-primary mt-3 min-h-[44px] w-full px-3 text-sm sm:w-auto"
+                  onClick={() => void handleShare("mesa")}
+                >
+                  {shareHint ?? t("wine.shareMesa")}
+                </button>
+              </div>
               {wine.kimiSummary ? (
                 <div className="reveal-in-delay">
                   <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
@@ -681,16 +697,6 @@ export function WineDetail({
                   </p>
                   <p className="mt-1.5 text-[15px] leading-relaxed text-ink sm:text-base">
                     {wine.kimiSummary}
-                  </p>
-                </div>
-              ) : null}
-              {wine.kimiCuriosity ? (
-                <div className="reveal-in-delay">
-                  <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                    {t("wine.curiosity")}
-                  </p>
-                  <p className="mt-1.5 text-sm leading-relaxed text-ink">
-                    {wine.kimiCuriosity}
                   </p>
                 </div>
               ) : null}
@@ -964,7 +970,7 @@ export function WineDetail({
               <button
                 type="button"
                 className="btn btn-ghost min-h-[44px] min-w-0 w-full px-3"
-                onClick={() => void handleShare()}
+                onClick={() => void handleShare("full")}
               >
                 {shareHint ?? t("common.share")}
               </button>

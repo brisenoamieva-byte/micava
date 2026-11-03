@@ -309,6 +309,7 @@ export function FiltersBar({ filters, onChange, total, wines }: Props) {
               {t("common.search")}
             </span>
             <input
+              id="cellar-search"
               value={filters.query}
               onChange={(e) => patch({ query: e.target.value })}
               placeholder={t("filters.searchShortPlaceholder")}

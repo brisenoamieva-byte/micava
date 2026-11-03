@@ -841,10 +841,10 @@ function Header({ title, subtitle }: { title: string; subtitle?: string }) {
 }
 
 const MOMENT_ACCENT: Record<Exclude<DrinkStatus, "unknown">, string> = {
-  peak: "var(--wine-deep)",
-  ready: "var(--wine)",
+  peak: "var(--wine)",
+  ready: "var(--leaf)",
   late: "var(--oak)",
-  young: "var(--ink-soft)",
+  young: "#3a6a8c",
 };
 
 function MomentGroup({

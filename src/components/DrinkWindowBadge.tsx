@@ -11,12 +11,24 @@ type Props = {
   className?: string;
 };
 
+/** Distinct hues so Pico / En su punto / Joven / Tarde scan at a glance. */
 const STATUS_CLASS: Record<DrinkStatus, string> = {
-  peak: "border-[rgba(110,31,44,0.35)] bg-[rgba(110,31,44,0.1)] text-[var(--wine-deep)]",
-  ready: "border-[rgba(110,31,44,0.22)] bg-[rgba(110,31,44,0.06)] text-[var(--wine)]",
-  young: "border-[var(--line)] bg-[rgba(255,252,247,0.7)] text-ink-soft",
-  late: "border-[rgba(122,80,40,0.35)] bg-[rgba(122,80,40,0.08)] text-[var(--oak)]",
+  peak:
+    "border-[rgba(110,31,44,0.5)] bg-[rgba(110,31,44,0.18)] text-[var(--wine-deep)]",
+  ready:
+    "border-[rgba(47,66,52,0.42)] bg-[rgba(47,66,52,0.14)] text-[var(--leaf)]",
+  young:
+    "border-[rgba(44,74,102,0.38)] bg-[rgba(44,74,102,0.1)] text-[#2c4a66]",
+  late:
+    "border-[rgba(138,106,69,0.48)] bg-[rgba(138,106,69,0.16)] text-[var(--oak)]",
   unknown: "border-[var(--line)] bg-transparent text-ink-soft",
+};
+
+const STATUS_DOT: Record<Exclude<DrinkStatus, "unknown">, string> = {
+  peak: "bg-[var(--wine)]",
+  ready: "bg-[var(--leaf)]",
+  young: "bg-[#3a6a8c]",
+  late: "bg-[var(--oak)]",
 };
 
 export function DrinkWindowBadge({ wine, size = "sm", className = "" }: Props) {
@@ -27,13 +39,21 @@ export function DrinkWindowBadge({ wine, size = "sm", className = "" }: Props) {
   return (
     <span
       className={[
-        "inline-flex items-center rounded-[6px] border font-medium uppercase tracking-[0.08em]",
+        "inline-flex items-center gap-1 rounded-[6px] border font-medium uppercase tracking-[0.08em]",
         size === "sm" ? "px-1.5 py-0.5 text-[9px]" : "px-2 py-0.5 text-[10px]",
         STATUS_CLASS[status],
         className,
       ].join(" ")}
       title={t(`drinkWindow.hint.${status}`)}
     >
+      <span
+        className={[
+          "inline-block shrink-0 rounded-full",
+          size === "sm" ? "h-1.5 w-1.5" : "h-2 w-2",
+          STATUS_DOT[status],
+        ].join(" ")}
+        aria-hidden
+      />
       {t(`drinkWindow.status.${status}`)}
     </span>
   );

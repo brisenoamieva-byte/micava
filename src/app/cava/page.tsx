@@ -1289,7 +1289,7 @@ export default function CavaPage() {
                     highlightedIds={new Set()}
                     selectedId={null}
                     onSelect={() => {}}
-                    onEmptySlot={(slot) => openAdd(slot, { step: "form" })}
+                    onEmptySlot={(slot) => openAdd(slot, { step: "pick" })}
                   />
                 ) : (
                   <p className="text-sm text-ink-soft">
@@ -1401,7 +1401,7 @@ export default function CavaPage() {
                   focusToken={locateToken}
                   movingWineId={movingWineId}
                   onSelect={(w) => selectWine(w)}
-                  onEmptySlot={(slot) => openAdd(slot, { step: "form" })}
+                  onEmptySlot={(slot) => openAdd(slot, { step: "pick" })}
                   onMoveWine={handleMoveWine}
                   onPickForMove={(w) => {
                     setMovingWineId(w.id);
@@ -1464,7 +1464,7 @@ export default function CavaPage() {
                   focusToken={locateToken}
                   movingWineId={movingWineId}
                   onSelect={(w) => selectWine(w, true, "mapa")}
-                  onEmptySlot={(slot) => openAdd(slot, { step: "form" })}
+                  onEmptySlot={(slot) => openAdd(slot, { step: "pick" })}
                   onMoveWine={handleMoveWine}
                   onPickForMove={(w) => {
                     setMovingWineId(w.id);

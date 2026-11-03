@@ -482,9 +482,11 @@ export function WineFormModal({
               {editing
                 ? t("wine.editWine")
                 : showingPick
-                  ? catalog.length === 0
-                    ? t("wine.firstBottle")
-                    : t("wine.whichBottle")
+                  ? initialSlot
+                    ? t("wine.pickSlotTitle", { slot: initialSlot })
+                    : catalog.length === 0
+                      ? t("wine.firstBottle")
+                      : t("wine.whichBottle")
                   : fromExisting
                     ? prefillDraft
                       ? t("wine.addToCellarTitle")
@@ -495,12 +497,10 @@ export function WineFormModal({
               {editing
                 ? t("wine.editSubtitle")
                 : showingPick
-                  ? catalog.length === 0
-                    ? initialSlot
-                      ? t("wine.firstBottleSlotHint", { slot: initialSlot })
-                      : t("wine.firstBottleHint")
-                    : initialSlot
-                      ? t("wine.pickSlotHint", { slot: initialSlot })
+                  ? initialSlot
+                    ? t("wine.pickSlotHint", { slot: initialSlot })
+                    : catalog.length === 0
+                      ? t("wine.firstBottleHint")
                       : t("wine.pickOrNew")
                   : fromExisting
                     ? prefillDraft
@@ -561,97 +561,128 @@ export function WineFormModal({
 
         {showingPick ? (
           <div className="space-y-3">
-            {catalog.length > 0 ? (
-              <>
-                <label className="block">
-                  <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                    {t("wine.searchInCellar")}
-                  </span>
-                  <input
-                    className={fieldClass}
-                    value={catalogQuery}
-                    onChange={(e) => setCatalogQuery(e.target.value)}
-                    placeholder={t("filters.searchShortPlaceholder")}
-                    enterKeyHint="search"
-                  />
-                </label>
+            {(() => {
+              const scanFirst = Boolean(initialSlot);
+              const catalogBlock =
+                catalog.length > 0 ? (
+                  <div className={scanFirst ? "border-t border-[var(--line)] pt-3" : ""}>
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                        {scanFirst
+                          ? t("wine.slotFromCellar")
+                          : t("wine.searchInCellar")}
+                      </span>
+                      <input
+                        className={fieldClass}
+                        value={catalogQuery}
+                        onChange={(e) => setCatalogQuery(e.target.value)}
+                        placeholder={t("filters.searchShortPlaceholder")}
+                        enterKeyHint="search"
+                      />
+                    </label>
 
-                <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                  {t("wine.alreadyInCellar", { count: filteredCatalog.length })}
-                  {initialSlot ? t("wine.goesToSlot", { slot: initialSlot }) : ""}
-                </p>
+                    <p className="mt-2 text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                      {t("wine.alreadyInCellar", {
+                        count: filteredCatalog.length,
+                      })}
+                      {initialSlot
+                        ? t("wine.goesToSlot", { slot: initialSlot })
+                        : ""}
+                    </p>
 
-                <ul className="max-h-[min(50dvh,22rem)] space-y-1.5 overflow-y-auto overscroll-contain pr-0.5">
-                  {filteredCatalog.length === 0 ? (
-                    <li className="rounded-[10px] border border-dashed border-[var(--line)] px-3 py-4 text-sm text-ink-soft">
-                      {t("wine.noCatalogMatches")}
-                    </li>
-                  ) : (
-                    filteredCatalog.map((w) => {
-                      const copies = wines.filter(
-                        (x) => wineKey(x) === wineKey(w)
-                      ).length;
-                      return (
-                        <li key={wineKey(w)}>
-                          <button
-                            type="button"
-                            onClick={() => applyExisting(w)}
-                            className="flex w-full items-start gap-2 rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.55)] px-3 py-2.5 text-left transition hover:border-[rgba(110,31,44,0.35)] hover:bg-[rgba(110,31,44,0.06)]"
-                          >
-                            <span
-                              className="mt-0.5 text-base leading-none"
-                              aria-hidden
-                            >
-                              {countryFlagEmoji[w.country] ?? "·"}
-                            </span>
-                            <span className="min-w-0 flex-1">
-                              <span className="block truncate font-medium text-ink">
-                                {w.name}
-                              </span>
-                              <span className="block truncate text-xs text-ink-soft">
-                                {[
-                                  w.winery,
-                                  w.vintage,
-                                  w.cavataleRating != null
-                                    ? formatCavataleRating(w.cavataleRating)
-                                    : null,
-                                ]
-                                  .filter(Boolean)
-                                  .join(" · ")}
-                              </span>
-                            </span>
-                            <span className="shrink-0 text-xs text-ink-soft">
-                              {copies > 1
-                                ? t("wine.bottlesShort", { count: copies })
-                                : t("wine.bottlesShort", { count: 1 })}
-                            </span>
-                          </button>
+                    <ul
+                      className={[
+                        "mt-1.5 space-y-1.5 overflow-y-auto overscroll-contain pr-0.5",
+                        scanFirst
+                          ? "max-h-[min(28dvh,12rem)]"
+                          : "max-h-[min(50dvh,22rem)]",
+                      ].join(" ")}
+                    >
+                      {filteredCatalog.length === 0 ? (
+                        <li className="rounded-[10px] border border-dashed border-[var(--line)] px-3 py-4 text-sm text-ink-soft">
+                          {t("wine.noCatalogMatches")}
                         </li>
-                      );
-                    })
-                  )}
-                </ul>
-              </>
-            ) : null}
+                      ) : (
+                        filteredCatalog.map((w) => {
+                          const copies = wines.filter(
+                            (x) => wineKey(x) === wineKey(w)
+                          ).length;
+                          return (
+                            <li key={wineKey(w)}>
+                              <button
+                                type="button"
+                                onClick={() => applyExisting(w)}
+                                className="flex w-full items-start gap-2 rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.55)] px-3 py-2.5 text-left transition hover:border-[rgba(110,31,44,0.35)] hover:bg-[rgba(110,31,44,0.06)]"
+                              >
+                                <span
+                                  className="mt-0.5 text-base leading-none"
+                                  aria-hidden
+                                >
+                                  {countryFlagEmoji[w.country] ?? "·"}
+                                </span>
+                                <span className="min-w-0 flex-1">
+                                  <span className="block truncate font-medium text-ink">
+                                    {w.name}
+                                  </span>
+                                  <span className="block truncate text-xs text-ink-soft">
+                                    {[
+                                      w.winery,
+                                      w.vintage,
+                                      w.cavataleRating != null
+                                        ? formatCavataleRating(w.cavataleRating)
+                                        : null,
+                                    ]
+                                      .filter(Boolean)
+                                      .join(" · ")}
+                                  </span>
+                                </span>
+                                <span className="shrink-0 text-xs text-ink-soft">
+                                  {copies > 1
+                                    ? t("wine.bottlesShort", { count: copies })
+                                    : t("wine.bottlesShort", { count: 1 })}
+                                </span>
+                              </button>
+                            </li>
+                          );
+                        })
+                      )}
+                    </ul>
+                  </div>
+                ) : null;
 
-            <LabelPhotoCapture
-              images={scanImages}
-              onImagesChange={setScanImages}
-              scanning={scanning}
-              onIdentify={(urls) => void handleScanImages(urls)}
-              identifyLabel={t("scan.identifyPhotos")}
-              footer={
-                <button
-                  type="button"
-                  className="btn btn-ghost flex min-h-[48px] w-full items-center justify-center border border-[var(--line)]"
-                  disabled={scanning}
-                  onClick={startBlank}
-                >
-                  {t("wine.writeByHand")}
-                </button>
-              }
-            />
-            {error && showingPick ? (
+              const scanBlock = (
+                <LabelPhotoCapture
+                  images={scanImages}
+                  onImagesChange={setScanImages}
+                  scanning={scanning}
+                  onIdentify={(urls) => void handleScanImages(urls)}
+                  identifyLabel={t("scan.identifyPhotos")}
+                  footer={
+                    <button
+                      type="button"
+                      className="btn btn-ghost flex min-h-[48px] w-full items-center justify-center border border-[var(--line)]"
+                      disabled={scanning}
+                      onClick={startBlank}
+                    >
+                      {t("wine.writeByHand")}
+                    </button>
+                  }
+                />
+              );
+
+              return scanFirst ? (
+                <>
+                  {scanBlock}
+                  {catalogBlock}
+                </>
+              ) : (
+                <>
+                  {catalogBlock}
+                  {scanBlock}
+                </>
+              );
+            })()}
+            {error ? (
               <div className="space-y-2">
                 <p className="text-sm text-[var(--wine)]" role="alert">
                   {error}

@@ -123,6 +123,8 @@ type CellarContextValue = {
   /** Live `navigator.onLine` (true until first client check if SSR). */
   isOnline: boolean;
   addWine: (draft: WineDraft) => Wine;
+  /** Batch add (CSV import) — one state update, parallel remote upserts. */
+  addWines: (drafts: WineDraft[]) => Wine[];
   updateWine: (id: string, draft: WineDraft) => void;
   verifyWineRating: (
     id: string,
@@ -971,6 +973,37 @@ export function CellarProvider({ children }: { children: ReactNode }) {
     [activeCellarId, upsertWineRemote]
   );
 
+  const addWines = useCallback(
+    (drafts: WineDraft[]) => {
+      if (!drafts.length) return [];
+      let created: Wine[] = [];
+      setWines((prev) => {
+        let next = prev;
+        const batch: Wine[] = [];
+        for (const draft of drafts) {
+          const withCellar = {
+            ...draft,
+            cellarId:
+              draft.location === "abajo" || !draft.location
+                ? null
+                : draft.cellarId ?? activeCellarId,
+          };
+          const wine = draftToWine(withCellar, createId(next));
+          batch.push(wine);
+          next = [wine, ...next];
+        }
+        created = batch;
+        return next;
+      });
+      const uid = userIdRef.current;
+      if (uid) {
+        for (const w of created) void upsertWineRemote(w, uid);
+      }
+      return created;
+    },
+    [activeCellarId, upsertWineRemote]
+  );
+
   const updateWine = useCallback(
     (id: string, draft: WineDraft) => {
       let nextWine: Wine | null = null;
@@ -1662,6 +1695,7 @@ export function CellarProvider({ children }: { children: ReactNode }) {
       clearSyncOk,
       isOnline,
       addWine,
+      addWines,
       updateWine,
       verifyWineRating,
       saveKimiResearch,
@@ -1697,6 +1731,7 @@ export function CellarProvider({ children }: { children: ReactNode }) {
       clearSyncOk,
       isOnline,
       addWine,
+      addWines,
       updateWine,
       verifyWineRating,
       saveKimiResearch,

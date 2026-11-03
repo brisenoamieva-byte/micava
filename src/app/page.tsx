@@ -100,6 +100,9 @@ export default function HomePage() {
           <h2 className="display mt-2 max-w-lg text-3xl text-ink sm:text-4xl">
             {t("landing.howHeadline")}
           </h2>
+          <p className="mt-3 max-w-lg text-sm leading-relaxed text-ink-soft sm:text-base">
+            {t("landing.howLead")}
+          </p>
 
           <ol className="mt-12 grid gap-10 sm:mt-14 sm:grid-cols-3 sm:gap-8">
             {steps.map((step) => (

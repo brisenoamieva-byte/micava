@@ -13,6 +13,7 @@ import { EncuentroModal } from "@/components/EncuentroModal";
 import { FoodPairModal } from "@/components/FoodPairModal";
 import { FiltersBar } from "@/components/FiltersBar";
 import { FirstRunGuide } from "@/components/FirstRunGuide";
+import { ImportCsvModal } from "@/components/ImportCsvModal";
 import { InstallAppHint } from "@/components/InstallAppHint";
 import { KimiUsageHint } from "@/components/KimiUsageHint";
 import { MoveWineSheet } from "@/components/MoveWineSheet";
@@ -25,6 +26,10 @@ import { WineFormModal } from "@/components/WineFormModal";
 import { WineList } from "@/components/WineList";
 import { useCellar } from "@/lib/cellar-store";
 import { useAuth } from "@/lib/auth-store";
+import {
+  downloadCellarJson,
+  downloadWinesCsv,
+} from "@/lib/export-cellar";
 import { useT, useLocale } from "@/lib/i18n";
 import { uploadLabelImage } from "@/lib/label-image";
 import { uniqueWinesByIdentity } from "@/lib/analytics";
@@ -78,6 +83,7 @@ export default function CavaPage() {
     updateCellarUnit,
     deleteCellarUnit,
     addWine,
+    addWines,
     updateWine,
     saveKimiResearch,
     saveMarketRefresh,
@@ -115,6 +121,7 @@ export default function CavaPage() {
   const [formPrefill, setFormPrefill] = useState<WineDraft | null>(null);
   const [encuentroOpen, setEncuentroOpen] = useState(false);
   const [foodPairOpen, setFoodPairOpen] = useState(false);
+  const [importCsvOpen, setImportCsvOpen] = useState(false);
   const [editing, setEditing] = useState<Wine | null>(null);
   const [departWineTarget, setDepartWineTarget] = useState<Wine | null>(null);
   const [departAction, setDepartAction] = useState<DepartAction>("opened");
@@ -790,6 +797,38 @@ export default function CavaPage() {
                     className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
                     onClick={() => {
                       closeMoreMenu();
+                      setImportCsvOpen(true);
+                    }}
+                  >
+                    {t("importCsv.title")}
+                  </button>
+                  <button
+                    type="button"
+                    className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)] disabled:opacity-45"
+                    disabled={!ready || wines.length === 0}
+                    onClick={() => {
+                      closeMoreMenu();
+                      downloadWinesCsv(wines, cellars);
+                    }}
+                  >
+                    {t("export.csv")}
+                  </button>
+                  <button
+                    type="button"
+                    className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)] disabled:opacity-45"
+                    disabled={!ready || wines.length === 0}
+                    onClick={() => {
+                      closeMoreMenu();
+                      downloadCellarJson(wines, cellars, history);
+                    }}
+                  >
+                    {t("export.json")}
+                  </button>
+                  <button
+                    type="button"
+                    className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
+                    onClick={() => {
+                      closeMoreMenu();
                       void signOut().then(() => {
                         window.location.href = "/";
                       });
@@ -1361,6 +1400,28 @@ export default function CavaPage() {
       <ShareCavaModal
         open={shareCavaOpen}
         onClose={() => setShareCavaOpen(false)}
+      />
+
+      <ImportCsvModal
+        open={importCsvOpen}
+        cellars={cellars}
+        activeCellarId={activeCellarId}
+        onClose={() => setImportCsvOpen(false)}
+        onImport={(drafts) => {
+          const created = addWines(drafts);
+          if (addedToastTimerRef.current) {
+            window.clearTimeout(addedToastTimerRef.current);
+          }
+          setAddedToast(t("importCsv.toast", { count: created.length }));
+          addedToastTimerRef.current = window.setTimeout(() => {
+            setAddedToast(null);
+            addedToastTimerRef.current = null;
+          }, 4500);
+          if (created[0]) {
+            setSelectedId(created[0].id);
+            setMobilePanel("lista");
+          }
+        }}
       />
 
       <DepartTasteModal

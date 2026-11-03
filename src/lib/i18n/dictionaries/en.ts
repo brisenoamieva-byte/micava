@@ -629,6 +629,8 @@ export const en = {
     openTonightAlso: "Also this week",
     openTonightCta: "Open card",
     openTonightNoScore: "Tell its story",
+    openTonightEmpty:
+      "No clear pick yet. Add vintage and type, or refresh prices in Pulse.",
     openTonightReason: {
       peak: "At peak",
       ready: "Ready now",
@@ -741,6 +743,7 @@ export const en = {
       "Label photo → card with price → map slot.",
     writeManual: "Enter manually",
     addBottle: "Add bottle",
+    importSpreadsheet: "Import CSV or Excel from another cellar",
     furnitureHint:
       "Each unit slot is a place; “+” adds the bottle there.",
     compactLabel: "Guide",

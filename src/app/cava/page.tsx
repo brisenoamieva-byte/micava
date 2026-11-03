@@ -440,11 +440,17 @@ export default function CavaPage() {
         const payload = (await res.json()) as {
           amount?: number | null;
           currency?: string | null;
+          source?: "local" | "international" | "research" | null;
+          confidence?: "confirmed" | "likely" | "uncertain" | null;
+          notes?: string | null;
         };
         if (payload.amount == null || !payload.currency) continue;
         saveVerifiedPrice(wine.id, {
           amount: payload.amount,
           currency: payload.currency,
+          source: payload.source ?? null,
+          confidence: payload.confidence ?? null,
+          notes: payload.notes ?? null,
         });
         updated += 1;
       } catch {
@@ -986,6 +992,7 @@ export default function CavaPage() {
             <FirstRunGuide
               onScan={() => openAdd()}
               onManual={() => openAdd("", { step: "form" })}
+              onImport={() => setImportCsvOpen(true)}
             />
 
             <div className="space-y-4">

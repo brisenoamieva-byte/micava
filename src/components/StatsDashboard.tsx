@@ -268,9 +268,9 @@ export function StatsDashboard({
         ) : null}
       </div>
 
-      {openTonight.length > 0 ? (
-        <section id="open-tonight" className="space-y-3">
-          {(() => {
+      <section id="open-tonight" className="space-y-3">
+        {openTonight.length > 0 ? (
+          (() => {
             const top = openTonight[0];
             const w = top.wine;
             const pairing = w.kimiPairings?.[0];
@@ -415,9 +415,18 @@ export function StatsDashboard({
                 ) : null}
               </>
             );
-          })()}
-        </section>
-      ) : null}
+          })()
+        ) : (
+          <div className="panel-quiet px-4 py-4 sm:px-5">
+            <p className="micro-label text-[var(--wine)]">
+              {t("stats.openTonight")}
+            </p>
+            <p className="mt-2 text-sm text-ink-soft">
+              {t("stats.openTonightEmpty")}
+            </p>
+          </div>
+        )}
+      </section>
 
       <section className="panel-quiet space-y-4 px-4 py-4 sm:px-5">
         <Header title={t("stats.byMoment")} />

@@ -617,6 +617,8 @@ export const es = {
     openTonightAlso: "También esta semana",
     openTonightCta: "Ver ficha",
     openTonightNoScore: "Cuenta su historia",
+    openTonightEmpty:
+      "Aún no hay una recomendación clara. Suma añada y tipo, o actualiza precios en Pulso.",
     openTonightReason: {
       peak: "En pico",
       ready: "En su punto",
@@ -729,6 +731,7 @@ export const es = {
       "Foto de etiqueta → ficha con precio → hueco en el mapa.",
     writeManual: "Escribir a mano",
     addBottle: "Agregar botella",
+    importSpreadsheet: "Traer CSV o Excel de otra cava",
     furnitureHint:
       "Cada hueco del mueble es un lugar; el “+” suma la botella ahí.",
     compactLabel: "Guía",

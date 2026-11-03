@@ -8,6 +8,8 @@ type FirstRunGuideProps = {
   onScan: () => void;
   /** Optional: open the form without going through scan chooser. */
   onManual?: () => void;
+  /** Optional: open CSV/Excel import (migration from other apps). */
+  onImport?: () => void;
   onDismiss?: () => void;
   /** Go to Detalle / focus story CTA (story-next). */
   onTellStory?: () => void;
@@ -20,6 +22,7 @@ export function FirstRunGuide({
   variant = "welcome",
   onScan,
   onManual,
+  onImport,
   onDismiss,
   onTellStory,
 }: FirstRunGuideProps) {
@@ -110,6 +113,15 @@ export function FirstRunGuide({
             {t("guide.addBottle")}
           </button>
         )}
+        {onImport ? (
+          <button
+            type="button"
+            className="min-h-[44px] w-full px-1 text-left text-sm text-ink-soft underline-offset-2 hover:text-ink hover:underline sm:w-auto"
+            onClick={onImport}
+          >
+            {t("guide.importSpreadsheet")}
+          </button>
+        ) : null}
       </div>
     </section>
   );

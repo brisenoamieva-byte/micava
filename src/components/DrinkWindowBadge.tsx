@@ -5,7 +5,7 @@ import { useT } from "@/lib/i18n";
 import type { Wine } from "@/lib/types";
 
 type Props = {
-  wine: Pick<Wine, "vintage" | "type" | "aging">;
+  wine: Pick<Wine, "vintage" | "type" | "aging" | "grape" | "region" | "country">;
   /** compact = chip; inline = text under meta */
   size?: "sm" | "md";
   className?: string;

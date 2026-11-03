@@ -634,6 +634,7 @@ export const en = {
     openTonightReason: {
       peak: "At peak",
       ready: "Ready now",
+      late: "Open soon",
       highScore: "High score",
       hasStory: "Has story",
       hasPairing: "Has pairing",
@@ -690,14 +691,21 @@ export const en = {
     range: "Est. window: {from}–{by} · peak ~{peak}",
   },
   notify: {
-    label: "Weekly nudge",
-    lead: "Get a local alert when bottles are in their window (PWA).",
+    label: "Peak alerts",
+    lead: "Get a local ping when a bottle hits peak, plus a weekly digest while bottles are in window.",
     readyNow: "Now: {count} in drinking window.",
+    peakNow: "At peak now: {count}.",
     enable: "Enable alerts",
     disable: "Disable",
     denied: "Permission blocked in the browser",
     drinkTitle: "Cavatale · Open tonight",
     drinkBody: "You have {count} bottles ready. See Pulse → Open tonight.",
+    drinkBodyPeak:
+      "{peak} at peak · {count} in window. See Pulse → Open tonight.",
+    peakTitle: "Cavatale · Entering peak",
+    peakBodyOne: "{name} is at its estimated peak. Open it?",
+    peakBodyMany:
+      "{count} bottles are entering peak ({names}…). Pulse → Open tonight.",
   },
   plus: {
     label: "Cavatale Plus",

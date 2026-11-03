@@ -158,21 +158,30 @@ export default function CavaPage() {
     try {
       if (typeof window === "undefined") return;
       const params = new URLSearchParams(window.location.search);
-      if (params.get("mode") === "stats") setMode("stats");
+      if (params.get("mode") === "stats" || params.get("focus") === "open-tonight") {
+        setMode("stats");
+      }
     } catch {
       /* ignore */
     }
   }, []);
 
   useEffect(() => {
+    if (!ready || mode !== "stats") return;
     try {
       if (typeof window === "undefined") return;
       const params = new URLSearchParams(window.location.search);
-      if (params.get("mode") === "stats") setMode("stats");
+      if (params.get("focus") !== "open-tonight") return;
+      const timer = window.setTimeout(() => {
+        document
+          .getElementById("open-tonight")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 180);
+      return () => window.clearTimeout(timer);
     } catch {
-      /* ignore */
+      return;
     }
-  }, []);
+  }, [ready, mode, wines.length]);
 
   useEffect(() => {
     try {

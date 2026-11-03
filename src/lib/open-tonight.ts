@@ -2,6 +2,7 @@ import { wineIdentityKey } from "@/lib/analytics";
 import {
   drinkStatus,
   isInDrinkWindow,
+  yearsFromPeak,
   type DrinkStatus,
 } from "@/lib/drink-window";
 import type { Wine } from "@/lib/types";
@@ -10,7 +11,9 @@ export type OpenTonightPick = {
   wine: Wine;
   score: number;
   status: DrinkStatus;
-  reasonKeys: Array<"peak" | "ready" | "highScore" | "hasStory" | "hasPairing">;
+  reasonKeys: Array<
+    "peak" | "ready" | "late" | "highScore" | "hasStory" | "hasPairing"
+  >;
 };
 
 function preferBottle(a: Wine, b: Wine): Wine {
@@ -32,56 +35,91 @@ function uniqueByIdentity(wines: Wine[]): Wine[] {
 
 /**
  * Rank bottles to open tonight / this week.
- * Favors drink window + Cavatale score + existing story/pairings.
+ * Prefer peak → ready → late; hide young when better options exist.
  */
 export function rankOpenTonight(
   wines: Wine[],
   limit = 5
 ): OpenTonightPick[] {
   const year = new Date().getFullYear();
+  const unique = uniqueByIdentity(wines);
   const picks: OpenTonightPick[] = [];
 
-  for (const wine of uniqueByIdentity(wines)) {
+  const hasActionable = unique.some((w) => {
+    const s = drinkStatus(w, year);
+    return s === "peak" || s === "ready" || s === "late";
+  });
+
+  for (const wine of unique) {
     const status = drinkStatus(wine, year);
+    // If we already have drinkable bottles, don't clutter Abrir hoy with young ones.
+    if (hasActionable && status === "young") continue;
+    if (status === "unknown") continue;
+
     const reasonKeys: OpenTonightPick["reasonKeys"] = [];
     let score = 0;
 
     if (status === "peak") {
-      score += 4;
+      score += 7;
       reasonKeys.push("peak");
     } else if (status === "ready") {
-      score += 3;
+      score += 4.5;
       reasonKeys.push("ready");
-    } else if (status === "young") {
-      score += 0.5;
     } else if (status === "late") {
-      score += 1.5; // open before it fades further
+      score += 3.2;
+      reasonKeys.push("late");
+    } else if (status === "young") {
+      score += 0.4;
+    }
+
+    const fromPeak = yearsFromPeak(wine, year);
+    if (fromPeak != null) {
+      // Closer to peak = better among ready bottles.
+      score += Math.max(0, 2.5 - Math.abs(fromPeak) * 0.55);
+      // Slight urgency if past peak but still in window / late.
+      if (fromPeak > 0 && (status === "ready" || status === "late")) {
+        score += Math.min(1.2, fromPeak * 0.25);
+      }
     }
 
     const rating = wine.cavataleRating;
     if (rating != null) {
-      score += rating;
+      score += rating * 0.85;
       if (rating >= 3.8) reasonKeys.push("highScore");
     } else {
-      score += 2.2; // unknown story — still a candidate
+      score += 1.4; // unknown score — weaker than before so window wins
     }
 
     if (wine.kimiSummary || wine.kimiTalkHook) {
-      score += 0.8;
+      score += 0.7;
       reasonKeys.push("hasStory");
     }
     if (wine.kimiPairings && wine.kimiPairings.length > 0) {
-      score += 0.6;
+      score += 0.55;
       reasonKeys.push("hasPairing");
     }
-    if (wine.slot && wine.slot !== "abajo") score += 0.2;
+    if (wine.slot && wine.slot !== "abajo") score += 0.35;
+    if (wine.grape?.trim()) score += 0.15;
 
-    // Prefer in-window bottles, but always surface something if cellar has stock.
     if (!isInDrinkWindow(wine, year) && status !== "late") {
-      score *= 0.72;
+      score *= 0.55;
     }
 
     picks.push({ wine, score, status, reasonKeys });
+  }
+
+  // If everything was filtered (only young/unknown), fall back to best young.
+  if (picks.length === 0) {
+    for (const wine of unique) {
+      const status = drinkStatus(wine, year);
+      if (status === "unknown") continue;
+      picks.push({
+        wine,
+        score: (wine.cavataleRating ?? 2) + (status === "young" ? 0.3 : 0),
+        status,
+        reasonKeys: [],
+      });
+    }
   }
 
   return picks

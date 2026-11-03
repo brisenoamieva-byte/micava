@@ -622,6 +622,7 @@ export const es = {
     openTonightReason: {
       peak: "En pico",
       ready: "En su punto",
+      late: "Abrir pronto",
       highScore: "Score alto",
       hasStory: "Con historia",
       hasPairing: "Con maridaje",
@@ -678,14 +679,20 @@ export const es = {
     range: "Ventana est.: {from}–{by} · pico ~{peak}",
   },
   notify: {
-    label: "Aviso semanal",
-    lead: "Recibe un aviso local cuando tengas botellas en su punto (PWA).",
+    label: "Avisos de pico",
+    lead: "Te avisamos al abrir la app cuando una botella entra en pico, y un resumen semanal si hay botellas en su punto.",
     readyNow: "Ahora: {count} en ventana de consumo.",
+    peakNow: "En pico ahora: {count}.",
     enable: "Activar avisos",
     disable: "Desactivar",
     denied: "Permiso bloqueado en el navegador",
     drinkTitle: "Cavatale · Abrir hoy",
     drinkBody: "Tienes {count} botellas en su punto. Mira Pulso → Abrir hoy.",
+    drinkBodyPeak:
+      "{peak} en pico · {count} en ventana. Mira Pulso → Abrir hoy.",
+    peakTitle: "Cavatale · Entra en pico",
+    peakBodyOne: "{name} está en su pico estimado. ¿La abres?",
+    peakBodyMany: "{count} botellas entran en pico ({names}…). Pulso → Abrir hoy.",
   },
   plus: {
     label: "Cavatale Plus",

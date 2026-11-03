@@ -629,7 +629,20 @@ export default function CavaPage() {
         notes?: string | null;
       }
     ) => saveVerifiedPrice(w.id, result),
-    onMove: (w: Wine) => setMoveSheetWine(w),
+    onMove: (w: Wine) => {
+      // From detail: open place sheet; for unplaced bottles, land on map behind it.
+      if (!w.slot || w.slot === "abajo") {
+        setMode("cava");
+        setMobilePanel("mapa");
+        setDetailReturn("mapa");
+        setSelectedId(w.id);
+        if (w.cellarId) setActiveCellarId(w.cellarId);
+        else if (!activeCellarId && cellars[0]) {
+          setActiveCellarId(cellars[0].id);
+        }
+      }
+      setMoveSheetWine(w);
+    },
     onLocate: (w: Wine) => locateWineOnMap(w),
   };
 

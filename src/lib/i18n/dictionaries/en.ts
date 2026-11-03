@@ -386,6 +386,10 @@ export const en = {
     belowOut: "Below / out",
     slotLabel: "Slot {slot}",
     noLocation: "No location",
+    needsPlaceBannerTitle: "No slot on the map",
+    needsPlaceBannerBody:
+      "Pick a unit and slot so you can find it quickly next time.",
+    needsPlaceCta: "Place on the map",
     discovery: "Discovery",
     whatStory: "What does this bottle have to say?",
     storyInvite: "Tell this bottle’s story.",

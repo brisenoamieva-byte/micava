@@ -374,6 +374,10 @@ export const es = {
     belowOut: "Abajo / fuera",
     slotLabel: "Slot {slot}",
     noLocation: "Sin ubicación",
+    needsPlaceBannerTitle: "Sin hueco en el mapa",
+    needsPlaceBannerBody:
+      "Elige mueble y hueco para encontrarla rápido la próxima vez.",
+    needsPlaceCta: "Acomodar en el mapa",
     discovery: "Descubrimiento",
     whatStory: "¿Qué cuenta esta botella?",
     storyInvite: "Cuenta la historia de esta botella.",

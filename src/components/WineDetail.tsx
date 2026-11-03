@@ -601,6 +601,20 @@ export function WineDetail({
         );
       })()}
 
+      {onMove && (!wine.slot || wine.slot === "abajo") ? (
+        <div className="mt-4 rounded-[12px] border border-[rgba(110,31,44,0.22)] bg-[rgba(110,31,44,0.06)] p-3.5 text-sm text-ink">
+          <p className="font-medium">{t("wine.needsPlaceBannerTitle")}</p>
+          <p className="mt-1 text-ink-soft">{t("wine.needsPlaceBannerBody")}</p>
+          <button
+            type="button"
+            className="btn btn-primary mt-3 min-h-[40px] w-full px-3 text-sm sm:w-auto"
+            onClick={() => onMove(wine)}
+          >
+            {t("wine.needsPlaceCta")}
+          </button>
+        </div>
+      ) : null}
+
       {onSaveKimiResearch ? (
         <div
           className="mt-5 sm:mt-6"
@@ -979,7 +993,7 @@ export function WineDetail({
           ) : null}
           {(onEdit || onRemove || onMove || onLocate) && (
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {onLocate ? (
+              {onLocate && wine.slot && wine.slot !== "abajo" ? (
                 <button
                   type="button"
                   className="btn btn-ghost min-h-[44px] min-w-0 w-full px-3"
@@ -994,7 +1008,9 @@ export function WineDetail({
                   className="btn btn-ghost min-h-[44px] min-w-0 w-full px-3"
                   onClick={() => onMove(wine)}
                 >
-                  {t("wine.moveFurniture")}
+                  {!wine.slot || wine.slot === "abajo"
+                    ? t("wine.needsPlaceCta")
+                    : t("wine.moveFurniture")}
                 </button>
               ) : null}
               <button

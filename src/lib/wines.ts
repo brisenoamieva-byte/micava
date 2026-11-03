@@ -1,4 +1,5 @@
 import data from "@/data/wines.json";
+import { drinkStatus } from "@/lib/drink-window";
 import type { CellarData, Filters, SortOption, Wine } from "@/lib/types";
 import { wineHasGrape } from "@/lib/grapes";
 import { withKimiDefaults } from "@/lib/kimi-research";
@@ -206,6 +207,8 @@ export function filterWines(list: Wine[], filters: Filters): Wine[] {
     if (filters.country && w.country !== filters.country) return false;
     if (filters.type && w.type !== filters.type) return false;
     if (filters.grape && !wineHasGrape(w, filters.grape)) return false;
+    if (filters.drinkMoment && drinkStatus(w) !== filters.drinkMoment)
+      return false;
     if (
       filters.minCavatale != null &&
       (w.cavataleRating == null || w.cavataleRating < filters.minCavatale)
@@ -247,7 +250,7 @@ export function filterWines(list: Wine[], filters: Filters): Wine[] {
 export function winesForFacet(
   list: Wine[],
   filters: Filters,
-  omit: Array<"country" | "type" | "grape">
+  omit: Array<"country" | "type" | "grape" | "drinkMoment">
 ): Wine[] {
   const next: Filters = {
     ...filters,
@@ -255,6 +258,7 @@ export function winesForFacet(
     country: omit.includes("country") ? "" : filters.country,
     type: omit.includes("type") ? "" : filters.type,
     grape: omit.includes("grape") ? "" : filters.grape,
+    drinkMoment: omit.includes("drinkMoment") ? "" : filters.drinkMoment,
   };
   return filterWines(list, next);
 }

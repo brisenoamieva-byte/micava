@@ -198,8 +198,8 @@ export function yearsFromPeak(
   return year - w.drinkPeak;
 }
 
-/** Display order for Pulse: most actionable first. */
-export const DRINK_STATUS_ORDER: DrinkStatus[] = [
+/** Display order for Pulse / filter chips: most actionable first. */
+export const DRINK_STATUS_ORDER: Array<Exclude<DrinkStatus, "unknown">> = [
   "peak",
   "ready",
   "late",

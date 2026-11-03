@@ -6,6 +6,11 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
+import {
+  DRINK_STATUS_CLASS,
+  DRINK_STATUS_DOT,
+} from "@/components/DrinkWindowBadge";
+import { drinkStatus, DRINK_STATUS_ORDER } from "@/lib/drink-window";
 import type { Filters, SortOption, Wine } from "@/lib/types";
 import { grapesInCellar } from "@/lib/grapes";
 import { useLocale, useT, wineTypeLabel } from "@/lib/i18n";
@@ -170,6 +175,10 @@ export function FiltersBar({ filters, onChange, total, wines }: Props) {
     () => winesForFacet(wines, filters, ["grape"]),
     [wines, filters]
   );
+  const forMoment = useMemo(
+    () => winesForFacet(wines, filters, ["drinkMoment"]),
+    [wines, filters]
+  );
 
   const countries = useMemo(
     () => uniqueSorted(forCountry.map((w) => w.country)),
@@ -300,6 +309,16 @@ export function FiltersBar({ filters, onChange, total, wines }: Props) {
     return map;
   }, [forType]);
 
+  const momentCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const w of forMoment) {
+      const s = drinkStatus(w);
+      if (s === "unknown") continue;
+      map.set(s, (map.get(s) ?? 0) + 1);
+    }
+    return map;
+  }, [forMoment]);
+
   return (
     <div className="panel-quiet p-2.5 sm:p-3">
       <div className="space-y-2.5 sm:space-y-3">
@@ -393,6 +412,63 @@ export function FiltersBar({ filters, onChange, total, wines }: Props) {
               ))}
             </select>
           </label>
+        </div>
+
+        <div>
+          <p className="mb-1.5 text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
+            {t("filters.moment")}
+          </p>
+          <div
+            className="flex flex-wrap gap-1.5"
+            role="group"
+            aria-label={t("filters.moment")}
+          >
+            <button
+              type="button"
+              className={[
+                "inline-flex min-h-[32px] items-center rounded-[8px] border px-2.5 text-[11px] font-medium uppercase tracking-[0.06em] transition",
+                filters.drinkMoment === ""
+                  ? "border-[rgba(110,31,44,0.45)] bg-[rgba(110,31,44,0.12)] text-[var(--wine-deep)]"
+                  : "border-[var(--line)] bg-[rgba(255,252,247,0.55)] text-ink-soft hover:border-[rgba(110,31,44,0.28)] hover:text-ink",
+              ].join(" ")}
+              aria-pressed={filters.drinkMoment === ""}
+              onClick={() => patch({ drinkMoment: "" })}
+            >
+              {t("filters.momentAll")}
+            </button>
+            {DRINK_STATUS_ORDER.map((status) => {
+              const count = momentCounts.get(status) ?? 0;
+              const active = filters.drinkMoment === status;
+              return (
+                <button
+                  key={status}
+                  type="button"
+                  disabled={count === 0 && !active}
+                  className={[
+                    "inline-flex min-h-[32px] items-center gap-1.5 rounded-[8px] border px-2.5 text-[11px] font-medium uppercase tracking-[0.06em] transition disabled:cursor-default disabled:opacity-40",
+                    active
+                      ? DRINK_STATUS_CLASS[status]
+                      : "border-[var(--line)] bg-[rgba(255,252,247,0.55)] text-ink-soft hover:border-[rgba(110,31,44,0.28)] hover:text-ink",
+                  ].join(" ")}
+                  aria-pressed={active}
+                  title={t(`drinkWindow.hint.${status}`)}
+                  onClick={() =>
+                    patch({ drinkMoment: active ? "" : status })
+                  }
+                >
+                  <span
+                    className={[
+                      "inline-block h-1.5 w-1.5 shrink-0 rounded-full",
+                      DRINK_STATUS_DOT[status],
+                    ].join(" ")}
+                    aria-hidden
+                  />
+                  {t(`drinkWindow.status.${status}`)}
+                  <span className="tabular-nums opacity-70">({count})</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Rangos: Calificación Cavatale · Precio */}

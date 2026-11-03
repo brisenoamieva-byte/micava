@@ -253,6 +253,8 @@ export const en = {
     sortPriceDesc: "Price ↓",
     sortPriceAsc: "Price ↑",
     searchShortPlaceholder: "Name, grape, region…",
+    moment: "Moment",
+    momentAll: "All",
     minCavataleAria: "Minimum Cavatale rating",
     maxCavataleAria: "Maximum Cavatale rating",
     minPriceAria: "Minimum price",

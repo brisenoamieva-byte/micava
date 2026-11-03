@@ -242,6 +242,8 @@ export const es = {
     sortPriceDesc: "Precio ↓",
     sortPriceAsc: "Precio ↑",
     searchShortPlaceholder: "Nombre, uva, región…",
+    moment: "Momento",
+    momentAll: "Todos",
     minCavataleAria: "Calificación Cavatale mínima",
     maxCavataleAria: "Calificación Cavatale máxima",
     minPriceAria: "Precio mínimo",

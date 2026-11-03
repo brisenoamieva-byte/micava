@@ -103,6 +103,8 @@ export type Filters = {
   country: string;
   type: string;
   grape: string;
+  /** Drink-window moment: young | ready | peak | late, or "" for any. */
+  drinkMoment: "" | "young" | "ready" | "peak" | "late";
   minCavatale: number | null;
   maxCavatale: number | null;
   minPrice: number | null;

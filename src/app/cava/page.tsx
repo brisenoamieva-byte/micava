@@ -58,6 +58,7 @@ const initialFilters: Filters = {
   country: "",
   type: "",
   grape: "",
+  drinkMoment: "",
   minCavatale: null,
   maxCavatale: null,
   minPrice: null,

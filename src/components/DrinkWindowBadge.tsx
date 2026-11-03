@@ -12,7 +12,7 @@ type Props = {
 };
 
 /** Distinct hues so Pico / En su punto / Joven / Tarde scan at a glance. */
-const STATUS_CLASS: Record<DrinkStatus, string> = {
+export const DRINK_STATUS_CLASS: Record<DrinkStatus, string> = {
   peak:
     "border-[rgba(110,31,44,0.5)] bg-[rgba(110,31,44,0.18)] text-[var(--wine-deep)]",
   ready:
@@ -24,7 +24,10 @@ const STATUS_CLASS: Record<DrinkStatus, string> = {
   unknown: "border-[var(--line)] bg-transparent text-ink-soft",
 };
 
-const STATUS_DOT: Record<Exclude<DrinkStatus, "unknown">, string> = {
+export const DRINK_STATUS_DOT: Record<
+  Exclude<DrinkStatus, "unknown">,
+  string
+> = {
   peak: "bg-[var(--wine)]",
   ready: "bg-[var(--leaf)]",
   young: "bg-[#3a6a8c]",
@@ -41,7 +44,7 @@ export function DrinkWindowBadge({ wine, size = "sm", className = "" }: Props) {
       className={[
         "inline-flex items-center gap-1 rounded-[6px] border font-medium uppercase tracking-[0.08em]",
         size === "sm" ? "px-1.5 py-0.5 text-[9px]" : "px-2 py-0.5 text-[10px]",
-        STATUS_CLASS[status],
+        DRINK_STATUS_CLASS[status],
         className,
       ].join(" ")}
       title={t(`drinkWindow.hint.${status}`)}
@@ -50,7 +53,7 @@ export function DrinkWindowBadge({ wine, size = "sm", className = "" }: Props) {
         className={[
           "inline-block shrink-0 rounded-full",
           size === "sm" ? "h-1.5 w-1.5" : "h-2 w-2",
-          STATUS_DOT[status],
+          DRINK_STATUS_DOT[status],
         ].join(" ")}
         aria-hidden
       />

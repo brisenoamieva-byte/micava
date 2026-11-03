@@ -913,7 +913,7 @@ export function CellarMap({
                         located ? "map-cell--located" : "",
                       ].join(" ")}
                     >
-                      <CountryFlag country={wine.country} size="sm" lite />
+                      <CountryFlag country={wine.country} size="sm" />
                       <span className="min-w-0">
                         <span className="block max-w-[10rem] truncate font-medium leading-tight sm:max-w-[14rem]">
                           {wine.name}
@@ -1213,7 +1213,6 @@ export function CellarMap({
                                 <CountryFlag
                                   country={wine.country}
                                   size="sm"
-                                  lite
                                 />
                                 <span className="truncate font-medium">
                                   {wine.name}
@@ -1485,7 +1484,7 @@ function Row({
             }}
           >
             <span className="flex items-center px-0.5">
-              <CountryFlag country={wine.country} size="xs" lite />
+              <CountryFlag country={wine.country} size="xs" />
             </span>
             <span className="block truncate px-0.5 text-[9px] font-semibold leading-tight text-ink sm:text-[10px]">
               {label}

@@ -163,7 +163,7 @@ export function WineList({
                     : "border-transparent hover:border-[var(--line)] hover:bg-[rgba(248,245,238,0.65)]",
                 ].join(" ")}
               >
-                <CountryFlag country={wine.country} size="md" lite />
+                <CountryFlag country={wine.country} size="md" />
                 <span className="min-w-0">
                   <span className="flex items-center gap-1.5">
                     <span

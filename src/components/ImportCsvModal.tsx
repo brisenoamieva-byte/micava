@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import {
   csvTemplateContent,
+  fileToImportCsvText,
   importWinesFromCsv,
   type CsvImportResult,
 } from "@/lib/import-cellar-csv";
@@ -50,7 +51,7 @@ export function ImportCsvModal({
     setBusy(true);
     setFileName(file.name);
     try {
-      const text = await file.text();
+      const text = await fileToImportCsvText(file);
       const parsed = importWinesFromCsv(text, {
         defaultCellarId: activeCellarId,
         resolveCellarId: (name) => {
@@ -126,7 +127,7 @@ export function ImportCsvModal({
             <input
               ref={inputRef}
               type="file"
-              accept=".csv,text/csv"
+              accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
               className="sr-only"
               disabled={busy}
               onChange={(e) => void onFile(e.target.files?.[0] ?? null)}

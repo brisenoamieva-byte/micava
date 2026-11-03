@@ -904,8 +904,8 @@ export const es = {
     hint: "Sé concreto: plato, proteína, estilo de cocina o ocasión.",
   },
   importCsv: {
-    title: "Importar CSV",
-    lead: "Trae botellas desde Excel u otra cava. Revisas el reporte antes de guardar.",
+    title: "Importar CSV / Excel",
+    lead: "Trae botellas desde Excel, CSV u otra cava. Revisas el reporte antes de guardar.",
     downloadTemplate: "Plantilla CSV",
     chooseFile: "Elegir archivo",
     reading: "Leyendo…",

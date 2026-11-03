@@ -916,8 +916,8 @@ export const en = {
     hint: "Be concrete: dish, protein, cuisine style, or occasion.",
   },
   importCsv: {
-    title: "Import CSV",
-    lead: "Bring bottles from Excel or another cellar. Review the report before saving.",
+    title: "Import CSV / Excel",
+    lead: "Bring bottles from Excel, CSV, or another cellar. Review the report before saving.",
     downloadTemplate: "CSV template",
     chooseFile: "Choose file",
     reading: "Reading…",

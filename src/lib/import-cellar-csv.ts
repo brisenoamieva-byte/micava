@@ -23,7 +23,14 @@ export type CsvImportResult = {
   totalRows: number;
 };
 
-const HEADER_ALIASES: Record<string, keyof WineDraft | "mueble" | "skip"> = {
+type MappedField =
+  | keyof WineDraft
+  | "mueble"
+  | "slotX"
+  | "slotY"
+  | "skip";
+
+const HEADER_ALIASES: Record<string, MappedField> = {
   name: "name",
   nombre: "name",
   wine: "name",
@@ -46,6 +53,7 @@ const HEADER_ALIASES: Record<string, keyof WineDraft | "mueble" | "skip"> = {
   varietal: "grape",
   aging: "aging",
   crianza: "aging",
+  anejamiento: "aging",
   vintage: "vintage",
   añada: "vintage",
   anada: "vintage",
@@ -55,11 +63,19 @@ const HEADER_ALIASES: Record<string, keyof WineDraft | "mueble" | "skip"> = {
   vivino: "vivino",
   price: "price",
   precio: "price",
+  preciovivino: "price",
+  purchaseprice: "price",
   slot: "location",
   location: "location",
   ubicacion: "location",
   ubicación: "location",
   hueco: "location",
+  x: "slotX",
+  col: "slotX",
+  columna: "slotX",
+  y: "slotY",
+  row: "slotY",
+  fila: "slotY",
   cellarid: "cellarId",
   mueble: "mueble",
   id: "skip",
@@ -137,10 +153,44 @@ export function parseCsvText(text: string): string[][] {
 }
 
 function parseOptionalNumber(raw: string): number | null {
-  const t = raw.trim().replace(",", ".");
+  const t = raw
+    .trim()
+    .replace(/[$€£¥]|mxn|usd|eur/gi, "")
+    .replace(/\s/g, "")
+    .replace(/,(?=\d{3}(\D|$))/g, "")
+    .replace(",", ".");
   if (!t) return null;
   const n = Number(t);
   return Number.isFinite(n) ? n : null;
+}
+
+function combineSlot(x: string, y: string, existing: string): string {
+  if (existing) return existing;
+  const xx = x.trim();
+  const yy = y.trim();
+  if (!xx && !yy) return "";
+  if (xx.toLowerCase() === "abajo" || yy.toLowerCase() === "abajo") {
+    return "abajo";
+  }
+  if (xx && yy) return `${xx}${yy}`.toUpperCase();
+  return (xx || yy).toUpperCase();
+}
+
+/**
+ * Read CSV or Excel (.xlsx/.xls) into CSV text for `importWinesFromCsv`.
+ * First sheet wins for workbooks.
+ */
+export async function fileToImportCsvText(file: File): Promise<string> {
+  const lower = file.name.toLowerCase();
+  if (lower.endsWith(".xlsx") || lower.endsWith(".xls")) {
+    const XLSX = await import("xlsx");
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: "array", raw: false });
+    const name = wb.SheetNames[0];
+    if (!name) throw new Error("empty workbook");
+    return XLSX.utils.sheet_to_csv(wb.Sheets[name]);
+  }
+  return file.text();
 }
 
 function normalizeType(raw: string): WineType {
@@ -235,6 +285,8 @@ export function importWinesFromCsv(
     const cells = table[r];
     const draft = emptyDraft();
     let muebleName = "";
+    let slotX = "";
+    let slotY = "";
     const rowNum = r + 1;
 
     for (let c = 0; c < mapped.length; c++) {
@@ -243,6 +295,14 @@ export function importWinesFromCsv(
       if (!field || field === "skip") continue;
       if (field === "mueble") {
         muebleName = raw;
+        continue;
+      }
+      if (field === "slotX") {
+        slotX = raw;
+        continue;
+      }
+      if (field === "slotY") {
+        slotY = raw;
         continue;
       }
       if (field === "name") draft.name = raw;
@@ -280,6 +340,8 @@ export function importWinesFromCsv(
         draft.cellarId = raw || null;
       }
     }
+
+    draft.location = combineSlot(slotX, slotY, draft.location);
 
     if (!draft.name.trim()) {
       errors.push({

@@ -71,6 +71,9 @@ export function StatsDashboard({
     [wines, cellars, history]
   );
   const openTonight = useMemo(() => rankOpenTonight(wines, 5), [wines]);
+  const missingVintage = useMemo(() => {
+    return uniqueWinesByIdentity(wines).filter((w) => w.vintage == null);
+  }, [wines]);
   const byMoment = useMemo(() => groupWinesByDrinkStatus(wines), [wines]);
   const valueSnap = useMemo(() => cellarValueSnapshot(wines), [wines]);
   const priceTargets = useMemo(
@@ -422,8 +425,21 @@ export function StatsDashboard({
               {t("stats.openTonight")}
             </p>
             <p className="mt-2 text-sm text-ink-soft">
-              {t("stats.openTonightEmpty")}
+              {missingVintage.length > 0
+                ? t("stats.openTonightEmptyMissing", {
+                    count: missingVintage.length,
+                  })
+                : t("stats.openTonightEmpty")}
             </p>
+            {missingVintage[0] && onSelectWine ? (
+              <button
+                type="button"
+                className="btn btn-ghost mt-3 min-h-[40px] border border-[var(--line)] px-3 text-sm"
+                onClick={() => onSelectWine(missingVintage[0]!)}
+              >
+                {t("stats.openTonightFixVintage")}
+              </button>
+            ) : null}
           </div>
         )}
       </section>

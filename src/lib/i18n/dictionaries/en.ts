@@ -369,6 +369,11 @@ export const en = {
     selectFromMap: "Select a wine from the map or list",
     noWinery: "Winery not listed",
     naVintage: "n/v",
+    vintageRecommended: "recommended",
+    vintageHint: "With the vintage, Open tonight knows what to pour.",
+    vintageMissingDetail:
+      "Without a vintage we can’t estimate the drinking window.",
+    addVintage: "Add vintage",
     emptyCellar:
       "Your cellar is empty. Add your first bottle with a photo of the label.",
     noFilterMatches: "No wines match the filters.",
@@ -654,6 +659,9 @@ export const en = {
     openTonightNoScore: "Tell its story",
     openTonightEmpty:
       "Add vintage (and type) on your bottles so we can estimate when to open. Edit that on the card.",
+    openTonightEmptyMissing:
+      "{count} bottles missing vintage. Add the year on the card for Open tonight.",
+    openTonightFixVintage: "Add a vintage",
     openTonightReason: {
       peak: "At peak",
       ready: "Ready now",

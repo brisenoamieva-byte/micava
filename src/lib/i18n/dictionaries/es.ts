@@ -357,6 +357,11 @@ export const es = {
     selectFromMap: "Selecciona un vino desde el mapa o la lista",
     noWinery: "Bodega sin registrar",
     naVintage: "s/a",
+    vintageRecommended: "recomendada",
+    vintageHint: "Con la añada, Abrir hoy sabe qué descorchar.",
+    vintageMissingDetail:
+      "Sin añada no estimamos la ventana de consumo.",
+    addVintage: "Agregar añada",
     emptyCellar:
       "Tu cava está vacía. Agrega tu primera botella con una foto de la etiqueta.",
     noFilterMatches: "Ningún vino coincide con los filtros.",
@@ -642,6 +647,9 @@ export const es = {
     openTonightNoScore: "Cuenta su historia",
     openTonightEmpty:
       "Falta añada (y tipo) en tus botellas para estimar cuándo abrir. Completa eso en la ficha.",
+    openTonightEmptyMissing:
+      "{count} botellas sin añada. Completa el año en la ficha para Abrir hoy.",
+    openTonightFixVintage: "Completar una añada",
     openTonightReason: {
       peak: "En pico",
       ready: "En su punto",

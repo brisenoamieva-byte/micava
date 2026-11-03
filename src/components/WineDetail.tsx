@@ -564,6 +564,24 @@ export function WineDetail({
         const status = drinkStatus(wine);
         const hint =
           status !== "unknown" ? t(`drinkWindow.hint.${status}`) : "";
+        if (wine.vintage == null) {
+          return (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <p className="text-xs text-ink-soft">
+                {t("wine.vintageMissingDetail")}
+              </p>
+              {onEdit ? (
+                <button
+                  type="button"
+                  className="text-xs font-medium text-[var(--wine)] underline-offset-2 hover:underline"
+                  onClick={() => onEdit(wine)}
+                >
+                  {t("wine.addVintage")}
+                </button>
+              ) : null}
+            </div>
+          );
+        }
         if (!win && !hint) return null;
         return (
           <p className="mt-1.5 text-xs text-ink-soft">

@@ -779,8 +779,20 @@ export function WineFormModal({
               </label>
 
               <label>
-                <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+                <span
+                  className={[
+                    "mb-1 block text-[11px] uppercase tracking-[0.14em]",
+                    draft.vintage == null
+                      ? "text-[var(--wine)]"
+                      : "text-ink-soft",
+                  ].join(" ")}
+                >
                   {t("wine.year")}
+                  {draft.vintage == null ? (
+                    <span className="ml-1 normal-case tracking-normal">
+                      · {t("wine.vintageRecommended")}
+                    </span>
+                  ) : null}
                 </span>
                 <input
                   className={fieldClass}
@@ -791,6 +803,11 @@ export function WineFormModal({
                   }
                   placeholder="2021"
                 />
+                {draft.vintage == null ? (
+                  <span className="mt-1 block text-xs text-ink-soft">
+                    {t("wine.vintageHint")}
+                  </span>
+                ) : null}
               </label>
 
               <label>

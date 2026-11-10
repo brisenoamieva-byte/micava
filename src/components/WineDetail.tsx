@@ -25,8 +25,6 @@ import { clientCountryCodeHint } from "@/lib/market-geo";
 import { AiTheaterStatus } from "@/components/AiTheaterStatus";
 import { CavataleRatingCard } from "@/components/CavataleRatingCard";
 import { ThinkingIndicator } from "@/components/ThinkingIndicator";
-import { WineAtmospherePlaceholder } from "@/components/WineAtmospherePlaceholder";
-
 type Props = {
   wine: Wine | null;
   onBack?: () => void;
@@ -502,39 +500,45 @@ export function WineDetail({
         </button>
       ) : null}
 
+      {labelSrc ? (
+        <div
+          className={[
+            "wine-label-hero",
+            embeddedInSheet ? "wine-label-hero--sheet" : "wine-label-hero--card",
+            "wine-label-hero--contain",
+          ].join(" ")}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={labelSrc} alt={t("wine.labelAlt", { name: wine.name })} />
+        </div>
+      ) : (
+        <div
+          className={[
+            "wine-type-accent",
+            embeddedInSheet ? "wine-type-accent--sheet" : "wine-type-accent--card",
+          ].join(" ")}
+          style={{ background: typeAccent(wine.type) }}
+          aria-hidden
+        />
+      )}
+
       <div
         className={[
-          "wine-label-hero",
-          embeddedInSheet ? "wine-label-hero--sheet" : "wine-label-hero--card",
-          labelSrc ? "wine-label-hero--contain" : "",
-        ].join(" ")}
+          "flex items-start justify-between gap-3",
+          labelSrc ? "" : embeddedInSheet ? "mt-1" : "mt-0.5",
+        ]
+          .filter(Boolean)
+          .join(" ")}
       >
-        {labelSrc ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={labelSrc} alt={t("wine.labelAlt", { name: wine.name })} />
-        ) : (
-          <WineAtmospherePlaceholder
-            type={wine.type}
-            place={
-              [wine.region, wine.country].filter(Boolean).join(" · ") || null
-            }
-          />
-        )}
-      </div>
-
-      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          {!labelSrc ? null : (
-            <p className="micro-label text-ink-soft">{t("wine.detail")}</p>
-          )}
-          <h2
-            className={[
-              "display leading-tight text-ink",
-              labelSrc
-                ? "mt-1.5 text-[1.85rem] sm:text-3xl"
-                : "text-[1.85rem] sm:text-3xl",
-            ].join(" ")}
-          >
+          <p className="micro-label text-ink-soft">
+            {labelSrc
+              ? t("wine.detail")
+              : [wineTypeLabel(dict, wine.type), wine.region || wine.country]
+                  .filter(Boolean)
+                  .join(" · ")}
+          </p>
+          <h2 className="display mt-1.5 text-[1.85rem] leading-tight text-ink sm:text-3xl">
             {wine.name}
           </h2>
           <p className="mt-1 text-sm text-ink-soft">

@@ -856,8 +856,9 @@ select {
   padding-right: 0.85rem;
 }
 
-/* Hero label bleeds to sheet edges */
-.mobile-detail-sheet__body > .wine-label-hero {
+/* Hero label / type accent bleed to sheet edges */
+.mobile-detail-sheet__body > .wine-label-hero,
+.mobile-detail-sheet__body > .wine-type-accent {
   padding-left: 0;
   padding-right: 0;
   margin-bottom: 0.85rem;
@@ -926,190 +927,21 @@ select {
   pointer-events: none;
 }
 
-/* Typed atmosphere when there is no real label photo */
-.wine-atmosphere {
-  position: relative;
-  display: block;
-  min-height: min(36dvh, 16.5rem);
-  overflow: hidden;
-  isolation: isolate;
-}
-
-.wine-atmosphere__scene {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 0;
-  pointer-events: none;
-}
-
-.wine-atmosphere__ray {
-  animation: wineAtmRay 8s var(--ease) infinite alternate;
-  transform-origin: 100% 0;
-}
-
-.wine-atmosphere__vignette {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  background:
-    radial-gradient(ellipse at 50% 40%, transparent 35%, rgba(20, 18, 16, 0.14) 100%),
-    linear-gradient(180deg, rgba(20, 18, 16, 0.04), transparent 28%, rgba(20, 18, 16, 0.12));
-}
-
-.wine-atmosphere__stage {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  min-height: min(36dvh, 16.5rem);
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1.2rem 1.1rem 1.05rem;
-}
-
-.wine-atmosphere__mark-wrap {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  flex-shrink: 0;
-  animation: wineAtmFloat 6.5s var(--ease) infinite alternate;
-  transform-origin: 50% 100%;
-  filter: drop-shadow(0 14px 22px rgba(20, 18, 16, 0.22));
-}
-
-.wine-atmosphere__mark {
-  display: block;
-  width: clamp(5.75rem, 24vw, 7.75rem);
-  height: auto;
-  border-radius: 16px;
-}
-
-.wine-atmosphere__caption {
-  position: relative;
-  z-index: 1;
-  max-width: min(15rem, 52%);
-  margin-left: auto;
-  padding: 0.7rem 0.85rem 0.75rem;
-  border-radius: 12px;
-  background: rgba(255, 252, 247, 0.96);
-  border: 1px solid rgba(20, 18, 16, 0.07);
-  box-shadow: 0 8px 22px rgba(20, 18, 16, 0.08);
-  text-align: left;
-  animation: fadeUp 0.85s var(--ease) both;
-}
-
-.wine-atmosphere__eyebrow {
-  font-size: 9px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--wine);
-}
-
-.wine-atmosphere__type {
-  margin-top: 0.3rem;
-  font-family: var(--font-display), Georgia, serif;
-  font-size: clamp(1.4rem, 4.8vw, 1.75rem);
-  line-height: 1.05;
-  color: var(--ink);
-}
-
-.wine-atmosphere__place {
-  margin-top: 0.3rem;
-  font-size: 0.75rem;
-  color: var(--ink-soft);
-}
-
-.wine-atmosphere__bubbles {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-}
-
-.wine-atmosphere__bubbles span {
-  position: absolute;
-  bottom: 20%;
-  width: 5px;
+/* Thin type accent when there is no real label photo */
+.wine-type-accent {
   height: 5px;
+  width: 100%;
+  opacity: 0.88;
+}
+
+.wine-type-accent--sheet {
+  border-radius: 0;
+}
+
+.wine-type-accent--card {
   border-radius: 999px;
-  background: rgba(255, 252, 247, 0.7);
-  animation: wineAtmBubble 4.8s ease-in infinite;
-}
-
-.wine-atmosphere__bubbles span:nth-child(1) {
-  left: 20%;
-  animation-delay: 0s;
-}
-.wine-atmosphere__bubbles span:nth-child(2) {
-  left: 26%;
-  width: 3px;
-  height: 3px;
-  animation-delay: 0.6s;
-}
-.wine-atmosphere__bubbles span:nth-child(3) {
-  left: 32%;
-  animation-delay: 1.2s;
-}
-.wine-atmosphere__bubbles span:nth-child(4) {
-  left: 16%;
-  width: 4px;
-  height: 4px;
-  animation-delay: 1.9s;
-}
-.wine-atmosphere__bubbles span:nth-child(5) {
-  left: 38%;
-  width: 3px;
-  height: 3px;
-  animation-delay: 2.5s;
-}
-.wine-atmosphere__bubbles span:nth-child(6) {
-  left: 29%;
-  width: 4px;
-  height: 4px;
-  animation-delay: 3.2s;
-}
-
-@keyframes wineAtmFloat {
-  from {
-    transform: translateY(0);
-  }
-  to {
-    transform: translateY(-5px);
-  }
-}
-
-@keyframes wineAtmRay {
-  from {
-    opacity: 0.7;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes wineAtmBubble {
-  0% {
-    transform: translateY(0) scale(1);
-    opacity: 0;
-  }
-  12% {
-    opacity: 0.75;
-  }
-  100% {
-    transform: translateY(-9rem) scale(0.55);
-    opacity: 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .wine-atmosphere__mark-wrap,
-  .wine-atmosphere__bubbles span,
-  .wine-atmosphere__ray {
-    animation: none;
-  }
+  margin-top: 0.35rem;
+  margin-bottom: 0.85rem;
 }
 
 .desktop-only {

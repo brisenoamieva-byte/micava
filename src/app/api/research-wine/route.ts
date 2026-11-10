@@ -14,7 +14,13 @@ import {
   type CavataleEvidenceParsed,
   type CavataleRatingEvidence,
 } from "@/lib/cavatale-rating";
-import { geminiGenerateJson, resolveKimiFallback, resolvePrimaryLlm, RESEARCH_WINE_RESPONSE_SCHEMA } from "@/lib/gemini";
+import {
+  geminiGenerateJson,
+  isLlmCapacityError,
+  resolveKimiFallback,
+  resolvePrimaryLlm,
+  RESEARCH_WINE_RESPONSE_SCHEMA,
+} from "@/lib/gemini";
 import {
   assessKimiStoryQuality,
   buildUserCorrectionPromptBlock,
@@ -418,13 +424,14 @@ async function callStoryLlm(
         e && typeof e === "object" && "usage" in e
           ? ((e as { usage?: KimiTokenUsage | null }).usage ?? null)
           : null;
+      const message =
+        e instanceof Error
+          ? e.message
+          : "No se pudo contactar a la IA. Revisa la conexión e intenta de nuevo.";
       return {
         ok: false,
-        status: 502,
-        error:
-          e instanceof Error
-            ? e.message
-            : "No se pudo contactar a la IA. Revisa la conexión e intenta de nuevo.",
+        status: isLlmCapacityError(message) ? 503 : 502,
+        error: message,
         usage,
       };
     }
@@ -834,18 +841,51 @@ export async function POST(request: Request) {
     });
   }
 
-  if (!first.ok) {
+  // Gemini capacity spikes should not kill Contar historia — fall back to Kimi.
+  let storyCall = first;
+  if (!storyCall.ok && llm.provider === "gemini") {
+    const kimi = resolveKimiFallback();
+    if (kimi) {
+      console.warn("[research-wine] story Gemini failed; trying Kimi", {
+        wine: name,
+        error: storyCall.error,
+      });
+      const kimiOut = await callStoryLlm(kimi, userPrompt, locale, marketBlock);
+      fallbackStoryUsage = addKimiUsage(fallbackStoryUsage, kimiOut.usage);
+      if (kimiOut.ok) {
+        storyCall = kimiOut;
+      } else {
+        storyCall = {
+          ok: false,
+          status: kimiOut.status,
+          error: kimiOut.error,
+          detail: kimiOut.detail ?? storyCall.error,
+          usage: kimiOut.usage,
+        };
+      }
+    }
+  }
+
+  if (!storyCall.ok) {
     await flushUsageMeters();
+    const busy = isLlmCapacityError(storyCall.error);
     return NextResponse.json(
-      { error: first.error, detail: first.detail },
-      { status: first.status }
+      {
+        error: busy
+          ? locale === "en"
+            ? "The story model is busy right now. Try again in a moment."
+            : "El modelo de historia está saturado ahora. Reintenta en un momento."
+          : storyCall.error,
+        detail: storyCall.detail,
+      },
+      { status: busy ? 503 : storyCall.status }
     );
   }
 
   const storyWinery = body.winery ?? "";
 
   let finalized: ReturnType<typeof finalizeResearch> | null = null;
-  let storyContent = first.content;
+  let storyContent = storyCall.content;
   try {
     finalized = finalizeResearch(storyContent, { winery: storyWinery });
   } catch (firstParseError) {

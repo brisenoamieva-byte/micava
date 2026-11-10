@@ -541,6 +541,8 @@ export const es = {
     researchNoConnection: "Sin conexión. Revisa internet e intenta de nuevo.",
     researchError: "Error al investigar.",
     couldNotTellStory: "No se pudo contar la historia.",
+    researchBusy:
+      "El modelo de historia está saturado ahora. Reintenta en un momento.",
     unexpectedFormat: "La IA respondió en un formato inesperado. Reintenta.",
     tooManyRequests: "Demasiadas consultas. Espera un momento y reintenta.",
     couldNotIdentify:

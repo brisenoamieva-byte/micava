@@ -553,6 +553,8 @@ export const en = {
     researchNoConnection: "You’re offline. Check your connection and retry.",
     researchError: "Lookup error.",
     couldNotTellStory: "Couldn’t tell the story.",
+    researchBusy:
+      "The story model is busy right now. Try again in a moment.",
     unexpectedFormat: "The AI returned an unexpected format. Try again.",
     tooManyRequests: "Too many requests. Wait a moment and retry.",
     couldNotIdentify:

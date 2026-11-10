@@ -45,6 +45,26 @@ export function resolveKimiFallback(): ResolvedLlm | null {
   };
 }
 
+/** True when the provider is overloaded / rate-limited (retry or switch model). */
+export function isLlmCapacityError(message: string | null | undefined): boolean {
+  const m = (message ?? "").toLowerCase();
+  if (!m) return false;
+  return (
+    m.includes("high demand") ||
+    m.includes("experiencing high") ||
+    m.includes("resource_exhausted") ||
+    m.includes("resource exhausted") ||
+    m.includes("unavailable") ||
+    m.includes("overloaded") ||
+    m.includes("try again later") ||
+    m.includes("rate limit") ||
+    m.includes("quota") ||
+    m.includes("too many requests") ||
+    m.includes("429") ||
+    m.includes("503")
+  );
+}
+
 type GeminiPart =
   | { text: string }
   | { inlineData: { mimeType: string; data: string } };

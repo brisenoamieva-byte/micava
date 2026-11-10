@@ -399,9 +399,15 @@ export function WineDetail({
       }
       if (!res.ok || !payload.research) {
         if (res.status === 429) {
-          throw new Error("Demasiadas consultas. Espera un momento y reintenta.");
+          throw new Error(t("scan.tooManyRequests"));
         }
-        throw new Error(payload.error || "No se pudo investigar este vino.");
+        const rawErr = payload.error || t("scan.couldNotTellStory");
+        const busy =
+          res.status === 503 ||
+          /high demand|try again later|overloaded|resource.?exhausted|saturad/i.test(
+            rawErr
+          );
+        throw new Error(busy ? t("scan.researchBusy") : rawErr);
       }
       const research = payload.research;
       const prevRating = wine.cavataleRating;
@@ -437,18 +443,20 @@ export function WineDetail({
       }
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") {
-        setKimiError(
-          "La consulta se canceló o tardó demasiado. Puedes reintentar."
-        );
+        setKimiError(t("scan.researchAborted"));
       } else if (e instanceof TypeError) {
-        setKimiError("Sin conexión. Revisa internet e intenta de nuevo.");
+        setKimiError(t("scan.researchNoConnection"));
       } else {
         const msg =
-          e instanceof Error ? e.message : "Error al consultar la IA.";
+          e instanceof Error ? e.message : t("scan.researchError");
         setKimiError(
           msg === "Failed to fetch"
-            ? "No hubo respuesta a tiempo. Revisa la conexión e intenta de nuevo."
-            : msg
+            ? t("scan.researchNoConnection")
+            : /high demand|try again later|overloaded|resource.?exhausted/i.test(
+                  msg
+                )
+              ? t("scan.researchBusy")
+              : msg
         );
       }
     } finally {

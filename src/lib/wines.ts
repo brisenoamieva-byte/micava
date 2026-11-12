@@ -286,6 +286,9 @@ export function typeAccent(type: string): string {
   ) {
     return "#2f4234"; /* leaf */
   }
+  if (/ron|rum|whisky|whiskey|tequila|mezcal|gin|cognac|destil|spirit/.test(t)) {
+    return "#8a5a2b"; /* amber spirit */
+  }
   return "#6a1a28"; /* wine */
 }
 

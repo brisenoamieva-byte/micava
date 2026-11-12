@@ -1,7 +1,9 @@
+import { normalizeBottleType } from "@/lib/bottle-types";
 import type { WineDraft, WineType } from "@/lib/types";
 import { normalizeCountry } from "@/lib/wine-countries";
 
 export { normalizeCountry } from "@/lib/wine-countries";
+export { normalizeBottleType as normalizeType } from "@/lib/bottle-types";
 
 /** Catalog fields from a wine label (mirrors WineDraft except cellar placement). */
 export type ScanLabelFields = {
@@ -32,28 +34,6 @@ export const SCAN_CATALOG_KEYS = [
   "vivino",
   "price",
 ] as const satisfies ReadonlyArray<keyof WineDraft>;
-
-const WINE_TYPES = ["Tinto", "Blanco", "Rosado", "Espumoso"] as const;
-
-export function normalizeType(raw: string): WineType {
-  const t = raw.trim().toLowerCase();
-  if (!t) return "Tinto";
-  if (t.includes("blanc") || t.includes("white")) return "Blanco";
-  if (t.includes("ros") || t.includes("pink")) return "Rosado";
-  if (
-    t.includes("espum") ||
-    t.includes("spark") ||
-    t.includes("cava") ||
-    t.includes("champ")
-  ) {
-    return "Espumoso";
-  }
-  if (t.includes("tint") || t.includes("red") || t.includes("rojo")) {
-    return "Tinto";
-  }
-  const exact = WINE_TYPES.find((x) => x.toLowerCase() === t);
-  return exact ?? "Tinto";
-}
 
 function asOptionalNumber(value: unknown): number | null {
   if (value == null || value === "") return null;
@@ -143,7 +123,7 @@ export function parseScanLabelResult(raw: unknown): ScanLabelFields {
     winery: asString(o.winery),
     country: normalizeCountry(asString(o.country)),
     region: asString(o.region),
-    type: normalizeType(asString(o.type)),
+    type: normalizeBottleType(asString(o.type)) as WineType,
     grape: asString(o.grape),
     aging: asString(o.aging),
     vintage,

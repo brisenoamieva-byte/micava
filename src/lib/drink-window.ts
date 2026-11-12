@@ -1,3 +1,4 @@
+import { isSpiritType } from "@/lib/bottle-types";
 import type { Wine } from "@/lib/types";
 
 /** Heuristic drinking window (years from vintage), not a lab aging model. */
@@ -144,6 +145,8 @@ function applyNudge(
 export function computeDrinkWindow(
   wine: DrinkWineInput
 ): DrinkWindow | null {
+  // Spirits don't share wine drink-window heuristics — keep Abrir hoy wine-focused.
+  if (isSpiritType(wine.type)) return null;
   if (wine.vintage == null || !Number.isFinite(wine.vintage)) return null;
   const span = applyNudge(
     baseSpan(wine.type || "", wine.aging || ""),

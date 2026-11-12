@@ -11,6 +11,12 @@ import {
   getWineBySlot,
   parseLocation,
 } from "@/lib/wines";
+import {
+  BOTTLE_TYPES,
+  SPIRIT_TYPES,
+  WINE_TYPES,
+  isSpiritType,
+} from "@/lib/bottle-types";
 import { wineToDraft } from "@/lib/cellar-store";
 import {
   fetchEnrichLabel,
@@ -273,7 +279,9 @@ export function WineFormModal({
       );
       setScanHint(
         [
-          fields.vintage == null ? t("scan.vintageMissingAfterScan") : null,
+          fields.vintage == null && !isSpiritType(fields.type)
+            ? t("scan.vintageMissingAfterScan")
+            : null,
           conf,
           proposedPrice != null
             ? t("scan.proposedPrice", { price: formatPrice(proposedPrice) })
@@ -564,13 +572,13 @@ export function WineFormModal({
         {showingPick ? (
           <div className="space-y-3">
             {(() => {
-              const scanFirst = Boolean(initialSlot);
+              // Always scan first — catalog is secondary (copies of bottles you already have).
               const catalogBlock =
                 catalog.length > 0 ? (
-                  <div className={scanFirst ? "border-t border-[var(--line)] pt-3" : ""}>
+                  <div className="border-t border-[var(--line)] pt-3">
                     <label className="block">
                       <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-                        {scanFirst
+                        {initialSlot
                           ? t("wine.slotFromCellar")
                           : t("wine.searchInCellar")}
                       </span>
@@ -592,14 +600,7 @@ export function WineFormModal({
                         : ""}
                     </p>
 
-                    <ul
-                      className={[
-                        "mt-1.5 space-y-1.5 overflow-y-auto overscroll-contain pr-0.5",
-                        scanFirst
-                          ? "max-h-[min(28dvh,12rem)]"
-                          : "max-h-[min(50dvh,22rem)]",
-                      ].join(" ")}
-                    >
+                    <ul className="mt-1.5 max-h-[min(28dvh,12rem)] space-y-1.5 overflow-y-auto overscroll-contain pr-0.5">
                       {filteredCatalog.length === 0 ? (
                         <li className="rounded-[10px] border border-dashed border-[var(--line)] px-3 py-4 text-sm text-ink-soft">
                           {t("wine.noCatalogMatches")}
@@ -672,15 +673,10 @@ export function WineFormModal({
                 />
               );
 
-              return scanFirst ? (
+              return (
                 <>
                   {scanBlock}
                   {catalogBlock}
-                </>
-              ) : (
-                <>
-                  {catalogBlock}
-                  {scanBlock}
                 </>
               );
             })()}
@@ -800,16 +796,31 @@ export function WineFormModal({
                 </span>
                 <select
                   className={fieldClass}
-                  value={draft.type}
+                  value={
+                    (BOTTLE_TYPES as readonly string[]).includes(draft.type)
+                      ? draft.type
+                      : draft.type || "Tinto"
+                  }
                   onChange={(e) => patch("type", e.target.value)}
                 >
-                  {(["Tinto", "Blanco", "Rosado", "Espumoso"] as const).map(
-                    (typeValue) => (
+                  <optgroup label={t("wine.typeGroupWine")}>
+                    {WINE_TYPES.map((typeValue) => (
                       <option key={typeValue} value={typeValue}>
                         {wineTypeLabel(dict, typeValue)}
                       </option>
-                    )
-                  )}
+                    ))}
+                  </optgroup>
+                  <optgroup label={t("wine.typeGroupSpirit")}>
+                    {SPIRIT_TYPES.map((typeValue) => (
+                      <option key={typeValue} value={typeValue}>
+                        {wineTypeLabel(dict, typeValue)}
+                      </option>
+                    ))}
+                  </optgroup>
+                  {draft.type &&
+                  !(BOTTLE_TYPES as readonly string[]).includes(draft.type) ? (
+                    <option value={draft.type}>{draft.type}</option>
+                  ) : null}
                 </select>
               </label>
 
@@ -817,13 +828,13 @@ export function WineFormModal({
                 <span
                   className={[
                     "mb-1 block text-[11px] uppercase tracking-[0.14em]",
-                    draft.vintage == null
+                    draft.vintage == null && !isSpiritType(draft.type)
                       ? "text-[var(--wine)]"
                       : "text-ink-soft",
                   ].join(" ")}
                 >
                   {t("wine.year")}
-                  {draft.vintage == null ? (
+                  {draft.vintage == null && !isSpiritType(draft.type) ? (
                     <span className="ml-1 normal-case tracking-normal">
                       · {t("wine.vintageRecommended")}
                     </span>
@@ -832,7 +843,7 @@ export function WineFormModal({
                 <input
                   className={[
                     fieldClass,
-                    draft.vintage == null
+                    draft.vintage == null && !isSpiritType(draft.type)
                       ? "border-[rgba(110,31,44,0.45)] bg-[rgba(110,31,44,0.04)]"
                       : "",
                   ]
@@ -844,11 +855,24 @@ export function WineFormModal({
                     patch("vintage", parseOptionalNumber(e.target.value))
                   }
                   placeholder="2021"
-                  autoFocus={Boolean(scanHint && draft.vintage == null)}
+                  autoFocus={Boolean(
+                    scanHint &&
+                      draft.vintage == null &&
+                      !isSpiritType(draft.type)
+                  )}
                 />
                 {draft.vintage == null ? (
-                  <span className="mt-1 block text-xs text-[var(--wine-deep)]">
-                    {t("wine.vintageHint")}
+                  <span
+                    className={[
+                      "mt-1 block text-xs",
+                      isSpiritType(draft.type)
+                        ? "text-ink-soft"
+                        : "text-[var(--wine-deep)]",
+                    ].join(" ")}
+                  >
+                    {isSpiritType(draft.type)
+                      ? t("wine.vintageHintSpirit")
+                      : t("wine.vintageHint")}
                   </span>
                 ) : null}
               </label>

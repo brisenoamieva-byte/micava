@@ -20,7 +20,19 @@ import { useLocale, useT, wineTypeLabel } from "@/lib/i18n";
 
 type BrowseMode = "pais" | "tipo" | "destacados";
 
-const TYPE_ORDER = ["Tinto", "Blanco", "Rosado", "Espumoso"];
+const TYPE_ORDER = [
+  "Tinto",
+  "Blanco",
+  "Rosado",
+  "Espumoso",
+  "Ron",
+  "Whisky",
+  "Tequila",
+  "Mezcal",
+  "Gin",
+  "Cognac",
+  "Otro destilado",
+];
 
 type Props = {
   profile: NetworkProfile;

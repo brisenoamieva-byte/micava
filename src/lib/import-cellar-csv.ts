@@ -2,6 +2,7 @@
  * CSV import for cellar bottles — flexible headers, row-level errors, no silent drops.
  */
 
+import { normalizeBottleType } from "@/lib/bottle-types";
 import type { WineDraft, WineType } from "@/lib/types";
 import { normalizeCountry } from "@/lib/wine-countries";
 
@@ -198,14 +199,6 @@ export async function fileToImportCsvText(file: File): Promise<string> {
   return file.text();
 }
 
-function normalizeType(raw: string): WineType {
-  const t = raw.trim().toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
-  if (/blanc|white|blanco/.test(t)) return "Blanco";
-  if (/rosa|rosado|rose/.test(t)) return "Rosado";
-  if (/espum|spark|cava|champ|prosecco/.test(t)) return "Espumoso";
-  if (/tint|red|rouge|negro/.test(t)) return "Tinto";
-  return raw.trim() || "Tinto";
-}
 
 function emptyDraft(): WineDraft {
   return {
@@ -355,7 +348,7 @@ export function importWinesFromCsv(
       else if (field === "country") {
         draft.country = raw ? normalizeCountry(raw) : draft.country;
       } else if (field === "region") draft.region = raw;
-      else if (field === "type") draft.type = normalizeType(raw);
+      else if (field === "type") draft.type = normalizeBottleType(raw) as WineType;
       else if (field === "grape") draft.grape = raw;
       else if (field === "aging") draft.aging = raw;
       else if (field === "vintage") {

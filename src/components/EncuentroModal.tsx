@@ -379,7 +379,7 @@ export function EncuentroModal({
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--wine)]">
-              {t("cava.scanBottle")}
+              {t("cava.scanForBitacora")}
             </p>
             <h2 id="encuentro-title" className="display mt-1 text-2xl text-ink">
               {step === "identify"

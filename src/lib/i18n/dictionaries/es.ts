@@ -405,7 +405,7 @@ export const es = {
     tellWineStory: "Contar la historia de este vino",
     shareStory: "Compartir historia",
     shareMesa: "Enviar a WhatsApp",
-    mesaLabel: "Para la mesa",
+    mesaLabel: "En la mesa",
     addStepPhoto: "Foto",
     addStepPrice: "Precio",
     addStepSlot: "Hueco",
@@ -996,9 +996,9 @@ export const es = {
   },
   history: {
     title: "Qué repetirías",
-    lead: "Tu nota y foto al descorchar — para no olvidar qué sí volviste a comprar.",
+    lead: "Nota y foto al descorchar — para saber qué comprar otra vez.",
     favorites: "Compraría otra (4–5)",
-    tastingMemory: "Tu bitácora",
+    tastingMemory: "Tu memoria",
     lastOpened: "Última que abriste",
     emptyMemory:
       "Cuando digas La abrí y dejes nota o foto, aquí queda el recuerdo.",

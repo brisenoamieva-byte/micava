@@ -417,7 +417,7 @@ export const en = {
     tellWineStory: "Tell this wine’s story",
     shareStory: "Share story",
     shareMesa: "Send on WhatsApp",
-    mesaLabel: "For the table",
+    mesaLabel: "At the table",
     addStepPhoto: "Photo",
     addStepPrice: "Price",
     addStepSlot: "Slot",
@@ -1010,9 +1010,9 @@ export const en = {
   },
   history: {
     title: "What you’d buy again",
-    lead: "Your note and photo when you opened it — so you remember what was worth repeating.",
+    lead: "Note and photo when you opened it — so you know what to buy again.",
     favorites: "Buy again (4–5)",
-    tastingMemory: "Your logbook",
+    tastingMemory: "Your memory",
     lastOpened: "Last you opened",
     emptyMemory:
       "When you tap Opened and leave a note or photo, the memory lands here.",

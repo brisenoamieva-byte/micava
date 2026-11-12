@@ -377,7 +377,8 @@ export function StatsDashboard({
                           ))}
                         </p>
                       ) : null}
-                      {t("stats.openTonightHeroLead") ? (
+                      {!formatOpenTonightWhy(top, t) &&
+                      t("stats.openTonightHeroLead") ? (
                         <p className="mt-2 text-xs text-ink-soft">
                           {t("stats.openTonightHeroLead")}
                         </p>

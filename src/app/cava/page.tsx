@@ -962,19 +962,21 @@ export default function CavaPage() {
             ) : null}
             <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-2">
               <LanguageSwitcher compact />
-              <button
-                type="button"
-                className="btn btn-primary min-h-[40px] px-3 text-sm"
-                onClick={() => openAdd()}
-                title={t("cava.scanTitle")}
-              >
-                {t("cava.scanBottle")}
-              </button>
               <details ref={moreMenuRef} className="relative">
                 <summary className="flex min-h-[40px] cursor-pointer list-none items-center px-1 text-sm underline-offset-2 hover:text-ink hover:underline [&::-webkit-details-marker]:hidden">
                   {t("common.more")}
                 </summary>
                 <div className="absolute right-0 z-20 mt-1 min-w-[10.5rem] rounded-[10px] border border-[var(--line)] bg-[rgba(255,252,247,0.98)] p-1.5 shadow-sm backdrop-blur-sm">
+                  <button
+                    type="button"
+                    className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
+                    onClick={() => {
+                      closeMoreMenu();
+                      openAdd();
+                    }}
+                  >
+                    {t("cava.scanBottle")}
+                  </button>
                   <button
                     type="button"
                     className="flex w-full min-h-[40px] items-center rounded-[8px] px-3 text-left text-sm text-ink hover:bg-[rgba(110,31,44,0.06)]"
@@ -1008,7 +1010,7 @@ export default function CavaPage() {
                       });
                     }}
                   >
-                    {t("cava.bitacora")}
+                    {t("history.tastingMemory")}
                   </button>
                   {user ? (
                     <button
@@ -1149,18 +1151,8 @@ export default function CavaPage() {
           <>
             <CellarQuickActions
               onScan={() => openAdd()}
-              onOpenTonight={() => goToOpenTonight()}
               onPairMeal={() => setFoodPairOpen(true)}
             />
-            <p className="mt-2 text-center text-xs text-ink-soft sm:text-left">
-              <button
-                type="button"
-                className="underline-offset-2 hover:text-ink hover:underline"
-                onClick={() => setImportCsvOpen(true)}
-              >
-                {t("cava.importLink")}
-              </button>
-            </p>
           </>
         ) : null}
 
@@ -1596,7 +1588,7 @@ export default function CavaPage() {
                   if (targetMode === "stats") setMode("stats");
                   else if (wines.length === 0) {
                     setMode("cava");
-                    if (id === "detalle") openAdd();
+                    setMobilePanel(id === "detalle" ? "mapa" : (id as MobilePanel));
                   } else {
                     setMode("cava");
                     setMobilePanel(id as MobilePanel);

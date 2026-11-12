@@ -335,14 +335,12 @@ export function FiltersBar({ filters, onChange, total, wines }: Props) {
     <div className="panel-quiet p-2.5 sm:p-3">
       <div className="space-y-2.5 sm:space-y-3">
         <label className="block min-w-0">
-          <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-ink-soft sm:text-xs">
-            {t("common.search")}
-          </span>
+          <span className="sr-only">{t("common.search")}</span>
           <input
             id="cellar-search"
             value={filters.query}
             onChange={(e) => patch({ query: e.target.value })}
-            placeholder={t("filters.searchShortPlaceholder")}
+            placeholder={t("filters.searchPlaceholder")}
             className={fieldClass}
             enterKeyHint="search"
             autoCapitalize="off"

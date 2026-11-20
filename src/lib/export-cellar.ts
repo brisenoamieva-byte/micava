@@ -239,6 +239,30 @@ export function downloadWinesCsv(
   );
 }
 
+/** Native Excel workbook (.xlsx) — same columns as CSV export. */
+export function downloadWinesXlsx(
+  wines: Wine[],
+  cellars: CellarUnit[]
+): void {
+  // Dynamic import keeps the cellar page light until export is used.
+  void import("xlsx").then((XLSX) => {
+    const rows = wines.map((w) => {
+      const raw = wineExportRow(w, cellars);
+      const ordered: Record<string, string | number | boolean | null> = {};
+      for (const col of CSV_WINE_COLUMNS) {
+        ordered[col] = raw[col] ?? null;
+      }
+      return ordered;
+    });
+    const ws = XLSX.utils.json_to_sheet(rows, {
+      header: [...CSV_WINE_COLUMNS],
+    });
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Cava");
+    XLSX.writeFile(wb, `cavatale-cava-${stamp()}.xlsx`);
+  });
+}
+
 export function downloadHistoryCsv(history: CellarLogEntry[]): void {
   downloadTextFile(
     historyToCsv(history),

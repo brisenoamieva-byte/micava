@@ -1101,6 +1101,7 @@ export const en = {
   },
   export: {
     csv: "Export CSV",
+    excel: "Export Excel",
     json: "Export JSON",
   },
   errors: {

@@ -1087,6 +1087,7 @@ export const es = {
   },
   export: {
     csv: "Exportar CSV",
+    excel: "Exportar Excel",
     json: "Exportar JSON",
   },
   errors: {

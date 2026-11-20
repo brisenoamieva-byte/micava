@@ -27,9 +27,7 @@ import { WineFormModal } from "@/components/WineFormModal";
 import { WineList } from "@/components/WineList";
 import { useCellar, wineToDraft } from "@/lib/cellar-store";
 import { useAuth } from "@/lib/auth-store";
-import {
-  downloadWinesCsv,
-} from "@/lib/export-cellar";
+import { downloadWinesXlsx } from "@/lib/export-cellar";
 import { useT, useLocale } from "@/lib/i18n";
 import { uploadLabelImage } from "@/lib/label-image";
 import { uniqueWinesByIdentity } from "@/lib/analytics";
@@ -1060,10 +1058,10 @@ export default function CavaPage() {
                     disabled={!ready || wines.length === 0}
                     onClick={() => {
                       closeMoreMenu();
-                      downloadWinesCsv(wines, cellars);
+                      downloadWinesXlsx(wines, cellars);
                     }}
                   >
-                    {t("export.csv")}
+                    {t("export.excel")}
                   </button>
                   <button
                     type="button"

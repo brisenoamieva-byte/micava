@@ -908,22 +908,46 @@ export function StatsDashboard({
       </section>
 
       <div className="grid gap-5 lg:grid-cols-2">
-        <RankList
-          title={t("stats.topRated")}
-          wines={insights.topByCavatale}
-          metric={(w) =>
-            w.cavataleRating != null
-              ? `${t("wine.rating")} ${formatCavataleRating(w.cavataleRating)}`
-              : "—"
-          }
-          onSelect={onSelectWine}
-        />
-        <RankList
-          title={t("stats.topValue")}
-          wines={insights.topByPrice}
-          metric={(w) => formatPrice(w.price, w.priceCurrency)}
-          onSelect={onSelectWine}
-        />
+        {insights.topByCavataleWine.length > 0 ? (
+          <RankList
+            title={t("stats.topRatedWine")}
+            wines={insights.topByCavataleWine}
+            metric={(w) =>
+              w.cavataleRating != null
+                ? `${t("wine.rating")} ${formatCavataleRating(w.cavataleRating)}`
+                : "—"
+            }
+            onSelect={onSelectWine}
+          />
+        ) : null}
+        {insights.topByPriceWine.length > 0 ? (
+          <RankList
+            title={t("stats.topValueWine")}
+            wines={insights.topByPriceWine}
+            metric={(w) => formatPrice(w.price, w.priceCurrency)}
+            onSelect={onSelectWine}
+          />
+        ) : null}
+        {insights.topByCavataleSpirit.length > 0 ? (
+          <RankList
+            title={t("stats.topRatedSpirit")}
+            wines={insights.topByCavataleSpirit}
+            metric={(w) =>
+              w.cavataleRating != null
+                ? `${t("wine.rating")} ${formatCavataleRating(w.cavataleRating)}`
+                : "—"
+            }
+            onSelect={onSelectWine}
+          />
+        ) : null}
+        {insights.topByPriceSpirit.length > 0 ? (
+          <RankList
+            title={t("stats.topValueSpirit")}
+            wines={insights.topByPriceSpirit}
+            metric={(w) => formatPrice(w.price, w.priceCurrency)}
+            onSelect={onSelectWine}
+          />
+        ) : null}
       </div>
 
       {/* Regiones */}
@@ -1531,6 +1555,7 @@ function RankList({
   onSelect?: (wine: Wine) => void;
 }) {
   const t = useT();
+  const { dict } = useLocale();
   return (
     <section className="panel-quiet p-4 sm:p-5">
       <Header title={title} subtitle={subtitle} />
@@ -1550,7 +1575,13 @@ function RankList({
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-medium text-ink">{w.name}</span>
                   <span className="block truncate text-xs text-ink-soft">
-                    {w.region} · {w.vintage ?? t("wine.naVintage")}
+                    {[
+                      wineTypeLabel(dict, w.type),
+                      w.region || null,
+                      w.vintage != null ? String(w.vintage) : t("wine.naVintage"),
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </span>
                 </span>
                 <span className="shrink-0 text-right text-xs font-medium text-ink">

@@ -1,3 +1,4 @@
+import { isSpiritType } from "@/lib/bottle-types";
 import type { CellarLogEntry, CellarUnit, Wine } from "@/lib/types";
 import { GRID_COLS, GRID_ROWS, getEmptySlots } from "@/lib/wines";
 
@@ -54,6 +55,16 @@ export type CellarInsights = {
   /** @deprecated Prefer topByCavatale. */
   topByVivino: Wine[];
   topByPrice: Wine[];
+  /** Highest Cavatale among wines only. */
+  topByCavataleWine: Wine[];
+  /** Highest Cavatale among spirits only. */
+  topByCavataleSpirit: Wine[];
+  /** Highest price among wines only. */
+  topByPriceWine: Wine[];
+  /** Highest price among spirits only. */
+  topByPriceSpirit: Wine[];
+  wineCount: number;
+  spiritCount: number;
   toReplenish: ReplenishItem[];
 };
 
@@ -260,17 +271,34 @@ export function buildInsights(
     .map(([year, count]) => ({ year, count }))
     .sort((a, b) => a.year - b.year);
 
-  const topByCavatale = uniqueWinesByIdentity(withQuality)
-    .sort(
-      (a, b) =>
-        (qualityScore(b) ?? 0) - (qualityScore(a) ?? 0) ||
-        (b.price ?? 0) - (a.price ?? 0)
-    )
-    .slice(0, 5);
+  const winesOnly = wines.filter((w) => !isSpiritType(w.type));
+  const spiritsOnly = wines.filter((w) => isSpiritType(w.type));
 
-  const topByPrice = uniqueWinesByIdentity(withPrice)
-    .sort((a, b) => (b.price ?? 0) - (a.price ?? 0))
-    .slice(0, 5);
+  function topCavatale(pool: Wine[]): Wine[] {
+    return uniqueWinesByIdentity(pool.filter((w) => qualityScore(w) != null))
+      .sort(
+        (a, b) =>
+          (qualityScore(b) ?? 0) - (qualityScore(a) ?? 0) ||
+          (b.price ?? 0) - (a.price ?? 0)
+      )
+      .slice(0, 5);
+  }
+
+  function topPrice(pool: Wine[]): Wine[] {
+    return uniqueWinesByIdentity(pool.filter((w) => w.price != null))
+      .sort((a, b) => (b.price ?? 0) - (a.price ?? 0))
+      .slice(0, 5);
+  }
+
+  const topByCavataleWine = topCavatale(winesOnly);
+  const topByCavataleSpirit = topCavatale(spiritsOnly);
+  const topByPriceWine = topPrice(winesOnly);
+  const topByPriceSpirit = topPrice(spiritsOnly);
+  // Legacy combined lists stay wine-first when both exist (UI uses split fields).
+  const topByCavatale =
+    topByCavataleWine.length > 0 ? topByCavataleWine : topByCavataleSpirit;
+  const topByPrice =
+    topByPriceWine.length > 0 ? topByPriceWine : topByPriceSpirit;
 
   // Only real Cavatale scores — never blend Vivino into “Media Cavatale”.
   const avgCavatale =
@@ -302,6 +330,12 @@ export function buildInsights(
     topByCavatale,
     topByVivino: topByCavatale,
     topByPrice,
+    topByCavataleWine,
+    topByCavataleSpirit,
+    topByPriceWine,
+    topByPriceSpirit,
+    wineCount: winesOnly.length,
+    spiritCount: spiritsOnly.length,
     toReplenish: buildReplenish(wines, history),
   };
 }
